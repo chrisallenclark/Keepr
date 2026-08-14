@@ -61,13 +61,29 @@ struct RootView: View {
                 .tabItem { Label(AppTab.search.title, systemImage: AppTab.search.symbolName) }
                 .tag(AppTab.search)
         }
-        .onAppear { isShowingOnboarding = !hasOnboarded }
+        .onAppear(perform: applyLaunchOptions)
         .fullScreenCover(isPresented: $isShowingOnboarding) {
             OnboardingView(mode: mode) {
                 hasOnboarded = true
                 isShowingOnboarding = false
             }
             .interactiveDismissDisabled()
+        }
+    }
+
+    /// Normal launches decide onboarding from stored state. Screenshot runs skip
+    /// it and jump straight to the screen being captured.
+    private func applyLaunchOptions() {
+        guard LaunchOptions.isDemoMode else {
+            isShowingOnboarding = !hasOnboarded
+            return
+        }
+        isShowingOnboarding = false
+        if let screen = LaunchOptions.screen {
+            selectedTab = screen.tab
+        }
+        if let contextMode = LaunchOptions.contextMode {
+            contextModeRaw = contextMode.rawValue
         }
     }
 }

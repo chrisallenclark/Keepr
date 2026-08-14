@@ -53,6 +53,12 @@ struct PeopleView: View {
             .navigationDestination(item: $selectedPerson) { person in
                 PersonProfileView(person: person, mode: $mode)
             }
+            .onAppear {
+                // Screenshot runs open a profile directly; no effect otherwise.
+                if LaunchOptions.screen == .profile, selectedPerson == nil {
+                    selectedPerson = filtered.first
+                }
+            }
             .sheet(isPresented: $isShowingAddPerson) {
                 EditPersonView(person: nil, mode: mode)
             }

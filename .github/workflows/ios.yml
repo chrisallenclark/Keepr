@@ -27,6 +27,9 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Wire up the app icon
+        run: ./scripts/prepare-app-icon.sh
+
       - name: Pick an available iPhone simulator
         id: sim
         run: |
@@ -96,3 +99,107 @@ jobs:
             test.log
           if-no-files-found: ignore
           retention-days: 7
+
+  screenshots:
+    name: Screenshots
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    env:
+      BUNDLE_ID: com.chrisallenclark.Keepr
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wire up the app icon
+        run: ./scripts/prepare-app-icon.sh
+
+      - name: Boot a simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          best = None
+          for runtime, entries in devices.items():
+              if "iOS" not in runtime:
+                  continue
+              for device in entries:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      best = device["udid"]
+          if best:
+              print(best)
+          ')
+          if [ -z "$UDID" ]; then
+            echo "::error::No iOS Simulator available on this runner."
+            exit 1
+          fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Build for the simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Keepr.xcodeproj \
+            -scheme Keepr \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -20
+
+      - name: Install the app
+        run: |
+          set -euo pipefail
+          APP=$(find DerivedData/Build/Products -maxdepth 2 -name "Keepr.app" -type d | head -1)
+          echo "Installing $APP"
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+
+      - name: Capture every screen, light and dark
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          mkdir -p screenshots
+
+          # A clean, consistent status bar — the same trick Apple's own
+          # marketing shots use.
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularBars 4 --wifiBars 3 || true
+
+          capture() {
+            local screen="$1" context="$2" appearance="$3"
+            local name="${screen}-${context}-${appearance}"
+
+            xcrun simctl ui "$UDID" appearance "$appearance" || true
+            xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+            xcrun simctl launch "$UDID" "$BUNDLE_ID" \
+              -KeeprDemoMode -KeeprScreen "$screen" -KeeprContext "$context" >/dev/null
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "screenshots/${name}.png"
+            echo "captured ${name}"
+          }
+
+          for appearance in light dark; do
+            capture today    business "$appearance"
+            capture people   business "$appearance"
+            capture profile  business "$appearance"
+            capture followUp business "$appearance"
+            capture search   business "$appearance"
+            capture today    personal "$appearance"
+          done
+
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+          ls -la screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 30

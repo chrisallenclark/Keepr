@@ -25,45 +25,85 @@ loop.
 > so a free plan's 2,000 minutes/month becomes ~200 macOS minutes — roughly 30–40 builds.
 > Fine for iteration, but worth knowing before flipping the switch.
 
-## Stage 2 — See it (free, no Mac)
+## Stage 2 — See it (free, no Mac) — **done**
 
-Once Stage 1 is green, CI can boot the app in a Simulator, walk the main screens and upload
-**screenshots as build artifacts**, which download to an iPhone from the Actions tab. That's
-how you review the design without a Mac — not as good as holding it, good enough to judge
-layout, spacing, dark mode and Dynamic Type.
+The `screenshots` job in `.github/workflows/ios.yml` boots a Simulator, installs the
+app, and captures every main screen in both light and dark mode. Download them from
+**Actions → a run → Artifacts → screenshots** — this works in mobile Safari.
 
-Not built yet; it's the natural next step after the first green build.
+It drives the app with debug-only launch arguments (`-KeeprDemoMode -KeeprScreen today
+-KeeprContext business`) rather than a UI-test target: the app loads sample data into a
+throwaway in-memory store, skips onboarding, and opens the requested screen. See
+`Keepr/App/LaunchOptions.swift` — in a Release build every one of those checks folds to
+a constant `false`, so none of it exists in a TestFlight or App Store binary.
 
-## Stage 3 — Put it on your iPhone (needs $99/year)
+## Stage 3 — Put it on your iPhone ($99/year)
 
-To install on a physical iPhone you need an **Apple Developer Program** membership
-(US$99/year, `developer.apple.com/programs`) and TestFlight. There is no free path:
-free "personal team" provisioning requires Xcode on a Mac physically connected to the device.
+Installing on a physical iPhone requires an **Apple Developer Program** membership
+(US$99/year, `developer.apple.com/programs`). There is no free path: free "personal team"
+provisioning requires Xcode on a Mac cabled to the device.
 
-With the membership, the whole flow runs from CI and a browser:
+`.github/workflows/testflight.yml` does the rest. It signs using an **App Store Connect
+API key**, which means `xcodebuild -allowProvisioningUpdates` creates and downloads the
+certificate and provisioning profile itself — no `.p12`, no Keychain, no `openssl`, no
+Mac at any point.
 
-1. **Generate a signing identity without a Mac.** The usual instructions say to make a
-   certificate request in Keychain Access, but a CSR is just a file — `openssl` produces one
-   on any machine (including in CI):
-   ```
-   openssl req -new -newkey rsa:2048 -nodes -keyout keepr.key -out keepr.csr \
-     -subj "/emailAddress=you@example.com/CN=Your Name/C=US"
-   ```
-   Upload `keepr.csr` at `developer.apple.com/account/resources/certificates` → download the
-   `.cer` → convert to a `.p12` with `openssl`. That `.p12` and its password become GitHub
-   Actions secrets.
-2. **Register the App ID and a provisioning profile** in the same web portal.
-3. **Create the app record** in App Store Connect (`appstoreconnect.apple.com`) — this works
-   in mobile Safari.
-4. **Add an App Store Connect API key** (App Store Connect → Users and Access → Integrations)
-   as GitHub secrets, so CI can upload builds.
-5. **Extend the workflow** to archive, sign and `xcrun altool`/`xcrun notarytool` upload to
-   TestFlight.
-6. **Install TestFlight** on your iPhone. Every push then puts a new build on your phone in
-   ~10 minutes.
+### What you have to create (once, from a browser)
 
-Steps 1–2 are fiddly on a phone screen. Any borrowed laptop with a browser makes them much
-easier, and they're one-time.
+1. **Join the Apple Developer Program** — `developer.apple.com/programs`. Approval can
+   take a few hours to a couple of days.
+
+2. **Note your Team ID** — `developer.apple.com/account` → Membership details. A
+   10-character string like `A1B2C3D4E5`.
+
+3. **Create an App Store Connect API key** — `appstoreconnect.apple.com` → Users and
+   Access → Integrations → App Store Connect API → Team Keys → **+**.
+   Give it the **App Manager** role (it must be able to create signing certificates).
+   You get three things:
+   - **Issuer ID** — shown above the key list
+   - **Key ID** — in the key's row
+   - **the `.p8` file** — downloadable exactly once, so save it immediately
+
+4. **Create the app record** — App Store Connect → Apps → **+** → New App.
+   Platform iOS, Bundle ID `com.chrisallenclark.Keepr`, and pick an SKU (any string).
+   You'll need to register that bundle ID first at
+   `developer.apple.com/account/resources/identifiers` if it isn't offered.
+
+5. **Add four repository secrets** — GitHub → your repo → Settings → Secrets and
+   variables → Actions → New repository secret:
+
+   | Secret | Value |
+   |---|---|
+   | `APPLE_TEAM_ID` | the 10-character Team ID |
+   | `APP_STORE_CONNECT_KEY_ID` | the Key ID |
+   | `APP_STORE_CONNECT_ISSUER_ID` | the Issuer ID |
+   | `APP_STORE_CONNECT_PRIVATE_KEY` | the **entire contents** of the `.p8` file, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines |
+
+6. **Add the app icon** — see below. App Store Connect rejects builds without it.
+
+### Then
+
+GitHub → Actions → **TestFlight** → **Run workflow**. It archives, signs, exports and
+uploads. Apple takes another 5–15 minutes to process the build, then it appears in the
+**TestFlight** app on your iPhone (install TestFlight from the App Store and sign in with
+the same Apple ID).
+
+The workflow checks all five prerequisites up front and fails in seconds with a precise
+message if something's missing, rather than 20 minutes into a build.
+
+## The app icon
+
+`Keepr/Assets.xcassets/AppIcon.appiconset/` ships with an **empty** icon slot. The repo
+deliberately carries no placeholder: an app icon is brand, and a stand-in that looks
+almost right is worse than an obvious gap.
+
+To add one, upload a 1024×1024 PNG **with no alpha channel** to that folder, named
+exactly `AppIcon-1024.png`. From an iPhone: GitHub → the repo → `Keepr` →
+`Assets.xcassets` → `AppIcon.appiconset` → **Add file** → **Upload files**.
+
+`scripts/prepare-app-icon.sh` runs at the start of every build and wires the filename
+into the asset catalog if the file is there, so no further code change is needed — builds
+stay green without an icon, and pick one up automatically once it exists.
 
 ## The alternative: rent a Mac by the hour
 
