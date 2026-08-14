@@ -127,6 +127,12 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
+      # CODE_SIGN_IDENTITY is pinned to distribution on purpose. Left to itself,
+      # automatic signing asks Apple for an *iOS App Development* profile, which
+      # must enumerate registered test devices — and a team that has never
+      # plugged in a device has none, so Apple refuses with "your team has no
+      # devices". A distribution profile carries no device list, which is what
+      # App Store builds want anyway.
       - name: Archive
         run: |
           set -o pipefail
@@ -141,8 +147,11 @@ jobs:
             -authenticationKeyID "$KEY_ID" \
             -authenticationKeyIssuerID "$ISSUER_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            2>&1 | tail -40
+            2>&1 | tail -60
 
       - name: Export the IPA
         run: |
