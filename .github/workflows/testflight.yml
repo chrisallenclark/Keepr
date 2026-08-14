@@ -6,13 +6,16 @@ name: TestFlight
 # -allowProvisioningUpdates creates and downloads the certificate and profile
 # itself. There is no .p12 to generate, no Keychain to unlock, and nothing that
 # needs a Mac to set up. See docs/BUILDING_WITHOUT_A_MAC.md.
-# Two ways in. `workflow_dispatch` only works once this file is on the default
-# branch — that's a GitHub rule, and it's why pushing a tag is the reliable
-# trigger while the app still lives on a feature branch.
+# Ships on every push to main, so a fix reaches TestFlight without anyone
+# clicking anything. Documentation-only commits are skipped — they can't change
+# the binary, and each build costs ~10 minutes and a TestFlight slot.
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
   workflow_dispatch:
     inputs:
       notes:
