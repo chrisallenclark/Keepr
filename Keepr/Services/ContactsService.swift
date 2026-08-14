@@ -1,4 +1,3 @@
-import Security
 import Contacts
 import Foundation
 import OSLog
@@ -115,24 +114,19 @@ actor LiveContactStore: ContactStoreProviding {
         CNContactRelationsKey
     ].map { $0 as CNKeyDescriptor }
 
-    /// Apple gates the Notes field behind `com.apple.developer.contacts.notes`,
-    /// which has to be applied for and approved per app. Requesting the key
-    /// without it makes the whole fetch fail, so it's only added once the
-    /// entitlement is actually present in the running binary.
-    private static var keysIncludingNoteIfEntitled: [CNKeyDescriptor] {
-        guard hasNotesEntitlement else { return keys }
-        return keys + [CNContactNoteKey as CNKeyDescriptor]
+    private static func fetchKeys(includingNote: Bool) -> [CNKeyDescriptor] {
+        includingNote ? keys + [CNContactNoteKey as CNKeyDescriptor] : keys
     }
 
-    static var hasNotesEntitlement: Bool {
-        guard let task = SecTaskCreateFromSelf(nil) else { return false }
-        let value = SecTaskCopyValueForEntitlement(
-            task,
-            "com.apple.developer.contacts.notes" as CFString,
-            nil
-        )
-        return (value as? Bool) == true
-    }
+    /// Apple gates the Notes field behind `com.apple.developer.contacts.notes`,
+    /// which has to be applied for and approved per app. Requesting the key
+    /// without it makes the entire fetch fail, so the note has to be optional.
+    ///
+    /// iOS offers no supported way to ask whether an entitlement was granted —
+    /// `SecTask` is macOS-only — so the capability is discovered by trying it
+    /// once and falling back. That's more truthful than reading a flag anyway:
+    /// it tests what actually happens rather than what should.
+    private var noteKeyIsUsable: Bool?
 
     nonisolated func authorizationStatus() -> ContactAccess {
         Self.access(from: CNContactStore.authorizationStatus(for: .contacts))
@@ -154,18 +148,30 @@ actor LiveContactStore: ContactStoreProviding {
     func fetchContacts() async -> [ContactSummary] {
         guard authorizationStatus().canRead else { return [] }
 
-        let request = CNContactFetchRequest(keysToFetch: Self.keysIncludingNoteIfEntitled)
+        if noteKeyIsUsable != false {
+            if let results = try? enumerate(includingNote: true) {
+                noteKeyIsUsable = true
+                return results
+            }
+            noteKeyIsUsable = false
+        }
+
+        do {
+            return try enumerate(includingNote: false)
+        } catch {
+            Logger.contacts.error("Contact enumeration failed.")
+            return []
+        }
+    }
+
+    private func enumerate(includingNote: Bool) throws -> [ContactSummary] {
+        let request = CNContactFetchRequest(keysToFetch: Self.fetchKeys(includingNote: includingNote))
         request.sortOrder = .userDefault
         request.unifyResults = true
 
         var results: [ContactSummary] = []
-        do {
-            try store.enumerateContacts(with: request) { contact, _ in
-                results.append(Self.summary(from: contact))
-            }
-        } catch {
-            Logger.contacts.error("Contact enumeration failed.")
-            return []
+        try store.enumerateContacts(with: request) { contact, _ in
+            results.append(Self.summary(from: contact))
         }
         return results.filter { !$0.fullName.isEmpty }
     }
@@ -173,7 +179,8 @@ actor LiveContactStore: ContactStoreProviding {
     func contact(withIdentifier identifier: String) async -> ContactSummary? {
         guard authorizationStatus().canRead else { return nil }
         let predicate = CNContact.predicateForContacts(withIdentifiers: [identifier])
-        guard let match = try? store.unifiedContacts(matching: predicate, keysToFetch: Self.keysIncludingNoteIfEntitled).first
+        let requested = Self.fetchKeys(includingNote: noteKeyIsUsable == true)
+        guard let match = try? store.unifiedContacts(matching: predicate, keysToFetch: requested).first
         else { return nil }
         return Self.summary(from: match)
     }
