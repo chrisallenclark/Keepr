@@ -72,15 +72,60 @@ jobs:
       - name: Wire up the app icon
         run: ./scripts/prepare-app-icon.sh
 
+      # Rebuilds the PEM from whatever ended up in the secret. A .p8 copied on
+      # Windows arrives with CRLF line endings, which CryptoKit rejects outright
+      # ("invalidPEMDocument"), and it's easy to paste the base64 body without
+      # its BEGIN/END armour. Both are recoverable, so recover rather than making
+      # someone re-paste and guess.
       - name: Install the App Store Connect API key
         env:
           PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           mkdir -p ~/.appstoreconnect/private_keys
-          printf '%s' "$PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
-          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
-          echo "KEY_PATH=$HOME/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8" >> "$GITHUB_ENV"
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8"
+
+          KEY_PATH="$KEY_PATH" python3 - <<'PY'
+          import base64
+          import os
+          import re
+          import sys
+
+          raw = os.environ["PRIVATE_KEY"]
+          had_armour = "BEGIN PRIVATE KEY" in raw
+
+          # Strip the armour if present, then every scrap of whitespace, leaving
+          # just the base64 body.
+          body = re.sub(r"-----[^-]+-----", "", raw)
+          body = re.sub(r"\s+", "", body)
+
+          if not body:
+              sys.exit("::error::APP_STORE_CONNECT_PRIVATE_KEY is empty once whitespace is stripped.")
+
+          try:
+              der = base64.b64decode(body, validate=True)
+          except Exception:
+              sys.exit(
+                  "::error::APP_STORE_CONNECT_PRIVATE_KEY isn't valid base64. Re-copy the whole "
+                  ".p8 file in a plain-text editor — Word and Notepad can mangle it."
+              )
+
+          # A PKCS#8 EC private key from Apple is ~200 bytes; anything tiny is a
+          # truncated paste rather than a key.
+          if len(der) < 64:
+              sys.exit(f"::error::Decoded key is only {len(der)} bytes — the paste looks truncated.")
+
+          wrapped = "\n".join(body[i:i + 64] for i in range(0, len(body), 64))
+          pem = f"-----BEGIN PRIVATE KEY-----\n{wrapped}\n-----END PRIVATE KEY-----\n"
+
+          with open(os.environ["KEY_PATH"], "w", newline="\n") as file:
+              file.write(pem)
+
+          print(f"Key normalized: {len(der)} bytes DER, armour in secret: {had_armour}")
+          PY
+
+          chmod 600 "$KEY_PATH"
+          echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
       - name: Archive
         run: |
