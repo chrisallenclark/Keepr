@@ -70,7 +70,7 @@ struct CaptureExtractorTests {
     @Test("A sentence splits into its separate claims")
     func clauseSplitting() {
         let clauses = HeuristicCaptureExtractor.clauses(
-            "He owns a roofing company, wants to lose 20 pounds and said to text him next week."
+            in: "He owns a roofing company, wants to lose 20 pounds and said to text him next week."
         )
         #expect(clauses == [
             "He owns a roofing company",
@@ -175,7 +175,10 @@ struct CaptureExtractorTests {
         let contents = draft.memories.map(\.content)
         #expect(contents.contains("Owns a roofing company"))
         #expect(contents.contains("Wants to lose 20 pounds"))
-        #expect(draft.memories.allSatisfy(\.isSelected))
+        // Computed outside the macro: a key path passed to `rethrows` confuses
+        // #expect's throws analysis.
+        let everySuggestionIsPreselected = draft.memories.allSatisfy { $0.isSelected }
+        #expect(everySuggestionIsPreselected)
 
         let followUp = try #require(draft.followUp)
         #expect(followUp.title == "Text him next week about training")
