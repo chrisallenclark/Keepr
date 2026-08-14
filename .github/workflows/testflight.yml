@@ -6,7 +6,13 @@ name: TestFlight
 # -allowProvisioningUpdates creates and downloads the certificate and profile
 # itself. There is no .p12 to generate, no Keychain to unlock, and nothing that
 # needs a Mac to set up. See docs/BUILDING_WITHOUT_A_MAC.md.
+# Two ways in. `workflow_dispatch` only works once this file is on the default
+# branch — that's a GitHub rule, and it's why pushing a tag is the reliable
+# trigger while the app still lives on a feature branch.
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       notes:
@@ -141,7 +147,7 @@ jobs:
             echo "Build **${{ github.run_number }}** is processing. It usually takes"
             echo "5–15 minutes before it appears in the TestFlight app."
             echo ""
-            echo "> ${{ inputs.notes }}"
+            echo "> ${{ inputs.notes || 'Build from tag ' }}${{ github.ref_name }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the IPA
