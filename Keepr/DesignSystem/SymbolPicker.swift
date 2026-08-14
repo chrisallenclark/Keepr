@@ -253,6 +253,7 @@ extension SymbolPicker {
             "seal",
             "shield",
             "sparkle",
+            "arrow.triangle.branch",
             "checkmark.circle",
             "exclamationmark.circle",
             "questionmark.circle",

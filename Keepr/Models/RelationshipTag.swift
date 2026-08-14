@@ -15,6 +15,12 @@ final class RelationshipTag {
 
     /// Built-ins are seeded on first launch and can't be deleted.
     var isBuiltIn: Bool = false
+    /// Stable identity for a built-in, unaffected by renaming.
+    ///
+    /// Names are what the user sees and is free to change; code that needs to
+    /// find "the Family tag" must not go looking for the string "Family", or a
+    /// rename silently creates a duplicate on the next import.
+    var builtInKey: String?
     /// Controls order in pickers and on rows; built-ins are spaced by 10.
     var sortOrder: Int = 0
     /// SF Symbol shown in filter menus.
@@ -29,12 +35,14 @@ final class RelationshipTag {
         kind: TagKind,
         isBuiltIn: Bool = false,
         sortOrder: Int = 0,
-        symbolName: String = "tag"
+        symbolName: String = "tag",
+        builtInKey: String? = nil
     ) {
         self.id = UUID()
         self.name = name
         self.kindRaw = kind.rawValue
         self.isBuiltIn = isBuiltIn
+        self.builtInKey = builtInKey
         self.sortOrder = sortOrder
         self.symbolName = symbolName
         self.createdAt = Date()
@@ -82,11 +90,4 @@ extension RelationshipTag {
         .init(name: "Acquaintance", kind: .personal, symbolName: "person")
     ]
 
-    /// Quick filters offered above the People list, per context.
-    static func quickFilterNames(for mode: ContextMode) -> [String] {
-        switch mode {
-        case .business: ["Current Client", "Potential Client", "Lead", "Business Partner"]
-        case .personal: ["Family", "Close Friend", "Friend"]
-        }
-    }
 }

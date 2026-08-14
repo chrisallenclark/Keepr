@@ -60,18 +60,26 @@ enum KeeprStore {
                     kind: builtIn.kind,
                     isBuiltIn: true,
                     sortOrder: index * 10,
-                    symbolName: builtIn.symbolName
+                    symbolName: builtIn.symbolName,
+                    builtInKey: builtIn.name
                 )
             )
         }
         try? context.save()
     }
 
-    /// Fetches a tag by name, creating it if the user has deleted or never had it.
+    /// Fetches a tag, creating it if the user has deleted or never had it.
+    ///
+    /// `name` doubles as the built-in key, so a built-in the user has renamed is
+    /// still found. Matching on the visible name alone would mean renaming
+    /// "Family" quietly produced a second "Family" on the next import.
     @MainActor
     static func tag(named name: String, kind: TagKind, in context: ModelContext) -> RelationshipTag {
         let descriptor = FetchDescriptor<RelationshipTag>()
         let all = (try? context.fetch(descriptor)) ?? []
+        if let match = all.first(where: { $0.builtInKey == name && $0.kind == kind }) {
+            return match
+        }
         if let match = all.first(where: { $0.name == name && $0.kind == kind }) {
             return match
         }
