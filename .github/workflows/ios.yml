@@ -1,0 +1,98 @@
+name: Build & Test
+
+# GitHub's macOS runners are the Mac. Every push compiles the app and runs the
+# test suite on a real iOS Simulator, so the project can be developed without
+# owning a Mac.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Pick an available iPhone simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          best = None
+          for runtime, entries in devices.items():
+              if "iOS" not in runtime:
+                  continue
+              for device in entries:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      best = (device["udid"], device["name"], runtime)
+          if best:
+              print(best[0])
+              print(best[1], best[2], file=sys.stderr)
+          ')
+          if [ -z "$UDID" ]; then
+            echo "::error::No iOS Simulator available on this runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Keepr.xcodeproj \
+            -scheme Keepr \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build.log
+
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Keepr.xcodeproj \
+            -scheme Keepr \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee test.log
+
+      # Compiler diagnostics, pulled out of the noise so failures are readable
+      # in the job summary without downloading anything.
+      - name: Diagnostics
+        if: always()
+        run: |
+          {
+            echo '## Compiler diagnostics'
+            echo '```'
+            grep -hE "(error|warning): " build.log test.log 2>/dev/null | sort -u | head -100 || echo "none"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build.log
+            test.log
+          if-no-files-found: ignore
+          retention-days: 7
