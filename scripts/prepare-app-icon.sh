@@ -19,27 +19,30 @@ ICON_SET="Keepr/Assets.xcassets/AppIcon.appiconset"
 ICON_FILE="AppIcon-1024.png"
 ICON_PATH="${ICON_SET}/${ICON_FILE}"
 
-# Adopt a differently-named upload, as long as there's exactly one candidate.
-if [ ! -f "$ICON_PATH" ]; then
-  candidates=()
-  while IFS= read -r found; do
-    candidates+=("$found")
-  done < <(find "$ICON_SET" -maxdepth 1 -type f -iname "*.png" 2>/dev/null)
+# Adopt a differently-named upload. Putting a PNG in the icon set means "use
+# this icon", so a stray file replaces the current one rather than being
+# ignored — quietly shipping the old icon after someone deliberately uploaded a
+# new one is the worst outcome available here.
+candidates=()
+while IFS= read -r found; do
+  [ "$(basename "$found")" = "$ICON_FILE" ] && continue
+  candidates+=("$found")
+done < <(find "$ICON_SET" -maxdepth 1 -type f -iname "*.png" 2>/dev/null)
 
-  case "${#candidates[@]}" in
-    0)
-      echo "No icon present — building without one."
-      exit 0
-      ;;
-    1)
-      echo "Adopting ${candidates[0]} as ${ICON_FILE}"
-      mv "${candidates[0]}" "$ICON_PATH"
-      ;;
-    *)
-      echo "::warning::Several PNGs in ${ICON_SET}; expected one named ${ICON_FILE}. Building without an icon."
-      exit 0
-      ;;
-  esac
+case "${#candidates[@]}" in
+  0) ;;
+  1)
+    echo "Adopting ${candidates[0]} as ${ICON_FILE}"
+    mv -f "${candidates[0]}" "$ICON_PATH"
+    ;;
+  *)
+    echo "::warning::Several candidate PNGs in ${ICON_SET}; can't tell which is the icon. Leaving ${ICON_FILE} alone."
+    ;;
+esac
+
+if [ ! -f "$ICON_PATH" ]; then
+  echo "No icon present — building without one."
+  exit 0
 fi
 
 # Resize to exactly 1024x1024 if it isn't already. sips ships with macOS; on any
@@ -53,8 +56,14 @@ if command -v sips >/dev/null 2>&1; then
     sips -z 1024 1024 "$ICON_PATH" --out "$ICON_PATH" >/dev/null
   fi
 
+  # Transparency isn't worth a warning — App Store Connect rejects a transparent
+  # marketing icon outright, so a build carrying one is already dead on arrival.
+  # Flatten it and say so loudly instead of uploading something doomed.
   if sips -g hasAlpha "$ICON_PATH" | grep -q "hasAlpha: yes"; then
-    echo "::warning::${ICON_FILE} has an alpha channel. App Store Connect rejects transparent marketing icons — re-export it without one."
+    echo "::warning::${ICON_FILE} has an alpha channel; flattening against white. App Store Connect rejects transparent marketing icons — re-export without transparency to choose the background colour yourself."
+    sips -s format jpeg -s formatOptions best "$ICON_PATH" --out "${ICON_PATH}.jpg" >/dev/null
+    sips -s format png "${ICON_PATH}.jpg" --out "$ICON_PATH" >/dev/null
+    rm -f "${ICON_PATH}.jpg"
   fi
 fi
 
