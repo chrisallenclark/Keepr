@@ -27,7 +27,10 @@ jobs:
     env:
       KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # A Team ID is not sensitive — it's embedded in every distributed build.
+      # Defaulted so it isn't a fourth secret to set up; override it with the
+      # APPLE_TEAM_ID secret if the account ever changes.
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID || 'JC9MQST5S2' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +52,8 @@ jobs:
           require APP_STORE_CONNECT_ISSUER_ID "$ISSUER_ID"
           require APP_STORE_CONNECT_PRIVATE_KEY "$PRIVATE_KEY"
           require APPLE_TEAM_ID "$TEAM_ID"
+
+          echo "Signing as team $TEAM_ID"
 
           ICON="Keepr/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
           if [ ! -f "$ICON" ]; then

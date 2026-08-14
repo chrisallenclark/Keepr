@@ -69,17 +69,27 @@ Mac at any point.
    You'll need to register that bundle ID first at
    `developer.apple.com/account/resources/identifiers` if it isn't offered.
 
-5. **Add four repository secrets** — GitHub → your repo → Settings → Secrets and
+5. **Add three repository secrets** — GitHub → your repo → Settings → Secrets and
    variables → Actions → New repository secret:
 
    | Secret | Value |
    |---|---|
-   | `APPLE_TEAM_ID` | the 10-character Team ID |
    | `APP_STORE_CONNECT_KEY_ID` | the Key ID |
    | `APP_STORE_CONNECT_ISSUER_ID` | the Issuer ID |
    | `APP_STORE_CONNECT_PRIVATE_KEY` | the **entire contents** of the `.p8` file, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines |
 
-6. **Add the app icon** — see below. App Store Connect rejects builds without it.
+   The Team ID is already set in the workflow (`JC9MQST5S2`). It isn't a secret —
+   it's embedded in every distributed build — but an `APPLE_TEAM_ID` secret
+   overrides it if the account ever changes.
+
+   **Reusing an existing API key is fine.** Keys are scoped to the *team*, not to an
+   app, so a key created for another app signs this one too. Two conditions: it needs
+   the **App Manager** role (a Developer-role key can't create signing certificates,
+   which this workflow relies on), and you need the original `.p8` file, which Apple
+   lets you download only once. If either is in doubt, create a new key — they're
+   free, you can hold several, and revoking one doesn't affect the others.
+
+6. **App icon** — already in place; see below for how to replace it.
 
 ### Then
 
@@ -88,7 +98,7 @@ uploads. Apple takes another 5–15 minutes to process the build, then it appear
 **TestFlight** app on your iPhone (install TestFlight from the App Store and sign in with
 the same Apple ID).
 
-The workflow checks all five prerequisites up front and fails in seconds with a precise
+The workflow checks every prerequisite up front and fails in seconds with a precise
 message if something's missing, rather than 20 minutes into a build.
 
 ## The app icon
@@ -97,13 +107,15 @@ message if something's missing, rather than 20 minutes into a build.
 deliberately carries no placeholder: an app icon is brand, and a stand-in that looks
 almost right is worse than an obvious gap.
 
-To add one, upload a 1024×1024 PNG **with no alpha channel** to that folder, named
-exactly `AppIcon-1024.png`. From an iPhone: GitHub → the repo → `Keepr` →
-`Assets.xcassets` → `AppIcon.appiconset` → **Add file** → **Upload files**.
+To replace it, upload a square PNG **with no alpha channel** from GitHub → the repo →
+`Keepr` → `Assets.xcassets` → `AppIcon.appiconset` → **Add file** → **Upload files**.
 
-`scripts/prepare-app-icon.sh` runs at the start of every build and wires the filename
-into the asset catalog if the file is there, so no further code change is needed — builds
-stay green without an icon, and pick one up automatically once it exists.
+`scripts/prepare-app-icon.sh` runs at the start of every build and handles the fiddly
+part: an upload from an iPhone arrives with a UUID filename and whatever pixel size the
+source image happened to be, so the script adopts any stray PNG as `AppIcon-1024.png`,
+resizes it to the 1024×1024 Apple requires, warns if it has an alpha channel, and wires
+it into the asset catalog. Builds stay green with no icon at all, and pick one up
+automatically once it exists.
 
 ## The alternative: rent a Mac by the hour
 
