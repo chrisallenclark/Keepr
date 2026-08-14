@@ -1,3 +1,4 @@
+import Security
 import Contacts
 import Foundation
 import OSLog
@@ -26,6 +27,12 @@ enum ContactAccess: Equatable, Sendable {
     }
 }
 
+/// A labelled relation from a contact card, e.g. label "mother", name "Jane Smith".
+struct ContactRelation: Hashable, Sendable {
+    let label: String
+    let name: String
+}
+
 /// A minimal, value-type snapshot of an Apple contact.
 ///
 /// Only the fields Keepr actually shows or acts on. Nothing else is read.
@@ -38,6 +45,13 @@ struct ContactSummary: Identifiable, Hashable, Sendable {
     let phoneNumbers: [String]
     let emailAddresses: [String]
     let thumbnailData: Data?
+    var birthday: Date?
+    var postalAddress: String?
+    /// Labelled relations already on the card — "mother: Jane Smith".
+    var relations: [ContactRelation] = []
+    /// The card's own Notes field. Populated only when Apple has granted the
+    /// contacts-notes entitlement; nil in every other case.
+    var note: String?
 
     var id: String { identifier }
 
@@ -95,8 +109,30 @@ actor LiveContactStore: ContactStoreProviding {
         CNContactJobTitleKey,
         CNContactPhoneNumbersKey,
         CNContactEmailAddressesKey,
-        CNContactThumbnailImageDataKey
+        CNContactThumbnailImageDataKey,
+        CNContactBirthdayKey,
+        CNContactPostalAddressesKey,
+        CNContactRelationsKey
     ].map { $0 as CNKeyDescriptor }
+
+    /// Apple gates the Notes field behind `com.apple.developer.contacts.notes`,
+    /// which has to be applied for and approved per app. Requesting the key
+    /// without it makes the whole fetch fail, so it's only added once the
+    /// entitlement is actually present in the running binary.
+    private static var keysIncludingNoteIfEntitled: [CNKeyDescriptor] {
+        guard hasNotesEntitlement else { return keys }
+        return keys + [CNContactNoteKey as CNKeyDescriptor]
+    }
+
+    static var hasNotesEntitlement: Bool {
+        guard let task = SecTaskCreateFromSelf(nil) else { return false }
+        let value = SecTaskCopyValueForEntitlement(
+            task,
+            "com.apple.developer.contacts.notes" as CFString,
+            nil
+        )
+        return (value as? Bool) == true
+    }
 
     nonisolated func authorizationStatus() -> ContactAccess {
         Self.access(from: CNContactStore.authorizationStatus(for: .contacts))
@@ -118,7 +154,7 @@ actor LiveContactStore: ContactStoreProviding {
     func fetchContacts() async -> [ContactSummary] {
         guard authorizationStatus().canRead else { return [] }
 
-        let request = CNContactFetchRequest(keysToFetch: Self.keys)
+        let request = CNContactFetchRequest(keysToFetch: Self.keysIncludingNoteIfEntitled)
         request.sortOrder = .userDefault
         request.unifyResults = true
 
@@ -137,7 +173,7 @@ actor LiveContactStore: ContactStoreProviding {
     func contact(withIdentifier identifier: String) async -> ContactSummary? {
         guard authorizationStatus().canRead else { return nil }
         let predicate = CNContact.predicateForContacts(withIdentifiers: [identifier])
-        guard let match = try? store.unifiedContacts(matching: predicate, keysToFetch: Self.keys).first
+        guard let match = try? store.unifiedContacts(matching: predicate, keysToFetch: Self.keysIncludingNoteIfEntitled).first
         else { return nil }
         return Self.summary(from: match)
     }
@@ -145,7 +181,7 @@ actor LiveContactStore: ContactStoreProviding {
     // MARK: Mapping
 
     private static func summary(from contact: CNContact) -> ContactSummary {
-        ContactSummary(
+        var summary = ContactSummary(
             identifier: contact.identifier,
             givenName: contact.givenName,
             familyName: contact.familyName,
@@ -155,6 +191,41 @@ actor LiveContactStore: ContactStoreProviding {
             emailAddresses: contact.emailAddresses.map { $0.value as String },
             thumbnailData: contact.thumbnailImageData
         )
+
+        // Every read below is guarded: asking a CNContact for a key that wasn't
+        // fetched raises an exception rather than returning nil.
+        if contact.isKeyAvailable(CNContactBirthdayKey),
+           let components = contact.birthday {
+            summary.birthday = Calendar.current.date(from: components)
+        }
+
+        if contact.isKeyAvailable(CNContactPostalAddressesKey),
+           let address = contact.postalAddresses.first {
+            let formatted = CNPostalAddressFormatter.string(
+                from: address.value,
+                style: .mailingAddress
+            )
+            summary.postalAddress = formatted.isEmpty
+                ? nil
+                : formatted.replacingOccurrences(of: "\n", with: ", ")
+        }
+
+        if contact.isKeyAvailable(CNContactRelationsKey) {
+            summary.relations = contact.contactRelations.compactMap { relation in
+                let raw = relation.label ?? ""
+                let label = CNLabeledValue<CNContactRelation>.localizedString(forLabel: raw)
+                let name = relation.value.name.trimmingCharacters(in: .whitespaces)
+                guard !name.isEmpty else { return nil }
+                return ContactRelation(label: label, name: name)
+            }
+        }
+
+        if contact.isKeyAvailable(CNContactNoteKey) {
+            let note = contact.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            summary.note = note.isEmpty ? nil : note
+        }
+
+        return summary
     }
 
     private static func access(from status: CNAuthorizationStatus) -> ContactAccess {

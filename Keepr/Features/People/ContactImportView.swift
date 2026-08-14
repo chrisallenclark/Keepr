@@ -1,6 +1,6 @@
-import UIKit
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// Pick people out of Contacts and bring them in as relationships.
 ///
@@ -22,6 +22,8 @@ struct ContactImportView: View {
     @State private var access: ContactAccess = .notDetermined
     @State private var contacts: [ContactSummary] = []
     @State private var selected: Set<String> = []
+    @State private var suggestions: [String: CategorySuggestion] = [:]
+    @State private var applySuggestions = true
     @State private var query = ""
     @State private var isLoading = false
 
@@ -38,11 +40,17 @@ struct ContactImportView: View {
         }
     }
 
+    private var importableWithSuggestions: [ContactSummary] {
+        results.filter {
+            suggestions[$0.identifier] != nil && !linkedIdentifiers.contains($0.identifier)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
                 if isLoading {
-                    ProgressView().controlSize(.large)
+                    ProgressView("Reading contacts").controlSize(.large)
                 } else if access.canRead {
                     contactList
                 } else {
@@ -56,6 +64,7 @@ struct ContactImportView: View {
                     Button("Cancel") { dismiss() }
                 }
                 if access.canRead {
+                    ToolbarItem(placement: .topBarTrailing) { optionsMenu }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Add \(selected.count)", action: importSelected)
                             .fontWeight(.semibold)
@@ -82,47 +91,22 @@ struct ContactImportView: View {
                 }
             }
 
-            ForEach(results) { contact in
-                let isLinked = linkedIdentifiers.contains(contact.identifier)
-                Button {
-                    toggle(contact)
-                } label: {
-                    HStack(spacing: Theme.Spacing.medium) {
-                        Avatar(contact: contact, size: .small)
-
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(contact.fullName)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(isLinked ? .secondary : .primary)
-                            if let subtitle = contact.subtitle {
-                                Text(subtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                        }
-
-                        Spacer(minLength: Theme.Spacing.small)
-
-                        if isLinked {
-                            Text("Added")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        } else if selected.contains(contact.identifier) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.accentColor)
-                        } else {
-                            Image(systemName: "circle")
-                                .foregroundStyle(.quaternary)
-                        }
-                    }
-                    .contentShape(.rect)
+            if !suggestions.isEmpty {
+                Section {
+                    Toggle("Apply suggested categories", isOn: $applySuggestions)
+                        .font(.subheadline)
+                } footer: {
+                    Text("Guessed from what's already on each contact card — an employer, a job title, a family relation. Everything is editable afterwards, and anything Keepr can't place is left for you.")
                 }
-                .buttonStyle(.plain)
-                .disabled(isLinked)
+            }
+
+            Section {
+                ForEach(results) { contact in
+                    contactRow(contact)
+                }
             }
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
         .searchable(text: $query, prompt: "Search contacts")
         .overlay {
             if results.isEmpty {
@@ -136,6 +120,98 @@ struct ContactImportView: View {
                     )
                 )
             }
+        }
+    }
+
+    private func contactRow(_ contact: ContactSummary) -> some View {
+        let isLinked = linkedIdentifiers.contains(contact.identifier)
+        let suggestion = suggestions[contact.identifier]
+
+        return Button {
+            toggle(contact)
+        } label: {
+            HStack(spacing: Theme.Spacing.medium) {
+                Avatar(contact: contact, size: .small)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(contact.fullName)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(isLinked ? .secondary : .primary)
+
+                    if let subtitle = contact.subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    if applySuggestions, let suggestion, !isLinked {
+                        HStack(spacing: Theme.Spacing.tight) {
+                            Image(systemName: suggestion.context.symbolName)
+                            Text(suggestion.tagName ?? suggestion.context.title)
+                            Text("·")
+                            Text(suggestion.reason).lineLimit(1)
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    }
+                }
+
+                Spacer(minLength: Theme.Spacing.small)
+
+                if isLinked {
+                    Text("Added")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                } else if selected.contains(contact.identifier) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                } else {
+                    Image(systemName: "circle")
+                        .foregroundStyle(.quaternary)
+                }
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .disabled(isLinked)
+    }
+
+    private var optionsMenu: some View {
+        Menu {
+            Button {
+                selected = Set(
+                    results
+                        .filter { !linkedIdentifiers.contains($0.identifier) }
+                        .map(\.identifier)
+                )
+                Haptics.selection()
+            } label: {
+                Label("Select All", systemImage: "checkmark.circle")
+            }
+
+            if !importableWithSuggestions.isEmpty {
+                Button {
+                    selected = Set(importableWithSuggestions.map(\.identifier))
+                    Haptics.selection()
+                } label: {
+                    Label(
+                        "Select \(importableWithSuggestions.count) with Suggestions",
+                        systemImage: "wand.and.stars"
+                    )
+                }
+            }
+
+            if !selected.isEmpty {
+                Button {
+                    selected = []
+                    Haptics.selection()
+                } label: {
+                    Label("Deselect All", systemImage: "circle")
+                }
+            }
+        } label: {
+            Label("Options", systemImage: "ellipsis.circle")
         }
     }
 
@@ -166,7 +242,9 @@ struct ContactImportView: View {
         guard access.canRead, contacts.isEmpty else { return }
 
         isLoading = true
-        contacts = await contactStore.fetchContacts()
+        let fetched = await contactStore.fetchContacts()
+        contacts = fetched
+        suggestions = ContactCategorizer.suggestions(for: fetched)
         isLoading = false
     }
 
@@ -181,11 +259,14 @@ struct ContactImportView: View {
 
     private func importSelected() {
         let chosen = contacts.filter { selected.contains($0.identifier) }
+
         for contact in chosen {
+            let suggestion = applySuggestions ? suggestions[contact.identifier] : nil
+
             let person = Person(
                 givenName: contact.givenName,
                 familyName: contact.familyName,
-                context: RelationshipContext(mode: mode),
+                context: suggestion?.context ?? RelationshipContext(mode: mode),
                 contactIdentifier: contact.identifier,
                 company: contact.organizationName,
                 jobTitle: contact.jobTitle,
@@ -194,12 +275,60 @@ struct ContactImportView: View {
                 photoData: contact.thumbnailData
             )
             context.insert(person)
+
+            person.birthday = contact.birthday
+            person.postalAddress = contact.postalAddress
+            person.contactNote = contact.note
+
+            if let tagName = suggestion?.tagName {
+                let kind: TagKind = suggestion?.context == .personal ? .personal : .business
+                person.tags = [KeeprStore.tag(named: tagName, kind: kind, in: context)]
+            }
+
+            createMemories(from: contact, for: person)
         }
         try? context.save()
 
         Haptics.success()
         onFinish?(chosen.count)
         dismiss()
+    }
+
+    /// Facts already sitting on the contact card become memories, so the profile
+    /// isn't empty the moment someone is imported. Only things the user typed
+    /// themselves — nothing inferred.
+    private func createMemories(from contact: ContactSummary, for person: Person) {
+        if let birthday = contact.birthday {
+            let formatted = birthday.formatted(.dateTime.month(.wide).day())
+            context.insert(
+                Memory(
+                    content: "Birthday: \(formatted)",
+                    category: .importantDate,
+                    importance: .high,
+                    person: person
+                )
+            )
+        }
+
+        for relation in contact.relations {
+            context.insert(
+                Memory(
+                    content: "\(relation.label.capitalized): \(relation.name)",
+                    category: .family,
+                    person: person
+                )
+            )
+        }
+
+        if let note = contact.note, !note.isEmpty {
+            context.insert(
+                Memory(
+                    content: note,
+                    category: .other,
+                    person: person
+                )
+            )
+        }
     }
 }
 

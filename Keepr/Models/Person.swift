@@ -54,6 +54,13 @@ final class Person {
     var introducedBy: String?
     var notes: String?
 
+    /// Copied from the linked contact card when available.
+    var birthday: Date?
+    var postalAddress: String?
+    /// The contact's own Notes field. Only ever populated when Apple has
+    /// granted the contacts-notes entitlement; nil otherwise.
+    var contactNote: String?
+
     /// Marks records created by the developer sample data set, so they can be
     /// removed in one action without touching anything real.
     var isSampleData: Bool = false
@@ -71,6 +78,9 @@ final class Person {
 
     @Relationship(deleteRule: .nullify, inverse: \RelationshipTag.people)
     var tags: [RelationshipTag]?
+
+    @Relationship(deleteRule: .nullify, inverse: \PersonGroup.members)
+    var groups: [PersonGroup]?
 
     init(
         givenName: String = "",
@@ -115,6 +125,7 @@ final class Person {
         self.memories = []
         self.followUps = []
         self.tags = []
+        self.groups = []
     }
 }
 
@@ -141,6 +152,7 @@ extension Person {
     var memoryList: [Memory] { memories ?? [] }
     var followUpList: [FollowUp] { followUps ?? [] }
     var tagList: [RelationshipTag] { tags ?? [] }
+    var groupList: [PersonGroup] { groups ?? [] }
 
     var isLinkedToContact: Bool { contactIdentifier != nil }
 
@@ -225,6 +237,10 @@ extension Person {
 
     func hasTag(named name: String) -> Bool {
         tagList.contains { $0.name == name }
+    }
+
+    func isMember(of group: PersonGroup) -> Bool {
+        groupList.contains { $0.id == group.id }
     }
 
     func touch(_ date: Date = Date()) {

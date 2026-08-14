@@ -10,26 +10,49 @@ struct PeopleView: View {
     @AppStorage(PreferenceKey.peopleSort) private var sortRaw = PeopleSort.recent.rawValue
 
     @Query(sort: \Person.familyName) private var people: [Person]
+    @Query(sort: \RelationshipTag.sortOrder) private var tags: [RelationshipTag]
+    @Query(sort: \PersonGroup.sortOrder) private var groups: [PersonGroup]
 
     @State private var searchText = ""
     @State private var selectedTag: String?
+    @State private var selectedGroupID: UUID?
     @State private var isShowingAddPerson = false
     @State private var isShowingContactImport = false
+    @State private var isShowingGroups = false
+    @State private var isShowingTypes = false
     @State private var selectedPerson: Person?
+
+    // Multi-select
+    @State private var editMode: EditMode = .inactive
+    @State private var selection: Set<UUID> = []
+    @State private var isConfirmingBulkDelete = false
 
     private var sort: PeopleSort {
         get { PeopleSort(rawValue: sortRaw) ?? .recent }
         nonmutating set { sortRaw = newValue.rawValue }
     }
 
+    private var activeGroup: PersonGroup? {
+        guard let selectedGroupID else { return nil }
+        return groups.first { $0.id == selectedGroupID }
+    }
+
     private var filtered: [Person] {
-        let matching = PeopleEngine.filter(
+        var matching = PeopleEngine.filter(
             people,
             mode: mode,
             tagName: selectedTag,
             query: searchText
         )
+        if let activeGroup {
+            matching = matching.filter { $0.isMember(of: activeGroup) }
+        }
         return PeopleEngine.sort(matching, by: sort)
+    }
+
+    /// The people behind the current selection, resolved once per action.
+    private var selectedPeople: [Person] {
+        people.filter { selection.contains($0.id) }
     }
 
     var body: some View {
@@ -43,18 +66,30 @@ struct PeopleView: View {
                     flatList
                 }
             }
-            .navigationTitle("People")
+            .environment(\.editMode, $editMode)
+            .navigationTitle(editMode.isEditing ? selectionTitle : "People")
             .contextSwitcher($mode)
             .searchable(text: $searchText, prompt: "Search \(mode.title.lowercased()) contacts")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { filterMenu }
-                ToolbarItem(placement: .topBarTrailing) { addMenu }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if editMode.isEditing {
+                        Button("Done") { endSelecting() }
+                            .fontWeight(.semibold)
+                    } else {
+                        addMenu
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if editMode.isEditing {
+                    bulkActionBar
+                }
             }
             .navigationDestination(item: $selectedPerson) { person in
                 PersonProfileView(person: person, mode: $mode)
             }
             .onAppear {
-                // Screenshot runs open a profile directly; no effect otherwise.
                 if LaunchOptions.screen == .profile, selectedPerson == nil {
                     selectedPerson = filtered.first
                 }
@@ -65,14 +100,33 @@ struct PeopleView: View {
             .sheet(isPresented: $isShowingContactImport) {
                 ContactImportView(mode: mode)
             }
+            .sheet(isPresented: $isShowingGroups) {
+                NavigationStack { GroupsView(mode: $mode) }
+            }
+            .sheet(isPresented: $isShowingTypes) {
+                NavigationStack { RelationshipTypeEditor(mode: $mode) }
+            }
+            .confirmationDialog(
+                "Delete \(selection.count) \(selection.count == 1 ? "person" : "people")?",
+                isPresented: $isConfirmingBulkDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) { bulkDelete() }
+            } message: {
+                Text("This removes everything recorded about them. Their contact cards are not affected.")
+            }
         }
+    }
+
+    private var selectionTitle: String {
+        selection.isEmpty ? "Select People" : "\(selection.count) Selected"
     }
 
     // MARK: - Lists
 
     private var flatList: some View {
-        List {
-            if selectedTag != nil {
+        List(selection: $selection) {
+            if selectedTag != nil || activeGroup != nil {
                 activeFilterRow
             }
             ForEach(filtered) { person in
@@ -83,8 +137,8 @@ struct PeopleView: View {
     }
 
     private var sectionedList: some View {
-        List {
-            if selectedTag != nil {
+        List(selection: $selection) {
+            if selectedTag != nil || activeGroup != nil {
                 activeFilterRow
             }
             ForEach(PeopleEngine.alphabeticalSections(filtered)) { section in
@@ -98,6 +152,8 @@ struct PeopleView: View {
         .listStyle(.plain)
     }
 
+    /// Rows stay tappable-to-open normally; in edit mode the list takes over and
+    /// the same row becomes a checkbox, which is the standard iOS behaviour.
     private func row(for person: Person) -> some View {
         Button {
             selectedPerson = person
@@ -105,6 +161,7 @@ struct PeopleView: View {
             PersonRow(person: person, mode: mode)
         }
         .buttonStyle(.plain)
+        .tag(person.id)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
                 toggleFavorite(person)
@@ -123,30 +180,40 @@ struct PeopleView: View {
 
     @ViewBuilder
     private var activeFilterRow: some View {
-        if let selectedTag {
-            HStack {
+        HStack {
+            if let selectedTag {
                 Label(selectedTag, systemImage: "line.3.horizontal.decrease")
                     .font(.subheadline)
-                Spacer()
-                Button("Clear") { self.selectedTag = nil }
+            }
+            if let activeGroup {
+                Label(activeGroup.name, systemImage: activeGroup.symbolName)
                     .font(.subheadline)
             }
-            .listRowSeparator(.hidden)
+            Spacer()
+            Button("Clear") {
+                selectedTag = nil
+                selectedGroupID = nil
+            }
+            .font(.subheadline)
         }
+        .listRowSeparator(.hidden)
     }
 
     private var emptyState: some View {
         Group {
             if !searchText.isEmpty {
                 ContentUnavailableView.search(text: searchText)
-            } else if selectedTag != nil {
+            } else if selectedTag != nil || activeGroup != nil {
                 ContentUnavailableView {
                     Label("No one here yet", systemImage: "person.crop.circle.badge.questionmark")
                 } description: {
                     Text("Add people to this group as relationships develop.")
                 } actions: {
-                    Button("Show Everyone") { selectedTag = nil }
-                        .buttonStyle(.bordered)
+                    Button("Show Everyone") {
+                        selectedTag = nil
+                        selectedGroupID = nil
+                    }
+                    .buttonStyle(.bordered)
                 }
             } else {
                 ContentUnavailableView {
@@ -164,10 +231,124 @@ struct PeopleView: View {
         }
     }
 
+    // MARK: - Bulk actions
+
+    /// Sits above the tab bar while selecting. One menu rather than a row of
+    /// icons: the actions are all "apply X to these people", and a menu names
+    /// them in words instead of asking anyone to decode glyphs.
+    private var bulkActionBar: some View {
+        HStack {
+            Button("Select All") { selection = Set(filtered.map(\.id)) }
+                .font(.subheadline)
+                .disabled(selection.count == filtered.count)
+
+            Spacer()
+
+            Menu {
+                bulkMenuContents
+            } label: {
+                Label("Categorize", systemImage: "square.and.pencil")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .disabled(selection.isEmpty)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, Theme.Spacing.small)
+        .background(.bar)
+    }
+
+    @ViewBuilder
+    private var bulkMenuContents: some View {
+        let relevantTags = tags.filter { $0.kind == TagKind(mode: mode) }
+        if !relevantTags.isEmpty {
+            Menu("Add Relationship Type") {
+                ForEach(relevantTags) { tag in
+                    Button {
+                        bulkAddTag(tag)
+                    } label: {
+                        Label(tag.name, systemImage: tag.symbolName)
+                    }
+                }
+            }
+            Menu("Remove Relationship Type") {
+                ForEach(relevantTags) { tag in
+                    Button {
+                        bulkRemoveTag(tag)
+                    } label: {
+                        Label(tag.name, systemImage: tag.symbolName)
+                    }
+                }
+            }
+        }
+
+        let relevantGroups = groups.filter { $0.matches(mode) }
+        if !relevantGroups.isEmpty {
+            Menu("Add to Group") {
+                ForEach(relevantGroups) { group in
+                    Button {
+                        bulkAddToGroup(group)
+                    } label: {
+                        Label(group.name, systemImage: group.symbolName)
+                    }
+                }
+            }
+        }
+
+        Divider()
+
+        Menu("Move to") {
+            ForEach(RelationshipContext.allCases) { option in
+                Button {
+                    bulkSetContext(option)
+                } label: {
+                    Label(option.title, systemImage: option.symbolName)
+                }
+            }
+        }
+
+        Menu("Priority") {
+            ForEach(Priority.allCases) { option in
+                Button(option.title) { bulkSetPriority(option) }
+            }
+        }
+
+        Button {
+            bulkSetFavorite(true)
+        } label: {
+            Label("Favorite", systemImage: "star")
+        }
+        Button {
+            bulkSetFavorite(false)
+        } label: {
+            Label("Remove Favorite", systemImage: "star.slash")
+        }
+
+        Divider()
+
+        Button {
+            bulkArchive()
+        } label: {
+            Label("Archive", systemImage: "archivebox")
+        }
+        Button(role: .destructive) {
+            isConfirmingBulkDelete = true
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+
     // MARK: - Toolbar
 
     private var filterMenu: some View {
         Menu {
+            Button {
+                beginSelecting()
+            } label: {
+                Label("Select", systemImage: "checkmark.circle")
+            }
+
+            Divider()
+
             Picker("Sort", selection: Binding(get: { sort }, set: { sort = $0 })) {
                 ForEach(PeopleSort.allCases) { option in
                     Label(option.title, systemImage: option.symbolName).tag(option)
@@ -177,20 +358,47 @@ struct PeopleView: View {
             Divider()
 
             Picker(
-                "Filter",
+                "Type",
                 selection: Binding(
                     get: { selectedTag ?? "" },
                     set: { selectedTag = $0.isEmpty ? nil : $0 }
                 )
             ) {
-                Text("All").tag("")
-                ForEach(RelationshipTag.quickFilterNames(for: mode), id: \.self) { name in
-                    Text(name).tag(name)
+                Text("All Types").tag("")
+                ForEach(tags.filter { $0.kind == TagKind(mode: mode) }) { tag in
+                    Text(tag.name).tag(tag.name)
                 }
+            }
+
+            let relevantGroups = groups.filter { $0.matches(mode) }
+            if !relevantGroups.isEmpty {
+                Menu("Group") {
+                    Button("All Groups") { selectedGroupID = nil }
+                    ForEach(relevantGroups) { group in
+                        Button {
+                            selectedGroupID = group.id
+                        } label: {
+                            Label(group.name, systemImage: group.symbolName)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            Button {
+                isShowingGroups = true
+            } label: {
+                Label("Manage Groups", systemImage: "person.3")
+            }
+            Button {
+                isShowingTypes = true
+            } label: {
+                Label("Manage Types", systemImage: "tag")
             }
         } label: {
             Label("Sort and Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(selectedTag == nil ? .none : .fill)
+                .symbolVariant(selectedTag == nil && activeGroup == nil ? .none : .fill)
         }
     }
 
@@ -229,9 +437,28 @@ struct PeopleView: View {
                 systemImage: person.isFavorite ? "star.slash" : "star"
             )
         }
+        Button {
+            beginSelecting(with: person)
+        } label: {
+            Label("Select…", systemImage: "checkmark.circle")
+        }
     }
 
     // MARK: - Actions
+
+    private func beginSelecting(with person: Person? = nil) {
+        withAnimation {
+            editMode = .active
+            selection = person.map { [$0.id] } ?? []
+        }
+    }
+
+    private func endSelecting() {
+        withAnimation {
+            editMode = .inactive
+            selection = []
+        }
+    }
 
     private func toggleFavorite(_ person: Person) {
         withAnimation {
@@ -240,6 +467,78 @@ struct PeopleView: View {
         }
         try? context.save()
         Haptics.light()
+    }
+
+    /// Every bulk action funnels through here so saving, haptics and the
+    /// updated-at bump can't be forgotten in one of eight near-identical methods.
+    private func applyToSelection(
+        endsSelection: Bool = false,
+        _ change: (Person) -> Void
+    ) {
+        let targets = selectedPeople
+        guard !targets.isEmpty else { return }
+
+        withAnimation {
+            for person in targets {
+                change(person)
+                person.touch()
+            }
+            if endsSelection {
+                editMode = .inactive
+                selection = []
+            }
+        }
+        try? context.save()
+        Haptics.success()
+    }
+
+    private func bulkAddTag(_ tag: RelationshipTag) {
+        applyToSelection { person in
+            guard !person.hasTag(named: tag.name) else { return }
+            person.tags = person.tagList + [tag]
+        }
+    }
+
+    private func bulkRemoveTag(_ tag: RelationshipTag) {
+        applyToSelection { person in
+            person.tags = person.tagList.filter { $0.id != tag.id }
+        }
+    }
+
+    private func bulkAddToGroup(_ group: PersonGroup) {
+        applyToSelection { person in
+            guard !person.isMember(of: group) else { return }
+            person.groups = person.groupList + [group]
+        }
+    }
+
+    private func bulkSetContext(_ value: RelationshipContext) {
+        applyToSelection { $0.context = value }
+    }
+
+    private func bulkSetPriority(_ value: Priority) {
+        applyToSelection { $0.priority = value }
+    }
+
+    private func bulkSetFavorite(_ value: Bool) {
+        applyToSelection { $0.isFavorite = value }
+    }
+
+    private func bulkArchive() {
+        applyToSelection(endsSelection: true) { $0.status = .archived }
+    }
+
+    private func bulkDelete() {
+        let targets = selectedPeople
+        withAnimation {
+            for person in targets {
+                context.delete(person)
+            }
+            editMode = .inactive
+            selection = []
+        }
+        try? context.save()
+        Haptics.success()
     }
 }
 
