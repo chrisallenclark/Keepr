@@ -11,23 +11,28 @@ struct TodayView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.notificationService) private var notificationService
+    @Environment(\.contactStore) private var contactStore
     @AppStorage(PreferenceKey.remindersEnabled) private var remindersEnabled = true
 
     @Query(sort: \Person.updatedAt, order: .reverse) private var people: [Person]
 
     @State private var isShowingCapture = false
     @State private var isShowingSettings = false
+    @State private var isShowingReview = false
     @State private var selectedPerson: Person?
+    @State private var newContactCount = 0
+    @State private var hasCheckedContacts = false
 
     var body: some View {
         NavigationStack {
             let digest = TodayEngine.digest(people: people, mode: mode)
 
             Group {
-                if digest.isEmpty {
+                if digest.isEmpty, reviewSummary == nil {
                     caughtUp
                 } else {
                     List {
+                        reviewSection
                         followUpSection("Needs Attention", digest.needsAttention)
                         followUpSection("Upcoming", digest.upcoming)
                         goingQuietSection(digest.goingQuiet)
@@ -64,10 +69,59 @@ struct TodayView: View {
             .sheet(isPresented: $isShowingSettings) {
                 SettingsView()
             }
+            .sheet(isPresented: $isShowingReview, onDismiss: refreshNewContactCount) {
+                ReviewView(mode: mode)
+            }
+            .task { await checkForNewContacts() }
         }
     }
 
     // MARK: - Sections
+
+    /// How many people are waiting to be placed. Counted, not listed — Today is
+    /// for what needs doing, and the queue itself lives one tap away.
+    private var backlogCount: Int {
+        people.filter(ReviewQueue.needsCategorizing).count
+    }
+
+    private var reviewSummary: String? {
+        ReviewQueue.summary(newCount: newContactCount, backlogCount: backlogCount)
+    }
+
+    @ViewBuilder
+    private var reviewSection: some View {
+        if let reviewSummary {
+            Section {
+                Button {
+                    isShowingReview = true
+                } label: {
+                    HStack(spacing: Theme.Spacing.medium) {
+                        Image(systemName: "person.crop.circle.badge.questionmark")
+                            .font(.title3)
+                            .foregroundStyle(Color.accentColor)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Catch Up")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(reviewSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+
+                        Spacer(minLength: Theme.Spacing.small)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
 
     private var caughtUp: some View {
         ContentUnavailableView {
@@ -165,6 +219,28 @@ struct TodayView: View {
         case 12..<17: "Good Afternoon"
         default: "Good Evening"
         }
+    }
+
+    /// Reads the address book once per launch of this screen to see what's new.
+    ///
+    /// Guarded rather than done on every appearance: enumerating a large address
+    /// book isn't free, and the answer doesn't change while the app is open.
+    private func checkForNewContacts() async {
+        guard !hasCheckedContacts, contactStore.authorizationStatus().canRead else { return }
+        hasCheckedContacts = true
+
+        let fetched = await contactStore.fetchContacts()
+        let known = Set(people.compactMap(\.contactIdentifier))
+        newContactCount = ContactChangeTracker.shared
+            .newContacts(in: fetched)
+            .filter { !known.contains($0.identifier) }
+            .count
+    }
+
+    /// The review screen consumes items; the banner has to stop claiming them.
+    private func refreshNewContactCount() {
+        hasCheckedContacts = false
+        Task { await checkForNewContacts() }
     }
 
     private func complete(_ followUp: FollowUp) {

@@ -15,7 +15,8 @@ enum KeeprStore {
         Memory.self,
         FollowUp.self,
         RelationshipTag.self,
-        PersonGroup.self
+        PersonGroup.self,
+        PersonLink.self
     ])
 
     /// True when the on-disk store could not be opened and the app is running
@@ -102,6 +103,7 @@ enum KeeprStore {
         try? context.delete(model: FollowUp.self)
         try? context.delete(model: RelationshipTag.self)
         try? context.delete(model: PersonGroup.self)
+        try? context.delete(model: PersonLink.self)
         try? context.save()
         seedIfNeeded(context)
     }

@@ -263,72 +263,25 @@ struct ContactImportView: View {
         for contact in chosen {
             let suggestion = applySuggestions ? suggestions[contact.identifier] : nil
 
-            let person = Person(
-                givenName: contact.givenName,
-                familyName: contact.familyName,
+            let person = PersonImporter.makePerson(
+                from: contact,
                 context: suggestion?.context ?? RelationshipContext(mode: mode),
-                contactIdentifier: contact.identifier,
-                company: contact.organizationName,
-                jobTitle: contact.jobTitle,
-                phoneNumbers: contact.phoneNumbers,
-                emailAddresses: contact.emailAddresses,
-                photoData: contact.thumbnailData
+                in: context
             )
-            context.insert(person)
-
-            person.birthday = contact.birthday
-            person.postalAddress = contact.postalAddress
-            person.contactNote = contact.note
-
-            if let tagName = suggestion?.tagName {
-                let kind: TagKind = suggestion?.context == .personal ? .personal : .business
-                person.tags = [KeeprStore.tag(named: tagName, kind: kind, in: context)]
+            if let suggestion {
+                PersonImporter.apply(suggestion, to: person, in: context)
             }
-
-            createMemories(from: contact, for: person)
+            PersonImporter.addMemories(from: contact, to: person, in: context)
         }
         try? context.save()
+
+        // Anyone imported here has been dealt with, so the review queue doesn't
+        // raise them again as a new contact tomorrow.
+        ContactChangeTracker.shared.acknowledge(chosen)
 
         Haptics.success()
         onFinish?(chosen.count)
         dismiss()
-    }
-
-    /// Facts already sitting on the contact card become memories, so the profile
-    /// isn't empty the moment someone is imported. Only things the user typed
-    /// themselves — nothing inferred.
-    private func createMemories(from contact: ContactSummary, for person: Person) {
-        if let birthday = contact.birthday {
-            let formatted = birthday.formatted(.dateTime.month(.wide).day())
-            context.insert(
-                Memory(
-                    content: "Birthday: \(formatted)",
-                    category: .importantDate,
-                    importance: .high,
-                    person: person
-                )
-            )
-        }
-
-        for relation in contact.relations {
-            context.insert(
-                Memory(
-                    content: "\(relation.label.capitalized): \(relation.name)",
-                    category: .family,
-                    person: person
-                )
-            )
-        }
-
-        if let note = contact.note, !note.isEmpty {
-            context.insert(
-                Memory(
-                    content: note,
-                    category: .other,
-                    person: person
-                )
-            )
-        }
     }
 }
 

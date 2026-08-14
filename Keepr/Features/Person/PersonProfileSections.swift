@@ -135,6 +135,38 @@ struct MemoryRow: View {
     }
 }
 
+/// One linked person: who they are and what they are to this person.
+struct ConnectionRow: View {
+    let connection: PersonConnection
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.medium) {
+            Avatar(person: connection.person, size: .small)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(connection.person.displayName)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+
+                Text(connection.label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if let note = connection.link.note, !note.isEmpty {
+                    Text(note)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// One entry in the interaction timeline.
 struct InteractionRow: View {
     let interaction: Interaction

@@ -20,12 +20,14 @@ struct PeopleView: View {
     @State private var isShowingContactImport = false
     @State private var isShowingGroups = false
     @State private var isShowingTypes = false
+    @State private var isShowingReview = false
     @State private var selectedPerson: Person?
 
     // Multi-select
     @State private var editMode: EditMode = .inactive
     @State private var selection: Set<UUID> = []
     @State private var isConfirmingBulkDelete = false
+    @State private var linkPair: LinkPair?
 
     private var sort: PeopleSort {
         get { PeopleSort(rawValue: sortRaw) ?? .recent }
@@ -53,6 +55,18 @@ struct PeopleView: View {
     /// The people behind the current selection, resolved once per action.
     private var selectedPeople: [Person] {
         people.filter { selection.contains($0.id) }
+    }
+
+    /// People already in Keepr with no relationship type on them.
+    private var uncategorizedCount: Int {
+        people.filter(ReviewQueue.needsCategorizing).count
+    }
+
+    /// Exactly two selected, in list order, and not already linked.
+    private var selectedPair: LinkPair? {
+        let chosen = selectedPeople
+        guard chosen.count == 2, !chosen[0].isLinked(to: chosen[1]) else { return nil }
+        return LinkPair(first: chosen[0], second: chosen[1])
     }
 
     var body: some View {
@@ -105,6 +119,14 @@ struct PeopleView: View {
             }
             .sheet(isPresented: $isShowingTypes) {
                 NavigationStack { RelationshipTypeEditor(mode: $mode) }
+            }
+            .sheet(isPresented: $isShowingReview) {
+                ReviewView(mode: mode)
+            }
+            .sheet(item: $linkPair) { pair in
+                PersonLinkEditor(person: pair.first, other: pair.second) {
+                    endSelecting()
+                }
             }
             .confirmationDialog(
                 "Delete \(selection.count) \(selection.count == 1 ? "person" : "people")?",
@@ -259,6 +281,17 @@ struct PeopleView: View {
 
     @ViewBuilder
     private var bulkMenuContents: some View {
+        // Two people selected is the one case that isn't "apply X to all of
+        // them" — it's the only way to say these two are related to each other.
+        if let pair = selectedPair {
+            Button {
+                linkPair = pair
+            } label: {
+                Label("Link These Two", systemImage: "link")
+            }
+            Divider()
+        }
+
         let relevantTags = tags.filter { $0.kind == TagKind(mode: mode) }
         if !relevantTags.isEmpty {
             Menu("Add Relationship Type") {
@@ -410,6 +443,14 @@ struct PeopleView: View {
                 Label("Import from Contacts", systemImage: "person.crop.circle.badge.plus")
             }
             Button {
+                isShowingReview = true
+            } label: {
+                Label(
+                    uncategorizedCount > 0 ? "Catch Up (\(uncategorizedCount))" : "Catch Up",
+                    systemImage: "person.crop.circle.badge.questionmark"
+                )
+            }
+            Button {
                 isShowingAddPerson = true
             } label: {
                 Label("Add Manually", systemImage: "square.and.pencil")
@@ -540,6 +581,15 @@ struct PeopleView: View {
         try? context.save()
         Haptics.success()
     }
+}
+
+/// Two selected people on their way to the link editor. A struct rather than a
+/// tuple because `sheet(item:)` needs identity.
+struct LinkPair: Identifiable {
+    let first: Person
+    let second: Person
+
+    var id: String { "\(first.id)-\(second.id)" }
 }
 
 // MARK: - Row

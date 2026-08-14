@@ -22,7 +22,9 @@ struct TestStore {
             Interaction.self,
             Memory.self,
             FollowUp.self,
-            RelationshipTag.self
+            RelationshipTag.self,
+            PersonGroup.self,
+            PersonLink.self
         ])
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         container = try ModelContainer(for: schema, configurations: configuration)

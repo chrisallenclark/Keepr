@@ -260,6 +260,19 @@ enum SampleData {
             in: context
         )
 
+        // The referral that started the client relationship, as a link rather
+        // than a note — it reads from both ends and survives a rename.
+        context.insert(
+            PersonLink(
+                personA: sarah,
+                personB: michael,
+                labelAToB: "Referred By",
+                labelBToA: "Referred",
+                note: "Sent her over after her half marathon",
+                createdAt: daysAgo(240)
+            )
+        )
+
         // MARK: Personal — close friend
 
         let alex = Person(

@@ -178,6 +178,9 @@ struct SettingsView: View {
     private func deleteAll() {
         Task { await notificationService.cancelAll() }
         KeeprStore.deleteAllData(in: context)
+        // The seen-contacts list is app data too. Leaving it behind would mean a
+        // wiped app quietly treats every existing contact as already handled.
+        ContactChangeTracker.shared.reset()
         isSampleDataLoaded = false
         Haptics.success()
     }
