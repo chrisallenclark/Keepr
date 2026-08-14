@@ -13,16 +13,14 @@ enum RelativeDate {
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> String {
-        if calendar.isDateInToday(date) { return "Today" }
-        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        // Everything is measured against `now`. `Calendar.isDateInToday` and
+        // friends compare against the system clock instead, which would quietly
+        // ignore the caller's `now`.
+        let days = dayOffset(from: date, to: now, calendar: calendar)
 
-        let days = calendar.dateComponents(
-            [.day],
-            from: calendar.startOfDay(for: date),
-            to: calendar.startOfDay(for: now)
-        ).day ?? 0
-
-        if days > 0, days < 7 { return "\(days) days ago" }
+        if days == 0 { return "Today" }
+        if days == 1 { return "Yesterday" }
+        if days > 1, days < 7 { return "\(days) days ago" }
         return absolute(date, now: now, calendar: calendar)
     }
 
@@ -33,15 +31,11 @@ enum RelativeDate {
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> String {
-        if calendar.isDateInToday(date) { return "Today" }
-        if calendar.isDateInTomorrow(date) { return "Tomorrow" }
-        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        let days = dayOffset(from: now, to: date, calendar: calendar)
 
-        let days = calendar.dateComponents(
-            [.day],
-            from: calendar.startOfDay(for: now),
-            to: calendar.startOfDay(for: date)
-        ).day ?? 0
+        if days == 0 { return "Today" }
+        if days == 1 { return "Tomorrow" }
+        if days == -1 { return "Yesterday" }
 
         if days < 0 {
             let overdue = -days
@@ -49,6 +43,15 @@ enum RelativeDate {
         }
         if days < 7 { return date.formatted(.dateTime.weekday(.wide)) }
         return absolute(date, now: now, calendar: calendar)
+    }
+
+    /// Whole days between two instants, ignoring time of day.
+    static func dayOffset(from start: Date, to end: Date, calendar: Calendar = .current) -> Int {
+        calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: start),
+            to: calendar.startOfDay(for: end)
+        ).day ?? 0
     }
 
     /// "Aug 13" this year, "Aug 13, 2024" otherwise.

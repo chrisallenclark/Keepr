@@ -54,9 +54,14 @@ enum CommunicationLauncher {
     }
 
     /// Strips formatting `tel:`/`sms:` can't handle, keeping "+" for country codes.
+    ///
+    /// Anything from the first letter onward is dropped, so "555-0142 ext 2"
+    /// dials the number rather than silently appending the extension's digits
+    /// and calling someone else.
     static func dialable(_ phoneNumber: String) -> String {
+        let dialPart = phoneNumber.prefix { !$0.isLetter }
         let allowed = CharacterSet(charactersIn: "+0123456789")
-        return String(phoneNumber.unicodeScalars.filter { allowed.contains($0) })
+        return String(String(dialPart).unicodeScalars.filter { allowed.contains($0) })
     }
 
     private static func url(scheme: String, value: String) -> URL? {
