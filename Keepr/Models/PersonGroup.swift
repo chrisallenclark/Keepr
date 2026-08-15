@@ -26,6 +26,10 @@ final class PersonGroup {
     var createdAt: Date = Date()
     var sortOrder: Int = 0
 
+    /// Matches `Person.isSampleData`, so removing the sample set doesn't strand
+    /// an empty "Life Time" nobody created.
+    var isSampleData: Bool = false
+
     var members: [Person]?
 
     init(
@@ -33,7 +37,8 @@ final class PersonGroup {
         symbolName: String = "person.3",
         detail: String? = nil,
         context: RelationshipContext = .both,
-        sortOrder: Int = 0
+        sortOrder: Int = 0,
+        isSampleData: Bool = false
     ) {
         self.id = UUID()
         self.name = name
@@ -42,6 +47,7 @@ final class PersonGroup {
         self.contextRaw = context.rawValue
         self.createdAt = Date()
         self.sortOrder = sortOrder
+        self.isSampleData = isSampleData
         self.members = []
     }
 }
@@ -72,8 +78,9 @@ extension PersonGroup {
 
     static let suggestions: [Suggestion] = [
         .init(name: "Gym", symbolName: "figure.run", context: .both),
+        .init(name: "Home", symbolName: "house", context: .both),
         .init(name: "Work", symbolName: "building.2", context: .business),
-        .init(name: "Neighborhood", symbolName: "house", context: .personal),
+        .init(name: "Neighborhood", symbolName: "building.2", context: .personal),
         .init(name: "College", symbolName: "graduationcap", context: .personal),
         .init(name: "Conference", symbolName: "person.badge.plus", context: .business),
         .init(name: "Nights Out", symbolName: "moon.stars", context: .personal),

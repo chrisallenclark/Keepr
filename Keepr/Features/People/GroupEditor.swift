@@ -12,6 +12,9 @@ struct GroupEditor: View {
     var group: PersonGroup?
     /// The mode the user is in, used as the default context for a new group.
     var mode: ContextMode
+    /// Handed the saved group, so a caller that opened this to place someone can
+    /// put them there without making the user go and find it again.
+    var onSave: ((PersonGroup) -> Void)?
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -58,7 +61,7 @@ struct GroupEditor: View {
                         .font(.subheadline)
                     symbolRow
                 } footer: {
-                    Text("A detail tells two similar groups apart — \"Life Time, Delray\" under \"Gym\".")
+                    Text("A detail tells two similar places apart — \"Delray\" under \"Life Time\".")
                 }
 
                 Section {
@@ -71,14 +74,14 @@ struct GroupEditor: View {
                 } header: {
                     Text("Context")
                 } footer: {
-                    Text("Both keeps the group visible in Business and Personal. A gym is usually both.")
+                    Text("Both keeps the place visible in Business and Personal. A gym is usually both — you train clients there and you have friends there.")
                 }
 
                 if isEditing {
                     deleteSection
                 }
             }
-            .navigationTitle(isEditing ? "Edit Group" : "New Group")
+            .navigationTitle(isEditing ? "Edit Place" : "New Place")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -94,11 +97,11 @@ struct GroupEditor: View {
                 SymbolPicker(selection: $symbolName)
             }
             .confirmationDialog(
-                "Delete \(group?.name ?? "Group")?",
+                "Delete \(group?.name ?? "Place")?",
                 isPresented: $isConfirmingDelete,
                 titleVisibility: .visible
             ) {
-                Button("Delete Group", role: .destructive, action: deleteGroup)
+                Button("Delete Place", role: .destructive, action: deleteGroup)
             } message: {
                 Text(deleteMessage)
             }
@@ -158,11 +161,11 @@ struct GroupEditor: View {
 
     private var deleteSection: some View {
         Section {
-            Button("Delete Group", role: .destructive) {
+            Button("Delete Place", role: .destructive) {
                 isConfirmingDelete = true
             }
         } footer: {
-            Text("Deleting a group removes only the grouping. Everyone in it stays in Keepr.")
+            Text("Deleting a place removes only the place. Everyone there stays in Keepr.")
         }
     }
 
@@ -170,9 +173,9 @@ struct GroupEditor: View {
     /// only question this dialog exists to answer.
     private var deleteMessage: String {
         switch group?.memberCount ?? 0 {
-        case 0: "Nobody is in this group, so nothing else changes."
-        case 1: "The person in it stays in Keepr — only the grouping is removed."
-        case let count: "The \(count) people in it stay in Keepr — only the grouping is removed."
+        case 0: "Nobody is here, so nothing else changes."
+        case 1: "The person there stays in Keepr — only the place is removed."
+        case let count: "The \(count) people there stay in Keepr — only the place is removed."
         }
     }
 
@@ -205,11 +208,14 @@ struct GroupEditor: View {
         let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedDetail = trimmedDetail.isEmpty ? nil : trimmedDetail
 
+        let saved: PersonGroup
+
         if let group {
             group.name = trimmedName
             group.detail = resolvedDetail
             group.symbolName = symbolName
             group.context = relationshipContext
+            saved = group
         } else {
             let created = PersonGroup(
                 name: trimmedName,
@@ -219,9 +225,11 @@ struct GroupEditor: View {
                 sortOrder: (allGroups.map(\.sortOrder).max() ?? 0) + 10
             )
             context.insert(created)
+            saved = created
         }
 
         try? context.save()
+        onSave?(saved)
         Haptics.success()
         dismiss()
     }

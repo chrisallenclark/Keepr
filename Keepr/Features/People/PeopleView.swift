@@ -15,7 +15,8 @@ struct PeopleView: View {
 
     @State private var searchText = ""
     @State private var selectedTag: String?
-    @State private var selectedGroupID: UUID?
+    /// A `FilterFacet` id: a group's UUID string, the unplaced sentinel, or nil.
+    @State private var selectedPlaceID: String?
     @State private var isShowingAddPerson = false
     @State private var isShowingContactImport = false
     @State private var isShowingGroups = false
@@ -34,22 +35,41 @@ struct PeopleView: View {
         nonmutating set { sortRaw = newValue.rawValue }
     }
 
-    private var activeGroup: PersonGroup? {
-        guard let selectedGroupID else { return nil }
-        return groups.first { $0.id == selectedGroupID }
+    private var place: PlaceFilter {
+        PlaceFilter(facetID: selectedPlaceID)
     }
 
     private var filtered: [Person] {
-        var matching = PeopleEngine.filter(
-            people,
-            mode: mode,
-            tagName: selectedTag,
-            query: searchText
+        PeopleEngine.sort(
+            PeopleEngine.filter(
+                people,
+                mode: mode,
+                tagName: selectedTag,
+                query: searchText,
+                place: place
+            ),
+            by: sort
         )
-        if let activeGroup {
-            matching = matching.filter { $0.isMember(of: activeGroup) }
-        }
-        return PeopleEngine.sort(matching, by: sort)
+    }
+
+    /// Counts on each row reflect the *other* row's selection, so "Client 5"
+    /// under Life Time means five clients at Life Time — not five clients total.
+    private var typeFacets: [FilterFacet] {
+        PeopleEngine.typeFacets(
+            for: PeopleEngine.filter(people, mode: mode, query: searchText, place: place),
+            tags: tags,
+            mode: mode,
+            keeping: selectedTag
+        )
+    }
+
+    private var placeFacets: [FilterFacet] {
+        PeopleEngine.placeFacets(
+            for: PeopleEngine.filter(people, mode: mode, tagName: selectedTag, query: searchText),
+            groups: groups,
+            mode: mode,
+            keeping: selectedPlaceID
+        )
     }
 
     /// The people behind the current selection, resolved once per action.
@@ -72,7 +92,10 @@ struct PeopleView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if filtered.isEmpty {
+                // The filter chips live inside the list, so an empty result
+                // still shows them — otherwise the one control that could undo
+                // the filter disappears exactly when it's needed.
+                if filtered.isEmpty, !hasActiveFilters {
                     emptyState
                 } else if sort == .name {
                     sectionedList
@@ -148,9 +171,8 @@ struct PeopleView: View {
 
     private var flatList: some View {
         List(selection: $selection) {
-            if selectedTag != nil || activeGroup != nil {
-                activeFilterRow
-            }
+            filterBar
+            noMatchesRow
             ForEach(filtered) { person in
                 row(for: person)
             }
@@ -160,9 +182,8 @@ struct PeopleView: View {
 
     private var sectionedList: some View {
         List(selection: $selection) {
-            if selectedTag != nil || activeGroup != nil {
-                activeFilterRow
-            }
+            filterBar
+            noMatchesRow
             ForEach(PeopleEngine.alphabeticalSections(filtered)) { section in
                 Section(section.key) {
                     ForEach(section.people) { person in
@@ -200,43 +221,76 @@ struct PeopleView: View {
         }
     }
 
+    private var hasActiveFilters: Bool {
+        selectedTag != nil || selectedPlaceID != nil
+    }
+
+    /// Two rows of chips — what someone is to you, and where the relationship
+    /// lives. They cross: "Client" and "Life Time" together is the answer to
+    /// "who do I train there", and "Life Time" alone still shows the trainers.
+    ///
+    /// Scrolls away with the list rather than pinning: it's a starting point,
+    /// not a permanent control panel.
     @ViewBuilder
-    private var activeFilterRow: some View {
-        HStack {
-            if let selectedTag {
-                Label(selectedTag, systemImage: "line.3.horizontal.decrease")
-                    .font(.subheadline)
+    private var filterBar: some View {
+        // Hidden only while selecting, where every row is a checkbox and a chip
+        // row would just be one more thing to accidentally tick.
+        if !editMode.isEditing {
+            VStack(alignment: .leading, spacing: 0) {
+                if !typeFacets.isEmpty {
+                    FilterChipRow(title: "Type", facets: typeFacets, selection: $selectedTag)
+                }
+                if !placeFacets.isEmpty {
+                    FilterChipRow(title: "Place", facets: placeFacets, selection: $selectedPlaceID)
+                } else {
+                    addAPlaceRow
+                }
             }
-            if let activeGroup {
-                Label(activeGroup.name, systemImage: activeGroup.symbolName)
-                    .font(.subheadline)
-            }
-            Spacer()
-            Button("Clear") {
-                selectedTag = nil
-                selectedGroupID = nil
-            }
-            .font(.subheadline)
+            .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
         }
-        .listRowSeparator(.hidden)
+    }
+
+    /// Shown until the first place exists, because "Place" is the half of this
+    /// screen nobody discovers on their own.
+    private var addAPlaceRow: some View {
+        Button {
+            isShowingGroups = true
+        } label: {
+            Label("Add a place — the gym you train at, home, a bar", systemImage: "mappin.and.ellipse")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, Theme.Spacing.medium)
+        .padding(.vertical, Theme.Spacing.tight)
+    }
+
+    @ViewBuilder
+    private var noMatchesRow: some View {
+        if filtered.isEmpty {
+            VStack(spacing: Theme.Spacing.small) {
+                Text("Nobody matches that combination")
+                    .font(.subheadline.weight(.medium))
+                Button("Clear Filters") {
+                    withAnimation {
+                        selectedTag = nil
+                        selectedPlaceID = nil
+                    }
+                }
+                .font(.subheadline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.large)
+            .listRowSeparator(.hidden)
+        }
     }
 
     private var emptyState: some View {
         Group {
             if !searchText.isEmpty {
                 ContentUnavailableView.search(text: searchText)
-            } else if selectedTag != nil || activeGroup != nil {
-                ContentUnavailableView {
-                    Label("No one here yet", systemImage: "person.crop.circle.badge.questionmark")
-                } description: {
-                    Text("Add people to this group as relationships develop.")
-                } actions: {
-                    Button("Show Everyone") {
-                        selectedTag = nil
-                        selectedGroupID = nil
-                    }
-                    .buttonStyle(.bordered)
-                }
             } else {
                 ContentUnavailableView {
                     Label("No \(mode.title.lowercased()) relationships", systemImage: mode.symbolName)
@@ -316,7 +370,7 @@ struct PeopleView: View {
 
         let relevantGroups = groups.filter { $0.matches(mode) }
         if !relevantGroups.isEmpty {
-            Menu("Add to Group") {
+            Menu("Add to Place") {
                 ForEach(relevantGroups) { group in
                     Button {
                         bulkAddToGroup(group)
@@ -388,41 +442,26 @@ struct PeopleView: View {
                 }
             }
 
-            Divider()
+            if hasActiveFilters {
+                Divider()
 
-            Picker(
-                "Type",
-                selection: Binding(
-                    get: { selectedTag ?? "" },
-                    set: { selectedTag = $0.isEmpty ? nil : $0 }
-                )
-            ) {
-                Text("All Types").tag("")
-                ForEach(tags.filter { $0.kind == TagKind(mode: mode) }) { tag in
-                    Text(tag.name).tag(tag.name)
-                }
-            }
-
-            let relevantGroups = groups.filter { $0.matches(mode) }
-            if !relevantGroups.isEmpty {
-                Menu("Group") {
-                    Button("All Groups") { selectedGroupID = nil }
-                    ForEach(relevantGroups) { group in
-                        Button {
-                            selectedGroupID = group.id
-                        } label: {
-                            Label(group.name, systemImage: group.symbolName)
-                        }
+                Button {
+                    withAnimation {
+                        selectedTag = nil
+                        selectedPlaceID = nil
                     }
+                } label: {
+                    Label("Clear Filters", systemImage: "xmark.circle")
                 }
             }
 
             Divider()
 
+            // Filtering itself is on the chips now; this is the editing door.
             Button {
                 isShowingGroups = true
             } label: {
-                Label("Manage Groups", systemImage: "person.3")
+                Label("Manage Places", systemImage: "mappin.and.ellipse")
             }
             Button {
                 isShowingTypes = true
@@ -431,7 +470,7 @@ struct PeopleView: View {
             }
         } label: {
             Label("Sort and Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(selectedTag == nil && activeGroup == nil ? .none : .fill)
+                .symbolVariant(hasActiveFilters ? .fill : .none)
         }
     }
 

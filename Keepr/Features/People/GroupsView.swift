@@ -39,7 +39,7 @@ struct GroupsView: View {
                 list
             }
         }
-        .navigationTitle("Groups")
+        .navigationTitle("Places")
         .navigationBarTitleDisplayMode(.inline)
         .contextSwitcher($mode)
         .toolbar {
@@ -47,7 +47,7 @@ struct GroupsView: View {
                 Button {
                     isCreating = true
                 } label: {
-                    Label("New Group", systemImage: "plus")
+                    Label("New Place", systemImage: "plus")
                 }
 
                 Button("Done") { dismiss() }
@@ -55,7 +55,7 @@ struct GroupsView: View {
             }
         }
         .navigationDestination(item: $openedGroup) { group in
-            GroupMembersView(group: group)
+            GroupMembersView(group: group, mode: $mode)
         }
         .sheet(isPresented: $isCreating) {
             GroupEditor(group: nil, mode: mode)
@@ -64,11 +64,11 @@ struct GroupsView: View {
             GroupEditor(group: group, mode: mode)
         }
         .confirmationDialog(
-            "Delete \(pendingDeletion?.name ?? "Group")?",
+            "Delete \(pendingDeletion?.name ?? "Place")?",
             isPresented: isConfirmingDelete,
             titleVisibility: .visible
         ) {
-            Button("Delete Group", role: .destructive) {
+            Button("Delete Place", role: .destructive) {
                 if let pendingDeletion {
                     delete(pendingDeletion)
                 }
@@ -115,20 +115,20 @@ struct GroupsView: View {
     private var emptyState: some View {
         if allGroups.isEmpty {
             ContentUnavailableView {
-                Label("No groups yet", systemImage: "person.3")
+                Label("No places yet", systemImage: "mappin.and.ellipse")
             } description: {
-                Text("A group is where people came from — the gym you train at, people you met at a conference, everyone from a dating app.")
+                Text("A place is where a relationship lives — the gym you train at, home, a bar, a conference. One place can hold clients and colleagues at the same time.")
             } actions: {
-                Button("Create a Group") { isCreating = true }
+                Button("Create a Place") { isCreating = true }
                     .buttonStyle(.borderedProminent)
             }
         } else {
             ContentUnavailableView {
-                Label("No \(mode.title.lowercased()) groups", systemImage: mode.symbolName)
+                Label("No \(mode.title.lowercased()) places", systemImage: mode.symbolName)
             } description: {
-                Text("Your other groups are in \(mode.other.title).")
+                Text("Your other places are in \(mode.other.title).")
             } actions: {
-                Button("Create a Group") { isCreating = true }
+                Button("Create a Place") { isCreating = true }
                     .buttonStyle(.bordered)
             }
         }
@@ -136,9 +136,9 @@ struct GroupsView: View {
 
     private func deleteMessage(for group: PersonGroup?) -> String {
         switch group?.memberCount ?? 0 {
-        case 0: "Nothing else changes — no one is in this group."
-        case 1: "The person in it stays in Keepr — only the grouping is removed."
-        case let count: "The \(count) people in it stay in Keepr — only the grouping is removed."
+        case 0: "Nothing else changes — no one is here."
+        case 1: "The person there stays in Keepr — only the place is removed."
+        case let count: "The \(count) people there stay in Keepr — only the place is removed."
         }
     }
 
@@ -192,45 +192,51 @@ private struct GroupRow: View {
 
 // MARK: - Members
 
-/// Who's in one group. Rows are inert until member navigation is wired up, so
-/// they're plain content rather than buttons that look tappable and aren't.
+/// Everyone at one place, split by what they are to you.
+///
+/// This is the payoff for keeping type and place apart: one gym holds the
+/// clients you train there *and* the trainer you work alongside, and you can see
+/// both at once without them being filed as the same thing.
 private struct GroupMembersView: View {
     let group: PersonGroup
+    @Binding var mode: ContextMode
 
-    private var members: [Person] {
-        group.memberList.sorted { $0.sortKey < $1.sortKey }
+    private var sections: [PlaceSection] {
+        PeopleEngine.byType(group.memberList)
     }
 
     var body: some View {
         Group {
-            if members.isEmpty {
+            if group.memberList.isEmpty {
                 ContentUnavailableView {
-                    Label("No one in \(group.name) yet", systemImage: group.symbolName)
+                    Label("No one at \(group.name) yet", systemImage: group.symbolName)
                 } description: {
-                    Text("Add someone to this group from their profile.")
+                    Text("Add someone here from their profile, or select several people at once in People.")
                 }
             } else {
-                List(members) { person in
-                    HStack(spacing: Theme.Spacing.medium) {
-                        Avatar(person: person, size: .small)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(person.displayName)
-                                .font(.body)
-                                .lineLimit(1)
-
-                            if let subtitle = person.subtitle {
-                                Text(subtitle)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
+                List {
+                    ForEach(sections) { section in
+                        Section {
+                            ForEach(section.people) { person in
+                                NavigationLink {
+                                    PersonProfileView(person: person, mode: $mode)
+                                } label: {
+                                    PersonCompactRow(
+                                        person: person,
+                                        detail: person.subtitle ?? person.context.title
+                                    )
+                                }
+                            }
+                        } header: {
+                            HStack {
+                                Text(section.title)
+                                Spacer()
+                                Text("\(section.people.count)")
                             }
                         }
                     }
-                    .padding(.vertical, Theme.Spacing.tight)
-                    .accessibilityElement(children: .combine)
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle(group.name)
