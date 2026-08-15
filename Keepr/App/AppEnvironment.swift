@@ -43,6 +43,8 @@ enum PreferenceKey {
     static let hasOnboarded = "keepr.hasOnboarded"
     static let peopleSort = "keepr.peopleSort"
     static let remindersEnabled = "keepr.remindersEnabled"
+    /// Singular noun for the second axis — "Group", "Business", "App".
+    static let groupLabel = "keepr.groupLabel"
     static let hasAskedForNotifications = "keepr.hasAskedForNotifications"
 }
 

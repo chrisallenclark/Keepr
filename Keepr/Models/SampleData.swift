@@ -62,6 +62,7 @@ enum SampleData {
         )
         context.insert(jake)
         jake.tags = [tag("Potential Client", .business), tag("Lead", .business)]
+        jake.workNote = "Runs a roofing crew of nine. Knows every contractor in Delray."
 
         let jakeChat = interaction(
             .inPerson,
@@ -374,6 +375,7 @@ enum SampleData {
             name: "Life Time",
             symbolName: "figure.run",
             detail: "Delray",
+            aliases: "LT",
             context: .both,
             sortOrder: 10,
             isSampleData: true
@@ -384,6 +386,7 @@ enum SampleData {
         let homeStudio = PersonGroup(
             name: "Home Studio",
             symbolName: "house",
+            aliases: "HS, In-Home",
             context: .business,
             sortOrder: 20,
             isSampleData: true

@@ -30,6 +30,13 @@ final class Person {
 
     var company: String?
     var jobTitle: String?
+    /// What they actually do, in your words — "owns a Shopify brand doing ~$2M,
+    /// could teach me a lot about ads".
+    ///
+    /// Separate from `company`/`jobTitle`, which are whatever the contact card
+    /// says about their employer. This is the sentence you'd want in front of you
+    /// before a conversation, and it's searchable.
+    var workNote: String?
 
     var phoneNumbers: [String] = []
     var emailAddresses: [String] = []

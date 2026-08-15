@@ -10,6 +10,21 @@ struct CategorySuggestion: Equatable {
     var reason: String
     var confidence: Confidence
 
+    /// Groups read off the card — ids, since two groups can share a name across
+    /// contexts and the user's own record is what matters.
+    var groupIDs: [String] = []
+    /// Those groups' names, for showing the suggestion without a lookup.
+    var groupNames: [String] = []
+    /// Types beyond `tagName`, when the card named more than one.
+    var extraTagNames: [String] = []
+
+    /// The name with recognized shorthand removed — "Stanley", not
+    /// "Stanley LT Client". Nil when nothing needed removing.
+    var cleanedGivenName: String?
+    var cleanedFamilyName: String?
+    /// What the card actually said, kept so nothing is silently lost.
+    var originalName: String?
+
     enum Confidence: Int, Comparable {
         case low
         case medium
@@ -53,6 +68,60 @@ enum ContactCategorizer {
         "owner", "founder", "co-founder", "ceo", "president", "principal",
         "partner", "proprietor", "director", "managing"
     ]
+
+    /// The full read on one contact: what the user's own shorthand says, and
+    /// then — only where that's silent — what the card's employer and family
+    /// fields imply.
+    ///
+    /// Shorthand wins because it's a decision the user already made. "Stanley LT
+    /// Client" is them telling you he's a Life Time client; an employer field is
+    /// just a fact about his day job.
+    static func suggestion(
+        for contact: ContactSummary,
+        vocabulary: MarkerVocabulary
+    ) -> CategorySuggestion? {
+        let markers = ContactMarkerParser.parse(contact, vocabulary: vocabulary)
+        let inferred = suggestion(for: contact)
+
+        guard !markers.isEmpty else { return inferred }
+
+        // A type named on the card decides the context; otherwise fall back to
+        // whatever the rest of the card implied, and finally to business — a
+        // group with no type at all is most often a work arrangement.
+        let namedType = markers.typeNames.first
+        let context = namedType
+            .flatMap { name in kindOfTag(named: name, vocabulary: vocabulary) }
+            .map { RelationshipContext(kind: $0) }
+            ?? inferred?.context
+            ?? .business
+
+        var suggestion = CategorySuggestion(
+            context: context,
+            tagName: namedType ?? inferred?.tagName,
+            reason: markers.reasons.joined(separator: " · "),
+            confidence: .high
+        )
+        suggestion.groupIDs = markers.groupIDs
+        suggestion.groupNames = markers.groupNames
+        suggestion.extraTagNames = Array(markers.typeNames.dropFirst())
+
+        if markers.changedName {
+            suggestion.cleanedGivenName = markers.givenName
+            suggestion.cleanedFamilyName = markers.familyName
+            suggestion.originalName = contact.fullName
+        }
+        return suggestion
+    }
+
+    /// Which side a named type sits on, so "Client" lands in Business and
+    /// "Friend" doesn't. Custom types carry their own kind, so this works for
+    /// a type the user invented as well as a built-in.
+    private static func kindOfTag(
+        named name: String,
+        vocabulary: MarkerVocabulary
+    ) -> TagKind? {
+        vocabulary.types.first { $0.display == name }?.kind
+    }
 
     static func suggestion(for contact: ContactSummary) -> CategorySuggestion? {
         // Family stated on the card is the strongest personal signal there is.

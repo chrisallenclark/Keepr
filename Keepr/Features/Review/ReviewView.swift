@@ -17,13 +17,19 @@ struct ReviewView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Query private var people: [Person]
+    @Query(sort: \PersonGroup.sortOrder) private var groups: [PersonGroup]
+    @Query(sort: \RelationshipTag.sortOrder) private var tags: [RelationshipTag]
 
     @State private var newContacts: [ContactSummary] = []
     @State private var isLoading = true
     @State private var editing: ReviewItem?
 
     private var items: [ReviewItem] {
-        ReviewQueue.items(newContacts: newContacts, people: people)
+        ReviewQueue.items(
+            newContacts: newContacts,
+            people: people,
+            vocabulary: MarkerVocabulary.build(groups: groups, tags: tags)
+        )
     }
 
     private var fresh: [ReviewItem] { items.filter(\.isNew) }
@@ -227,14 +233,16 @@ struct ReviewView: View {
                 let person = PersonImporter.makePerson(
                     from: contact,
                     context: suggestion.context,
-                    in: context
+                    in: context,
+                    suggestion: suggestion
                 )
-                PersonImporter.apply(suggestion, to: person, in: context)
+                PersonImporter.apply(suggestion, to: person, in: context, groups: groups)
+                PersonImporter.noteOriginalName(suggestion, for: person, in: context)
                 PersonImporter.addMemories(from: contact, to: person, in: context)
                 ContactChangeTracker.shared.acknowledge([contact])
                 newContacts.removeAll { $0.identifier == contact.identifier }
             case let .existing(person):
-                PersonImporter.apply(suggestion, to: person, in: context)
+                PersonImporter.apply(suggestion, to: person, in: context, groups: groups)
                 person.touch()
             }
             try? context.save()

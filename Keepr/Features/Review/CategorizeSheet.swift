@@ -17,6 +17,11 @@ struct CategorizeSheet: View {
 
     @Query(sort: \RelationshipTag.sortOrder) private var tags: [RelationshipTag]
     @Query(sort: \PersonGroup.sortOrder) private var groups: [PersonGroup]
+    @AppStorage(PreferenceKey.groupLabel) private var groupLabel = GroupVocabulary.default.singular
+
+    /// The user's word for the second axis, in the shapes the copy needs.
+    private var groupPlural: String { GroupVocabulary.plural(for: groupLabel) }
+    private var article: String { GroupVocabulary.article(for: groupLabel) }
 
     @State private var relationshipContext: RelationshipContext = .business
     @State private var selectedTagID: UUID?
@@ -111,9 +116,9 @@ struct CategorizeSheet: View {
                             .buttonStyle(.plain)
                         }
                     } header: {
-                        Text("Places")
+                        Text(groupPlural)
                     } footer: {
-                        Text("Where the relationship lives — the gym you train at, home, a night out.")
+                        Text("Where the relationship comes through — a gym, one of your businesses, an app, a night out.")
                     }
                 }
 
@@ -159,6 +164,13 @@ struct CategorizeSheet: View {
         if selectedTagID == nil, let name = item.suggestion?.tagName {
             selectedTagID = relevantTags.first { $0.builtInKey == name || $0.name == name }?.id
         }
+        // Groups read off the contact card start ticked, since that's what the
+        // card said — visible and untickable, not applied behind their back.
+        for id in item.suggestion?.groupIDs ?? [] {
+            if let group = groups.first(where: { $0.id.uuidString == id }) {
+                selectedGroupIDs.insert(group.id)
+            }
+        }
     }
 
     private func applySuggestion(_ suggestion: CategorySuggestion) {
@@ -199,8 +211,12 @@ struct CategorizeSheet: View {
             person = PersonImporter.makePerson(
                 from: contact,
                 context: relationshipContext,
-                in: context
+                in: context,
+                suggestion: item.suggestion
             )
+            if let suggestion = item.suggestion {
+                PersonImporter.noteOriginalName(suggestion, for: person, in: context)
+            }
             PersonImporter.addMemories(from: contact, to: person, in: context)
             ContactChangeTracker.shared.acknowledge([contact])
         case let .existing(existing):

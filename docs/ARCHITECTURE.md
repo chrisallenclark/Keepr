@@ -66,9 +66,15 @@ Three ways of saying who someone is, deliberately kept apart:
 
 * **type** (`RelationshipTag`) — what they are to you: "Current Client", "Investor". More
   than one is normal and expected.
-* **place** (`PersonGroup`, called *Place* in the UI) — where the relationship lives: the gym
-  you train at, home, a bar, a dating app.
+* **group** (`PersonGroup`) — what the relationship comes through: Life Time, your own
+  training company, a meal-prep business, Hinge, a bar. More than one is normal here too.
 * **link** (`PersonLink`) — who they are to *another person*: Linda is Alex's parent.
+
+The **word** for the second axis is a user setting (`PreferenceKey.groupLabel`, default
+"Group"; see `GroupVocabulary`). A trainer with Life Time / HYP / Meal Prep calls them
+Businesses; someone sorting Hinge / Tinder / Bumble calls them Apps. The concept is fixed —
+a named list a person can be in several of — and only the noun moves, which is one stored
+string rather than a second axis nobody's other use case needs.
 
 Type and place are independent axes and the People screen crosses them with two rows of
 chips: "Current Client" spans every gym plus the clients trained at home, "Life Time" holds
@@ -93,8 +99,28 @@ two. One record serves both profiles: `labelAToB` and `labelBToA` are stored sep
   migration. Seeded once with built-ins (`isBuiltIn`); users can add their own. A built-in
   is found by `builtInKey`, never by visible name — renaming "Family" must not silently
   create a second "Family" on the next import.
-* **PersonGroup** — a place: a name, a symbol, an optional detail ("Delray"). Membership
-  only; no ranking, no roles. A person can be in several.
+* **PersonGroup** — a name, a symbol, an optional detail ("Delray"), and optional
+  comma-separated `aliases` ("LT, LTF"). Membership only; no ranking, no roles.
+* **Person.workNote** — what they actually do, in the user's words, separate from the
+  `company`/`jobTitle` the contact card supplies. The client you train at 6am who runs an
+  e-commerce brand is a fact worth surfacing, and it's searchable.
+
+### Reading shorthand off contact cards
+
+`ContactMarkers.swift` turns "Stanley LT Client" into *Stanley · Business · Current Client ·
+Life Time*, with the marker text removed from the name and the original kept as a memory.
+The iPhone contact card is never written to.
+
+Vocabulary comes from the user's own records — group names, their initials, tag names, and
+any aliases the user typed — never from a built-in list of assumptions. Two rules bound the
+damage: a marker must match a **whole word**, and a marker of four characters or fewer must
+be **capitalized on the card** ("LT Client" yes, "Lt Colonel" no). Markers in name fields
+are removed; markers in the company field are evidence only, since an employer is a fact
+rather than a label. If the markers would consume the entire name, the name is left alone.
+
+`ContactMarkerParser.candidates(in:vocabulary:)` closes the setup loop: shorthand seen on
+two or more cards but unknown to Keepr is offered at the top of the importer as a group to
+create, so the feature works for someone who hasn't configured anything yet.
 * **PersonLink** — a labelled connection between two people, with an optional note.
 * **Memory** — structured fact: content, category, importance, archived, source interaction.
 * **Interaction** — a logged meaningful interaction: kind, date, title, raw note, summary.

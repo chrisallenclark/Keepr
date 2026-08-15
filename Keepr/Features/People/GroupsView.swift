@@ -10,6 +10,11 @@ struct GroupsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Query(sort: \PersonGroup.sortOrder) private var allGroups: [PersonGroup]
+    @AppStorage(PreferenceKey.groupLabel) private var groupLabel = GroupVocabulary.default.singular
+
+    /// The user's word for the second axis, in the shapes the copy needs.
+    private var groupPlural: String { GroupVocabulary.plural(for: groupLabel) }
+    private var article: String { GroupVocabulary.article(for: groupLabel) }
 
     @State private var isCreating = false
     @State private var editingGroup: PersonGroup?
@@ -39,7 +44,7 @@ struct GroupsView: View {
                 list
             }
         }
-        .navigationTitle("Places")
+        .navigationTitle(groupPlural)
         .navigationBarTitleDisplayMode(.inline)
         .contextSwitcher($mode)
         .toolbar {
@@ -47,7 +52,7 @@ struct GroupsView: View {
                 Button {
                     isCreating = true
                 } label: {
-                    Label("New Place", systemImage: "plus")
+                    Label("New \(groupLabel)", systemImage: "plus")
                 }
 
                 Button("Done") { dismiss() }
@@ -64,11 +69,11 @@ struct GroupsView: View {
             GroupEditor(group: group, mode: mode)
         }
         .confirmationDialog(
-            "Delete \(pendingDeletion?.name ?? "Place")?",
+            "Delete \(pendingDeletion?.name ?? groupLabel)?",
             isPresented: isConfirmingDelete,
             titleVisibility: .visible
         ) {
-            Button("Delete Place", role: .destructive) {
+            Button("Delete \(groupLabel)", role: .destructive) {
                 if let pendingDeletion {
                     delete(pendingDeletion)
                 }
@@ -115,20 +120,20 @@ struct GroupsView: View {
     private var emptyState: some View {
         if allGroups.isEmpty {
             ContentUnavailableView {
-                Label("No places yet", systemImage: "mappin.and.ellipse")
+                Label("No \(groupPlural.lowercased()) yet", systemImage: "mappin.and.ellipse")
             } description: {
-                Text("A place is where a relationship lives — the gym you train at, home, a bar, a conference. One place can hold clients and colleagues at the same time.")
+                Text("Life Time, your training company, a dating app, a bar — whatever a relationship comes through. One of these can hold clients and colleagues at the same time, and someone can be in several.")
             } actions: {
-                Button("Create a Place") { isCreating = true }
+                Button("Create \(article) \(groupLabel)") { isCreating = true }
                     .buttonStyle(.borderedProminent)
             }
         } else {
             ContentUnavailableView {
-                Label("No \(mode.title.lowercased()) places", systemImage: mode.symbolName)
+                Label("No \(mode.title.lowercased()) \(groupPlural.lowercased())", systemImage: mode.symbolName)
             } description: {
-                Text("Your other places are in \(mode.other.title).")
+                Text("Your other \(groupPlural.lowercased()) are in \(mode.other.title).")
             } actions: {
-                Button("Create a Place") { isCreating = true }
+                Button("Create \(article) \(groupLabel)") { isCreating = true }
                     .buttonStyle(.bordered)
             }
         }

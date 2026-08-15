@@ -17,8 +17,15 @@ final class PersonGroup {
     var name: String = ""
     /// SF Symbol chosen by the user when they create the group.
     var symbolName: String = "person.3"
-    /// Optional line of context — "Life Time, Delray" under "Gym".
+    /// Optional line of context — "Delray" under "Life Time".
     var detail: String?
+
+    /// Other things you call this, comma-separated: "LT, LTF, Life Time Delray".
+    ///
+    /// This is how import learns your shorthand. A contact card whose last-name
+    /// field reads "LT Client" only means Life Time if something tells the app
+    /// that LT is Life Time, and the only reliable source for that is you.
+    var aliases: String?
 
     /// Groups can be business, personal, or relevant to both.
     var contextRaw: String = RelationshipContext.both.rawValue
@@ -36,6 +43,7 @@ final class PersonGroup {
         name: String,
         symbolName: String = "person.3",
         detail: String? = nil,
+        aliases: String? = nil,
         context: RelationshipContext = .both,
         sortOrder: Int = 0,
         isSampleData: Bool = false
@@ -44,6 +52,7 @@ final class PersonGroup {
         self.name = name
         self.symbolName = symbolName
         self.detail = detail
+        self.aliases = aliases
         self.contextRaw = context.rawValue
         self.createdAt = Date()
         self.sortOrder = sortOrder

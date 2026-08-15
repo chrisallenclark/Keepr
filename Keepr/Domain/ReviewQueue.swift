@@ -63,7 +63,8 @@ enum ReviewQueue {
     /// and the answer is about to be lost. Then the backlog, newest first.
     static func items(
         newContacts: [ContactSummary],
-        people: [Person]
+        people: [Person],
+        vocabulary: MarkerVocabulary = MarkerVocabulary()
     ) -> [ReviewItem] {
         // Someone already imported is never "new", even if the tracker hasn't
         // caught up — they belong in the backlog or nowhere.
@@ -74,7 +75,7 @@ enum ReviewQueue {
             .map { (contact: ContactSummary) in
                 ReviewItem(
                     subject: .newContact(contact),
-                    suggestion: ContactCategorizer.suggestion(for: contact)
+                    suggestion: ContactCategorizer.suggestion(for: contact, vocabulary: vocabulary)
                 )
             }
 

@@ -18,14 +18,24 @@ struct ContactImportView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Query private var existingPeople: [Person]
+    @Query(sort: \PersonGroup.sortOrder) private var groups: [PersonGroup]
+    @Query(sort: \RelationshipTag.sortOrder) private var tags: [RelationshipTag]
+
+    @AppStorage(PreferenceKey.groupLabel) private var groupLabel = GroupVocabulary.default.singular
 
     @State private var access: ContactAccess = .notDetermined
     @State private var contacts: [ContactSummary] = []
     @State private var selected: Set<String> = []
     @State private var suggestions: [String: CategorySuggestion] = [:]
+    @State private var discovered: [ContactMarkerParser.Candidate] = []
+    @State private var newGroupToken: DiscoveredToken?
     @State private var applySuggestions = true
     @State private var query = ""
     @State private var isLoading = false
+
+    private var vocabulary: MarkerVocabulary {
+        MarkerVocabulary.build(groups: groups, tags: tags)
+    }
 
     private var linkedIdentifiers: Set<String> {
         Set(existingPeople.compactMap(\.contactIdentifier))
@@ -73,6 +83,18 @@ struct ContactImportView: View {
                 }
             }
             .task { await load() }
+            .sheet(item: $newGroupToken) { pending in
+                // Prefilled with the shorthand as both the name and the alias,
+                // so "LT" keeps working even after it's renamed to "Life Time".
+                GroupEditor(
+                    group: nil,
+                    mode: mode,
+                    prefilledName: pending.token,
+                    prefilledAlias: pending.token
+                ) { _ in
+                    rebuildSuggestions()
+                }
+            }
         }
     }
 
@@ -91,12 +113,14 @@ struct ContactImportView: View {
                 }
             }
 
+            discoveredSection
+
             if !suggestions.isEmpty {
                 Section {
                     Toggle("Apply suggested categories", isOn: $applySuggestions)
                         .font(.subheadline)
                 } footer: {
-                    Text("Guessed from what's already on each contact card — an employer, a job title, a family relation. Everything is editable afterwards, and anything Keepr can't place is left for you.")
+                    Text("Read off each contact card — your own shorthand first, then an employer, a job title, a family relation. Everything is editable afterwards, and anything Keepr can't place is left for you.")
                 }
             }
 
@@ -123,6 +147,59 @@ struct ContactImportView: View {
         }
     }
 
+    /// Shorthand that's all over the address book but means nothing to Keepr
+    /// yet — "LT" on eight cards, "HYP" on five.
+    ///
+    /// Without this, the whole marker feature only works for someone who set up
+    /// their groups first, which is nobody. One tap here turns a habit the user
+    /// already has into something the importer can act on.
+    @ViewBuilder
+    private var discoveredSection: some View {
+        if !discovered.isEmpty {
+            Section {
+                ScrollView(.horizontal) {
+                    HStack(spacing: Theme.Spacing.small) {
+                        ForEach(discovered) { candidate in
+                            Button {
+                                newGroupToken = DiscoveredToken(token: candidate.token)
+                            } label: {
+                                HStack(spacing: Theme.Spacing.tight) {
+                                    Image(systemName: "plus.circle")
+                                    Text(candidate.token)
+                                        .fontWeight(.medium)
+                                    Text("\(candidate.count)")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .font(.subheadline)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    .padding(.vertical, Theme.Spacing.tight)
+                }
+                .scrollIndicators(.hidden)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 0))
+            } header: {
+                Text("Shorthand On Your Contacts")
+            } footer: {
+                Text("Keepr keeps seeing these on your contact cards. Make one a \(groupLabel.lowercased()) and every contact carrying it gets sorted automatically — now and every time you import.")
+            }
+        }
+    }
+
+    private func displayName(for contact: ContactSummary, suggestion: CategorySuggestion?) -> String {
+        guard applySuggestions,
+              let suggestion,
+              suggestion.originalName != nil
+        else { return contact.fullName }
+
+        let cleaned = [suggestion.cleanedGivenName, suggestion.cleanedFamilyName]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        return cleaned.isEmpty ? contact.fullName : cleaned
+    }
+
     private func contactRow(_ contact: ContactSummary) -> some View {
         let isLinked = linkedIdentifiers.contains(contact.identifier)
         let suggestion = suggestions[contact.identifier]
@@ -134,7 +211,7 @@ struct ContactImportView: View {
                 Avatar(contact: contact, size: .small)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(contact.fullName)
+                    Text(displayName(for: contact, suggestion: suggestion))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(isLinked ? .secondary : .primary)
 
@@ -148,12 +225,21 @@ struct ContactImportView: View {
                     if applySuggestions, let suggestion, !isLinked {
                         HStack(spacing: Theme.Spacing.tight) {
                             Image(systemName: suggestion.context.symbolName)
-                            Text(suggestion.tagName ?? suggestion.context.title)
-                            Text("·")
-                            Text(suggestion.reason).lineLimit(1)
+                            Text(
+                                ([suggestion.tagName].compactMap { $0 }
+                                    + suggestion.extraTagNames
+                                    + suggestion.groupNames)
+                                    .joined(separator: " · ")
+                            )
+                            .lineLimit(1)
                         }
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(Color.accentColor)
+
+                        Text(suggestion.reason)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
                     }
                 }
 
@@ -244,8 +330,23 @@ struct ContactImportView: View {
         isLoading = true
         let fetched = await contactStore.fetchContacts()
         contacts = fetched
-        suggestions = ContactCategorizer.suggestions(for: fetched)
+        rebuildSuggestions()
         isLoading = false
+    }
+
+    /// Re-read every card against the current vocabulary. Called again whenever
+    /// a group is created from discovered shorthand, so the list visibly
+    /// reorganizes itself the moment "LT" means something.
+    private func rebuildSuggestions() {
+        let vocabulary = self.vocabulary
+        var result: [String: CategorySuggestion] = [:]
+        for contact in contacts {
+            if let suggestion = ContactCategorizer.suggestion(for: contact, vocabulary: vocabulary) {
+                result[contact.identifier] = suggestion
+            }
+        }
+        suggestions = result
+        discovered = ContactMarkerParser.candidates(in: contacts, vocabulary: vocabulary)
     }
 
     private func toggle(_ contact: ContactSummary) {
@@ -266,10 +367,12 @@ struct ContactImportView: View {
             let person = PersonImporter.makePerson(
                 from: contact,
                 context: suggestion?.context ?? RelationshipContext(mode: mode),
-                in: context
+                in: context,
+                suggestion: suggestion
             )
             if let suggestion {
-                PersonImporter.apply(suggestion, to: person, in: context)
+                PersonImporter.apply(suggestion, to: person, in: context, groups: groups)
+                PersonImporter.noteOriginalName(suggestion, for: person, in: context)
             }
             PersonImporter.addMemories(from: contact, to: person, in: context)
         }
@@ -283,6 +386,14 @@ struct ContactImportView: View {
         onFinish?(chosen.count)
         dismiss()
     }
+}
+
+/// A shorthand token on its way to becoming a group. `sheet(item:)` needs
+/// identity, and a bare String has none.
+private struct DiscoveredToken: Identifiable {
+    let token: String
+
+    var id: String { token }
 }
 
 #Preview {

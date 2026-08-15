@@ -21,6 +21,9 @@ final class RelationshipTag {
     /// find "the Family tag" must not go looking for the string "Family", or a
     /// rename silently creates a duplicate on the next import.
     var builtInKey: String?
+    /// Other things you call this, comma-separated: "LT Client, Training Client".
+    /// Used when reading markers off a contact card at import.
+    var aliases: String?
     /// Controls order in pickers and on rows; built-ins are spaced by 10.
     var sortOrder: Int = 0
     /// SF Symbol shown in filter menus.
@@ -36,13 +39,15 @@ final class RelationshipTag {
         isBuiltIn: Bool = false,
         sortOrder: Int = 0,
         symbolName: String = "tag",
-        builtInKey: String? = nil
+        builtInKey: String? = nil,
+        aliases: String? = nil
     ) {
         self.id = UUID()
         self.name = name
         self.kindRaw = kind.rawValue
         self.isBuiltIn = isBuiltIn
         self.builtInKey = builtInKey
+        self.aliases = aliases
         self.sortOrder = sortOrder
         self.symbolName = symbolName
         self.createdAt = Date()
