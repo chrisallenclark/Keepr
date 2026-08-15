@@ -95,7 +95,9 @@ struct PersonLinkTests {
         let record = link(store, one, two, role: LinkRole.named("Manager"))
         try store.save()
 
-        #expect(two.connections.first?.label == "Manager")
+        // "one's manager is two" reads back as two's direct report.
+        #expect(one.connections.first?.label == "Manager")
+        #expect(two.connections.first?.label == "Direct Report")
 
         store.context.delete(record)
         try store.save()
