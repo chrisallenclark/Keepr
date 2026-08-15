@@ -64,9 +64,19 @@ Interaction  1─* FollowUp           (nullify)
 
 Three ways of saying who someone is, deliberately kept apart:
 
-* **type** (`RelationshipTag`) — what they are to you: "Current Client".
-* **group** (`PersonGroup`) — where they came from: the gym, a conference, a dating app.
+* **type** (`RelationshipTag`) — what they are to you: "Current Client", "Investor". More
+  than one is normal and expected.
+* **place** (`PersonGroup`, called *Place* in the UI) — where the relationship lives: the gym
+  you train at, home, a bar, a dating app.
 * **link** (`PersonLink`) — who they are to *another person*: Linda is Alex's parent.
+
+Type and place are independent axes and the People screen crosses them with two rows of
+chips: "Current Client" spans every gym plus the clients trained at home, "Life Time" holds
+clients and the colleague who works there, and both together is who you train at that gym.
+Chip counts are computed against the *other* row's selection, so a chip says what it will
+give you before it's tapped, and a chip that would give nothing is never shown. Keeping the
+axes apart is what stops the taxonomy turning into "Life Time Clients", "Home Clients",
+"Iron House Clients" — one relationship, categorized once, seen from either direction.
 
 A link is pairwise and reads differently from each end, which is why it isn't a group of
 two. One record serves both profiles: `labelAToB` and `labelBToA` are stored separately so
@@ -83,7 +93,8 @@ two. One record serves both profiles: `labelAToB` and `labelBToA` are stored sep
   migration. Seeded once with built-ins (`isBuiltIn`); users can add their own. A built-in
   is found by `builtInKey`, never by visible name — renaming "Family" must not silently
   create a second "Family" on the next import.
-* **PersonGroup** — a named circle with a symbol. Membership only; no ranking, no roles.
+* **PersonGroup** — a place: a name, a symbol, an optional detail ("Delray"). Membership
+  only; no ranking, no roles. A person can be in several.
 * **PersonLink** — a labelled connection between two people, with an optional note.
 * **Memory** — structured fact: content, category, importance, archived, source interaction.
 * **Interaction** — a logged meaningful interaction: kind, date, title, raw note, summary.

@@ -111,9 +111,9 @@ struct CategorizeSheet: View {
                             .buttonStyle(.plain)
                         }
                     } header: {
-                        Text("Groups")
+                        Text("Places")
                     } footer: {
-                        Text("Where they came from — the gym, a conference, a night out.")
+                        Text("Where the relationship lives — the gym you train at, home, a night out.")
                     }
                 }
 
@@ -176,10 +176,19 @@ struct CategorizeSheet: View {
     private func toggle(_ group: PersonGroup) {
         if selectedGroupIDs.contains(group.id) {
             selectedGroupIDs.remove(group.id)
+            // Only take back the sentence this screen wrote itself.
+            if howWeMet == Self.metAt(group) { howWeMet = "" }
         } else {
             selectedGroupIDs.insert(group.id)
+            // A first draft, in an editable field, on the one screen that's
+            // actually asking the question. Never overwrites what's there.
+            if howWeMet.isEmpty { howWeMet = Self.metAt(group) }
         }
         Haptics.selection()
+    }
+
+    private static func metAt(_ group: PersonGroup) -> String {
+        "Met at \(group.name)"
     }
 
     private func save() {

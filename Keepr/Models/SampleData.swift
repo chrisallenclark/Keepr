@@ -17,10 +17,13 @@ enum SampleData {
 
     @MainActor
     static func remove(from context: ModelContext) {
-        let descriptor = FetchDescriptor<Person>()
-        let people = (try? context.fetch(descriptor)) ?? []
+        let people = (try? context.fetch(FetchDescriptor<Person>())) ?? []
         for person in people where person.isSampleData {
             context.delete(person)
+        }
+        let groups = (try? context.fetch(FetchDescriptor<PersonGroup>())) ?? []
+        for group in groups where group.isSampleData {
+            context.delete(group)
         }
         try? context.save()
     }
@@ -260,19 +263,6 @@ enum SampleData {
             in: context
         )
 
-        // The referral that started the client relationship, as a link rather
-        // than a note — it reads from both ends and survives a rename.
-        context.insert(
-            PersonLink(
-                personA: sarah,
-                personB: michael,
-                labelAToB: "Referred By",
-                labelBToA: "Referred",
-                note: "Sent her over after her half marathon",
-                createdAt: daysAgo(240)
-            )
-        )
-
         // MARK: Personal — close friend
 
         let alex = Person(
@@ -375,6 +365,43 @@ enum SampleData {
             from: nil,
             at: daysAgo(95),
             in: context
+        )
+
+        // Places: one gym holding a client, a colleague and a friend at once,
+        // plus the clients trained at home. This is the pair of chips the People
+        // screen is built around, so the sample set has to show it working.
+        let lifeTime = PersonGroup(
+            name: "Life Time",
+            symbolName: "figure.run",
+            detail: "Delray",
+            context: .both,
+            sortOrder: 10,
+            isSampleData: true
+        )
+        context.insert(lifeTime)
+        lifeTime.members = [jake, michael, alex]
+
+        let homeStudio = PersonGroup(
+            name: "Home Studio",
+            symbolName: "house",
+            context: .business,
+            sortOrder: 20,
+            isSampleData: true
+        )
+        context.insert(homeStudio)
+        homeStudio.members = [sarah, dana]
+
+        // The referral that started the client relationship, as a link rather
+        // than a note — it reads from both ends and survives a rename.
+        context.insert(
+            PersonLink(
+                personA: sarah,
+                personB: michael,
+                labelAToB: "Referred By",
+                labelBToA: "Referred",
+                note: "Sent her over after her half marathon",
+                createdAt: daysAgo(240)
+            )
         )
 
         try? context.save()

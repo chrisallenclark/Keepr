@@ -22,6 +22,9 @@ struct PersonProfileView: View {
     @State private var isAddingMemory = false
     @State private var isConfirmingDelete = false
     @State private var isShowingLinkEditor = false
+    @State private var isShowingNewPlace = false
+
+    @Query(sort: \PersonGroup.sortOrder) private var allPlaces: [PersonGroup]
 
     var body: some View {
         List {
@@ -44,6 +47,7 @@ struct PersonProfileView: View {
             }
 
             nextActionSection
+            placesSection
             memoriesSection
             connectionsSection
             timelineSection
@@ -90,6 +94,13 @@ struct PersonProfileView: View {
         }
         .sheet(isPresented: $isShowingLinkEditor) {
             PersonLinkEditor(person: person)
+        }
+        .sheet(isPresented: $isShowingNewPlace) {
+            // Creating a place from a profile means "put them here", so the
+            // person is added the moment it's saved.
+            GroupEditor(group: nil, mode: mode) { created in
+                add(created)
+            }
         }
         .confirmationDialog(
             "Delete \(person.displayName)?",
@@ -205,6 +216,94 @@ struct PersonProfileView: View {
                         .textCase(nil)
                 }
             }
+        }
+    }
+
+    // MARK: - Places
+
+    /// Where this relationship lives. Someone can be in more than one — a client
+    /// you train at Life Time and also see at the beach volleyball league.
+    ///
+    /// This is one tap from the profile rather than buried behind a manager
+    /// screen, because a place you have to go and administer is a place nobody
+    /// fills in.
+    @ViewBuilder
+    private var placesSection: some View {
+        let places = person.groupList.sorted { $0.sortOrder < $1.sortOrder }
+
+        Section {
+            if places.isEmpty {
+                placeMenu {
+                    Label("Add a place", systemImage: "mappin.and.ellipse")
+                        .font(.subheadline)
+                }
+            } else {
+                ForEach(places) { place in
+                    HStack {
+                        Label(place.name, systemImage: place.symbolName)
+                            .font(.subheadline)
+                        if let detail = place.detail, !detail.isEmpty {
+                            Text(detail)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            remove(place)
+                        } label: {
+                            Label("Remove", systemImage: "minus.circle")
+                        }
+                    }
+                }
+            }
+        } header: {
+            HStack {
+                Text("Where")
+                Spacer()
+                if !places.isEmpty {
+                    placeMenu {
+                        Text("Add")
+                            .font(.caption.weight(.semibold))
+                            .textCase(nil)
+                    }
+                }
+            }
+        } footer: {
+            if places.isEmpty {
+                Text("The gym you train at, home, the bar you met in. Places let you see everyone from one — clients and colleagues together.")
+            }
+        }
+    }
+
+    /// The add-a-place control: every place they aren't in yet, then a way to
+    /// make a new one without leaving the profile.
+    private func placeMenu<Label: View>(@ViewBuilder label: () -> Label) -> some View {
+        Menu {
+            ForEach(availablePlaces) { place in
+                Button {
+                    add(place)
+                } label: {
+                    SwiftUI.Label(place.name, systemImage: place.symbolName)
+                }
+            }
+            if !availablePlaces.isEmpty {
+                Divider()
+            }
+            Button {
+                isShowingNewPlace = true
+            } label: {
+                SwiftUI.Label("New Place…", systemImage: "plus")
+            }
+        } label: {
+            label()
+        }
+    }
+
+    private var availablePlaces: [PersonGroup] {
+        allPlaces.filter { place in
+            !person.isMember(of: place) && place.matches(mode)
         }
     }
 
@@ -407,6 +506,28 @@ struct PersonProfileView: View {
             .first?
             .occurredAt
         try? context.save()
+    }
+
+    private func add(_ place: PersonGroup) {
+        guard !person.isMember(of: place) else { return }
+        // Deliberately doesn't touch "how we met": where a relationship lives
+        // now and where it started are different facts, and quietly writing a
+        // guess into a field the user trusts is worse than leaving it blank.
+        withAnimation {
+            person.groups = person.groupList + [place]
+            person.touch()
+        }
+        try? context.save()
+        Haptics.success()
+    }
+
+    private func remove(_ place: PersonGroup) {
+        withAnimation {
+            person.groups = person.groupList.filter { $0.id != place.id }
+            person.touch()
+        }
+        try? context.save()
+        Haptics.light()
     }
 
     /// Removing a link deletes the one record that served both ends, so it
