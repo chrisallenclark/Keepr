@@ -21,6 +21,7 @@ struct PersonProfileView: View {
     @State private var newMemoryText = ""
     @State private var isAddingMemory = false
     @State private var isConfirmingDelete = false
+    @State private var isShowingLinkEditor = false
 
     var body: some View {
         List {
@@ -44,6 +45,7 @@ struct PersonProfileView: View {
 
             nextActionSection
             memoriesSection
+            connectionsSection
             timelineSection
             detailsSection
         }
@@ -85,6 +87,9 @@ struct PersonProfileView: View {
         }
         .sheet(isPresented: $isShowingNewFollowUp) {
             FollowUpEditor(person: person, followUp: nil)
+        }
+        .sheet(isPresented: $isShowingLinkEditor) {
+            PersonLinkEditor(person: person)
         }
         .confirmationDialog(
             "Delete \(person.displayName)?",
@@ -199,6 +204,56 @@ struct PersonProfileView: View {
                         .font(.caption.weight(.semibold))
                         .textCase(nil)
                 }
+            }
+        }
+    }
+
+    // MARK: - Connections
+
+    /// Who this person is connected to, and how. Empty until there's something
+    /// to show — an empty "Connections" header on every profile would be noise
+    /// on the majority of them.
+    @ViewBuilder
+    private var connectionsSection: some View {
+        let connections = person.connections
+
+        if !connections.isEmpty {
+            Section {
+                ForEach(connections) { connection in
+                    NavigationLink {
+                        PersonProfileView(person: connection.person, mode: $mode)
+                    } label: {
+                        ConnectionRow(connection: connection)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            unlink(connection)
+                        } label: {
+                            Label("Unlink", systemImage: "minus.circle")
+                        }
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Connections")
+                    Spacer()
+                    Button("Link") { isShowingLinkEditor = true }
+                        .font(.caption.weight(.semibold))
+                        .textCase(nil)
+                }
+            }
+        } else {
+            Section {
+                Button {
+                    isShowingLinkEditor = true
+                } label: {
+                    Label("Link to someone else", systemImage: "link")
+                        .font(.subheadline)
+                }
+            } header: {
+                Text("Connections")
+            } footer: {
+                Text("Their partner, their assistant, whoever introduced you.")
             }
         }
     }
@@ -352,6 +407,14 @@ struct PersonProfileView: View {
             .first?
             .occurredAt
         try? context.save()
+    }
+
+    /// Removing a link deletes the one record that served both ends, so it
+    /// disappears from the other person's profile too.
+    private func unlink(_ connection: PersonConnection) {
+        withAnimation { context.delete(connection.link) }
+        try? context.save()
+        Haptics.light()
     }
 
     private func toggleFavorite() {

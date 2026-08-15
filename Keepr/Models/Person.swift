@@ -61,6 +61,11 @@ final class Person {
     /// granted the contacts-notes entitlement; nil otherwise.
     var contactNote: String?
 
+    /// Set once the user has answered for this person in the review queue —
+    /// including answering "not now". Keeps a deliberate decision from being
+    /// asked again every time the app opens.
+    var reviewedAt: Date?
+
     /// Marks records created by the developer sample data set, so they can be
     /// removed in one action without touching anything real.
     var isSampleData: Bool = false
@@ -81,6 +86,15 @@ final class Person {
 
     @Relationship(deleteRule: .nullify, inverse: \PersonGroup.members)
     var groups: [PersonGroup]?
+
+    /// Links where this person is the `A` end. Split in two because a link joins
+    /// two people and SwiftData needs one array per side; `connections` puts them
+    /// back together so nothing outside this file has to care.
+    @Relationship(deleteRule: .cascade, inverse: \PersonLink.personA)
+    var linksAsA: [PersonLink]?
+
+    @Relationship(deleteRule: .cascade, inverse: \PersonLink.personB)
+    var linksAsB: [PersonLink]?
 
     init(
         givenName: String = "",
@@ -126,6 +140,8 @@ final class Person {
         self.followUps = []
         self.tags = []
         self.groups = []
+        self.linksAsA = []
+        self.linksAsB = []
     }
 }
 
@@ -153,6 +169,25 @@ extension Person {
     var followUpList: [FollowUp] { followUps ?? [] }
     var tagList: [RelationshipTag] { tags ?? [] }
     var groupList: [PersonGroup] { groups ?? [] }
+
+    var linkList: [PersonLink] { (linksAsA ?? []) + (linksAsB ?? []) }
+
+    /// Everyone this person is linked to, resolved to "who · what they are".
+    ///
+    /// A link whose other end has been deleted resolves to nothing and drops out
+    /// rather than showing an empty row.
+    var connections: [PersonConnection] {
+        linkList
+            .compactMap { link in
+                guard let other = link.other(than: self) else { return nil }
+                return PersonConnection(link: link, person: other, label: link.label(from: self))
+            }
+            .sorted { $0.person.sortKey.localizedStandardCompare($1.person.sortKey) == .orderedAscending }
+    }
+
+    func isLinked(to other: Person) -> Bool {
+        linkList.contains { $0.joins(self, other) }
+    }
 
     var isLinkedToContact: Bool { contactIdentifier != nil }
 

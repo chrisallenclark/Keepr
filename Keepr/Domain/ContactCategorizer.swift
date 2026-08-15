@@ -67,8 +67,34 @@ enum ContactCategorizer {
             )
         }
 
-        let title = contact.jobTitle?.trimmingCharacters(in: .whitespaces) ?? ""
-        let company = contact.organizationName?.trimmingCharacters(in: .whitespaces) ?? ""
+        return suggestion(
+            jobTitle: contact.jobTitle,
+            company: contact.organizationName,
+            emails: contact.emailAddresses
+        )
+    }
+
+    /// The same rules applied to someone already in Keepr.
+    ///
+    /// People imported before there was any auto-categorization — or added by
+    /// hand and never classified — are exactly who the review queue is for, and
+    /// they deserve the same suggestions a fresh import would get.
+    static func suggestion(for person: Person) -> CategorySuggestion? {
+        suggestion(
+            jobTitle: person.jobTitle,
+            company: person.company,
+            emails: person.emailAddresses
+        )
+    }
+
+    /// The employer/title/email rules, shared by both entry points.
+    static func suggestion(
+        jobTitle rawTitle: String?,
+        company rawCompany: String?,
+        emails: [String]
+    ) -> CategorySuggestion? {
+        let title = rawTitle?.trimmingCharacters(in: .whitespaces) ?? ""
+        let company = rawCompany?.trimmingCharacters(in: .whitespaces) ?? ""
 
         if !company.isEmpty || !title.isEmpty {
             let lowerTitle = title.lowercased()
@@ -92,7 +118,7 @@ enum ContactCategorizer {
         }
 
         // A work email domain implies an employer the card didn't spell out.
-        if let domain = workEmailDomain(in: contact.emailAddresses) {
+        if let domain = workEmailDomain(in: emails) {
             return CategorySuggestion(
                 context: .business,
                 tagName: "Professional Contact",

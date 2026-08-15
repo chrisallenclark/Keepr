@@ -47,7 +47,7 @@ Never duplicate a person to put them in two contexts.
 
 ## 3. Data model
 
-Five SwiftData models. All properties have defaults, all to-one and to-many relationships
+Seven SwiftData models. All properties have defaults, all to-one and to-many relationships
 are optional, and no `@Attribute(.unique)` is used — these are the CloudKit requirements,
 adopted up front so sync can be switched on without a migration.
 
@@ -56,9 +56,21 @@ Person 1─* Interaction        (cascade)
 Person 1─* Memory             (cascade)
 Person 1─* FollowUp           (cascade)
 Person *─* RelationshipTag    (nullify)
+Person *─* PersonGroup        (nullify)
+Person 1─* PersonLink         (cascade, twice — one array per end)
 Interaction  1─* Memory             (nullify — memory outlives its source note)
 Interaction  1─* FollowUp           (nullify)
 ```
+
+Three ways of saying who someone is, deliberately kept apart:
+
+* **type** (`RelationshipTag`) — what they are to you: "Current Client".
+* **group** (`PersonGroup`) — where they came from: the gym, a conference, a dating app.
+* **link** (`PersonLink`) — who they are to *another person*: Linda is Alex's parent.
+
+A link is pairwise and reads differently from each end, which is why it isn't a group of
+two. One record serves both profiles: `labelAToB` and `labelBToA` are stored separately so
+"Manager" doesn't show up as "Manager" on the report's profile.
 
 * **Person** — the app-owned relationship profile. Named `Person`, not `Relationship`, so it
   doesn't shadow SwiftData's `@Relationship` macro — and it reads better at call sites.
@@ -68,7 +80,11 @@ Interaction  1─* FollowUp           (nullify)
   Contacts, which stays the source of truth; the snapshot is written once at import and is
   refreshed on demand through `ContactStoreProviding.contact(withIdentifier:)`.
 * **RelationshipTag** — a *model*, not an enum, so the taxonomy can evolve without a
-  migration. Seeded once with built-ins (`isBuiltIn`); users can add their own.
+  migration. Seeded once with built-ins (`isBuiltIn`); users can add their own. A built-in
+  is found by `builtInKey`, never by visible name — renaming "Family" must not silently
+  create a second "Family" on the next import.
+* **PersonGroup** — a named circle with a symbol. Membership only; no ranking, no roles.
+* **PersonLink** — a labelled connection between two people, with an optional note.
 * **Memory** — structured fact: content, category, importance, archived, source interaction.
 * **Interaction** — a logged meaningful interaction: kind, date, title, raw note, summary.
   Only ever what the *user* records. See §5.
@@ -124,7 +140,11 @@ confirms**; nothing is ever written to a person's record unreviewed.
   the app is fully usable if it's denied (people can be added by hand).
 * `CNAuthorizationStatus.limited` (iOS 18+) is a first-class state, not an error.
 * Relationship content is never written to `os_log`/console. `Logger` calls are metadata only.
-* Settings offers **Delete All Data**, which empties the store in one action.
+* New-contact detection (`ContactChangeTracker`) stores **contact identifiers only** — no
+  names, numbers or addresses — and the first run silently establishes a baseline rather
+  than presenting an entire address book as a to-do list.
+* Settings offers **Delete All Data**, which empties the store in one action, including the
+  seen-contacts baseline.
 
 ## 8. CloudKit path (not V0.1)
 
