@@ -107,6 +107,14 @@ enum SearchEngine {
         if contains(person.company) || contains(person.jobTitle) {
             return SearchResult(person: person, field: .company, snippet: person.subtitle)
         }
+        // "who did I meet that runs an agency" only works if what they do is
+        // searchable, which is most of the reason the field exists.
+        if contains(person.workNote) {
+            return SearchResult(person: person, field: .company, snippet: person.workNote)
+        }
+        if let group = person.groupList.first(where: { contains($0.name) }) {
+            return SearchResult(person: person, field: .tag, snippet: group.name)
+        }
         if let tag = person.tagList.first(where: { contains($0.name) }) {
             return SearchResult(person: person, field: .tag, snippet: tag.name)
         }

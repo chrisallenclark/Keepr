@@ -23,8 +23,15 @@ struct PersonProfileView: View {
     @State private var isConfirmingDelete = false
     @State private var isShowingLinkEditor = false
     @State private var isShowingNewPlace = false
+    @State private var isEditingWorkNote = false
+    @State private var workNoteDraft = ""
 
     @Query(sort: \PersonGroup.sortOrder) private var allPlaces: [PersonGroup]
+    @AppStorage(PreferenceKey.groupLabel) private var groupLabel = GroupVocabulary.default.singular
+
+    /// The user's word for the second axis, in the shapes the copy needs.
+    private var groupPlural: String { GroupVocabulary.plural(for: groupLabel) }
+    private var article: String { GroupVocabulary.article(for: groupLabel) }
 
     var body: some View {
         List {
@@ -47,6 +54,7 @@ struct PersonProfileView: View {
             }
 
             nextActionSection
+            workSection
             placesSection
             memoriesSection
             connectionsSection
@@ -219,6 +227,77 @@ struct PersonProfileView: View {
         }
     }
 
+    // MARK: - Work
+
+    /// Who they work for and what they actually do.
+    ///
+    /// The reason this is a section and not a line in Details: the client you
+    /// train at 6am might run a business you'd learn a lot from, and that fact is
+    /// worth nothing if it's buried under an employer field you never read.
+    @ViewBuilder
+    private var workSection: some View {
+        let employer = [person.jobTitle, person.company]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+        let hasWorkNote = !(person.workNote ?? "").isEmpty
+
+        if !employer.isEmpty || hasWorkNote || isEditingWorkNote {
+            Section {
+                if !employer.isEmpty {
+                    Label(employer, systemImage: "building.2")
+                        .font(.subheadline)
+                }
+
+                if let note = person.workNote, !note.isEmpty, !isEditingWorkNote {
+                    Button {
+                        startEditingWorkNote()
+                    } label: {
+                        Text(note)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                } else if isEditingWorkNote {
+                    HStack {
+                        TextField(
+                            "Owns a Shopify brand — good person to learn ads from",
+                            text: $workNoteDraft,
+                            axis: .vertical
+                        )
+                        .font(.subheadline)
+                        Button("Save", action: saveWorkNote)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                } else {
+                    Button {
+                        startEditingWorkNote()
+                    } label: {
+                        Label("What do they do?", systemImage: "plus.circle")
+                            .font(.subheadline)
+                    }
+                }
+            } header: {
+                Text("What They Do")
+            }
+        } else {
+            Section {
+                Button {
+                    startEditingWorkNote()
+                } label: {
+                    Label("What do they do?", systemImage: "plus.circle")
+                        .font(.subheadline)
+                }
+            } header: {
+                Text("What They Do")
+            } footer: {
+                Text("Who they work for, what they run, what they're good at. The thing you'd want in front of you before the next conversation.")
+            }
+        }
+    }
+
     // MARK: - Places
 
     /// Where this relationship lives. Someone can be in more than one — a client
@@ -234,7 +313,7 @@ struct PersonProfileView: View {
         Section {
             if places.isEmpty {
                 placeMenu {
-                    Label("Add a place", systemImage: "mappin.and.ellipse")
+                    Label("Add \(article) \(groupLabel.lowercased())", systemImage: "mappin.and.ellipse")
                         .font(.subheadline)
                 }
             } else {
@@ -260,7 +339,7 @@ struct PersonProfileView: View {
             }
         } header: {
             HStack {
-                Text("Where")
+                Text(groupPlural)
                 Spacer()
                 if !places.isEmpty {
                     placeMenu {
@@ -272,7 +351,7 @@ struct PersonProfileView: View {
             }
         } footer: {
             if places.isEmpty {
-                Text("The gym you train at, home, the bar you met in. Places let you see everyone from one — clients and colleagues together.")
+                Text("Life Time, your training company, the bar you met in. One of these shows you everyone from it at once — clients and colleagues together.")
             }
         }
     }
@@ -294,7 +373,7 @@ struct PersonProfileView: View {
             Button {
                 isShowingNewPlace = true
             } label: {
-                SwiftUI.Label("New Place…", systemImage: "plus")
+                SwiftUI.Label("New \(groupLabel)…", systemImage: "plus")
             }
         } label: {
             label()
@@ -506,6 +585,22 @@ struct PersonProfileView: View {
             .first?
             .occurredAt
         try? context.save()
+    }
+
+    private func startEditingWorkNote() {
+        workNoteDraft = person.workNote ?? ""
+        withAnimation { isEditingWorkNote = true }
+    }
+
+    private func saveWorkNote() {
+        let trimmed = workNoteDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        withAnimation {
+            person.workNote = trimmed.isEmpty ? nil : trimmed
+            person.touch()
+            isEditingWorkNote = false
+        }
+        try? context.save()
+        Haptics.success()
     }
 
     private func add(_ place: PersonGroup) {

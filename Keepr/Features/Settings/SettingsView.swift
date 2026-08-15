@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @AppStorage(PreferenceKey.remindersEnabled) private var remindersEnabled = true
+    @AppStorage(PreferenceKey.groupLabel) private var groupLabel = GroupVocabulary.default.singular
     @AppStorage(PreferenceKey.hasAskedForNotifications) private var hasAskedForNotifications = false
 
     @Query private var people: [Person]
@@ -21,6 +22,23 @@ struct SettingsView: View {
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var isSampleDataLoaded = false
     @State private var isConfirmingDelete = false
+
+    /// Everyone organizes people by *something* — which of my businesses, which
+    /// gym, which dating app, which chapter of my life. The app can't pick the
+    /// noun for all of them, so it asks once and then uses their word everywhere.
+    private var vocabularySection: some View {
+        Section {
+            Picker("Call them", selection: $groupLabel) {
+                ForEach(GroupVocabulary.presets) { option in
+                    Text(option.plural).tag(option.singular)
+                }
+            }
+        } header: {
+            Text("Wording")
+        } footer: {
+            Text("The second way Keepr sorts people, after relationship type. Life Time and your training company are \(GroupVocabulary.plural(for: groupLabel).lowercased()); so are Hinge and Bumble, or the bar you met someone in. Someone can be in more than one.")
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -38,6 +56,8 @@ struct SettingsView: View {
                         )
                     }
                 }
+
+                vocabularySection
 
                 Section {
                     LabeledContent("Contacts", value: contactAccessLabel)

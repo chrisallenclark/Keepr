@@ -15,11 +15,12 @@ enum PersonImporter {
     static func makePerson(
         from contact: ContactSummary,
         context relationship: RelationshipContext,
-        in modelContext: ModelContext
+        in modelContext: ModelContext,
+        suggestion: CategorySuggestion? = nil
     ) -> Person {
         let person = Person(
-            givenName: contact.givenName,
-            familyName: contact.familyName,
+            givenName: suggestion?.cleanedGivenName ?? contact.givenName,
+            familyName: suggestion?.cleanedFamilyName ?? contact.familyName,
             context: relationship,
             contactIdentifier: contact.identifier,
             company: contact.organizationName,
@@ -74,20 +75,51 @@ enum PersonImporter {
         }
     }
 
-    /// Applies a suggested category. Adds the type rather than replacing what's
-    /// there — a suggestion is never allowed to remove a decision the user made.
+    /// Applies a suggested category. Adds types and groups rather than replacing
+    /// what's there — a suggestion is never allowed to remove a decision the
+    /// user made.
     static func apply(
         _ suggestion: CategorySuggestion,
         to person: Person,
-        in modelContext: ModelContext
+        in modelContext: ModelContext,
+        groups: [PersonGroup] = []
     ) {
         person.context = suggestion.context
 
-        guard let tagName = suggestion.tagName else { return }
         let kind: TagKind = suggestion.context == .personal ? .personal : .business
-        let tag = KeeprStore.tag(named: tagName, kind: kind, in: modelContext)
+        for name in ([suggestion.tagName].compactMap { $0 } + suggestion.extraTagNames) {
+            let tag = KeeprStore.tag(named: name, kind: kind, in: modelContext)
+            guard !person.tagList.contains(where: { $0.id == tag.id }) else { continue }
+            person.tags = person.tagList + [tag]
+        }
 
-        guard !person.tagList.contains(where: { $0.id == tag.id }) else { return }
-        person.tags = person.tagList + [tag]
+        for id in suggestion.groupIDs {
+            guard let group = groups.first(where: { $0.id.uuidString == id }),
+                  !person.isMember(of: group)
+            else { continue }
+            person.groups = person.groupList + [group]
+        }
+    }
+
+    /// Records what the contact card actually said, when the shorthand was
+    /// removed from the name.
+    ///
+    /// The cleanup is only safe because it's reversible by reading: the original
+    /// is written to the profile as a memory, and the iPhone contact card itself
+    /// is never touched.
+    static func noteOriginalName(
+        _ suggestion: CategorySuggestion,
+        for person: Person,
+        in modelContext: ModelContext
+    ) {
+        guard let original = suggestion.originalName else { return }
+        modelContext.insert(
+            Memory(
+                content: "Contact card says: \(original)",
+                category: .other,
+                importance: .low,
+                person: person
+            )
+        )
     }
 }

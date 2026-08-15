@@ -42,6 +42,11 @@ enum RelationshipContext: String, CaseIterable, Identifiable, Codable, Sendable 
         self = mode == .business ? .business : .personal
     }
 
+    /// The side a relationship type sits on.
+    init(kind: TagKind) {
+        self = kind == .business ? .business : .personal
+    }
+
     var title: String {
         switch self {
         case .business: "Business"

@@ -140,6 +140,7 @@ enum PeopleEngine {
             person.preferredName ?? "",
             person.company ?? "",
             person.jobTitle ?? "",
+            person.workNote ?? "",
             person.tagList.map(\.name).joined(separator: " ")
         ].joined(separator: " ")
         return haystack.localizedStandardContains(query)

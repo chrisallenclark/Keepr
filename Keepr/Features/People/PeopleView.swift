@@ -12,6 +12,11 @@ struct PeopleView: View {
     @Query(sort: \Person.familyName) private var people: [Person]
     @Query(sort: \RelationshipTag.sortOrder) private var tags: [RelationshipTag]
     @Query(sort: \PersonGroup.sortOrder) private var groups: [PersonGroup]
+    @AppStorage(PreferenceKey.groupLabel) private var groupLabel = GroupVocabulary.default.singular
+
+    /// The user's word for the second axis, in the shapes the copy needs.
+    private var groupPlural: String { GroupVocabulary.plural(for: groupLabel) }
+    private var article: String { GroupVocabulary.article(for: groupLabel) }
 
     @State private var searchText = ""
     @State private var selectedTag: String?
@@ -241,7 +246,7 @@ struct PeopleView: View {
                     FilterChipRow(title: "Type", facets: typeFacets, selection: $selectedTag)
                 }
                 if !placeFacets.isEmpty {
-                    FilterChipRow(title: "Place", facets: placeFacets, selection: $selectedPlaceID)
+                    FilterChipRow(title: groupLabel, facets: placeFacets, selection: $selectedPlaceID)
                 } else {
                     addAPlaceRow
                 }
@@ -258,7 +263,7 @@ struct PeopleView: View {
         Button {
             isShowingGroups = true
         } label: {
-            Label("Add a place — the gym you train at, home, a bar", systemImage: "mappin.and.ellipse")
+            Label("Add \(article) \(groupLabel.lowercased()) — a gym, one of your businesses, an app", systemImage: "mappin.and.ellipse")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -370,7 +375,7 @@ struct PeopleView: View {
 
         let relevantGroups = groups.filter { $0.matches(mode) }
         if !relevantGroups.isEmpty {
-            Menu("Add to Place") {
+            Menu("Add to \(groupLabel)") {
                 ForEach(relevantGroups) { group in
                     Button {
                         bulkAddToGroup(group)
@@ -461,7 +466,7 @@ struct PeopleView: View {
             Button {
                 isShowingGroups = true
             } label: {
-                Label("Manage Places", systemImage: "mappin.and.ellipse")
+                Label("Manage \(groupPlural)", systemImage: "mappin.and.ellipse")
             }
             Button {
                 isShowingTypes = true

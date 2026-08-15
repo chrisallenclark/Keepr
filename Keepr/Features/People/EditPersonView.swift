@@ -24,6 +24,7 @@ struct EditPersonView: View {
     @State private var preferredName = ""
     @State private var company = ""
     @State private var jobTitle = ""
+    @State private var workNote = ""
     @State private var phone = ""
     @State private var email = ""
     @State private var relationshipContext: RelationshipContext = .business
@@ -68,11 +69,17 @@ struct EditPersonView: View {
 
                 tagsSection
 
-                Section("Work") {
+                Section {
                     TextField("Company", text: $company)
                         .textContentType(.organizationName)
                     TextField("Title", text: $jobTitle)
                         .textContentType(.jobTitle)
+                    TextField("What they do", text: $workNote, axis: .vertical)
+                        .lineLimit(1...4)
+                } header: {
+                    Text("Work")
+                } footer: {
+                    Text("\"What they do\" is for your words, not the contact card's — what they run, what they're good at, what you could learn from them.")
                 }
 
                 Section("Reach them") {
@@ -178,6 +185,7 @@ struct EditPersonView: View {
             preferredName = person.preferredName ?? ""
             company = person.company ?? ""
             jobTitle = person.jobTitle ?? ""
+            workNote = person.workNote ?? ""
             phone = person.primaryPhone ?? ""
             email = person.primaryEmail ?? ""
             relationshipContext = person.context
@@ -218,6 +226,7 @@ struct EditPersonView: View {
         target.preferredName = nonEmpty(preferredName)
         target.company = nonEmpty(company)
         target.jobTitle = nonEmpty(jobTitle)
+        target.workNote = nonEmpty(workNote)
         target.phoneNumbers = nonEmpty(phone).map { [$0] } ?? []
         target.emailAddresses = nonEmpty(email).map { [$0] } ?? []
         target.context = relationshipContext
