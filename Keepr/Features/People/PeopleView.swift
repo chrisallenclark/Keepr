@@ -365,12 +365,20 @@ struct PeopleView: View {
     /// icons: the actions are all "apply X to these people", and a menu names
     /// them in words instead of asking anyone to decode glyphs.
     private var bulkActionBar: some View {
-        HStack {
-            Button("Select All") { selection = Set(filtered.map(\.id)) }
-                .font(.subheadline)
-                .disabled(selection.count == filtered.count)
+        HStack(spacing: Theme.Spacing.large) {
+            // Done lives down here as well as in the toolbar, because the
+            // toolbar's copy is hidden while the search field is up — leaving
+            // no way out of selection without first abandoning the search.
+            Button("Done") { endSelecting() }
+                .font(.subheadline.weight(.semibold))
 
-            Spacer()
+            Spacer(minLength: 0)
+
+            Button(allVisibleSelected ? "Deselect All" : "Select All") {
+                toggleSelectAll()
+            }
+            .font(.subheadline)
+            .disabled(filtered.isEmpty)
 
             Menu {
                 bulkMenuContents
@@ -383,6 +391,28 @@ struct PeopleView: View {
         .padding(.horizontal)
         .padding(.vertical, Theme.Spacing.small)
         .background(.bar)
+    }
+
+    /// Everyone currently on screen is ticked. Judged against what's visible,
+    /// not the whole address book, so searching for "mar" and tapping Select All
+    /// means those results and nothing else.
+    private var allVisibleSelected: Bool {
+        !filtered.isEmpty && Set(filtered.map(\.id)).isSubset(of: selection)
+    }
+
+    /// Selects or clears exactly the visible people. Anyone selected before a
+    /// search narrowed the list stays selected — clearing what you can't see
+    /// would silently undo work.
+    private func toggleSelectAll() {
+        let visible = Set(filtered.map(\.id))
+        withAnimation {
+            if allVisibleSelected {
+                selection.subtract(visible)
+            } else {
+                selection.formUnion(visible)
+            }
+        }
+        Haptics.selection()
     }
 
     @ViewBuilder
