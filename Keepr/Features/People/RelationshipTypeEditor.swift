@@ -4,12 +4,15 @@ import SwiftUI
 /// Manage relationship types.
 ///
 /// The built-in list is a starting point, not a taxonomy: a realtor thinks in
-/// "Past Buyer" and a coach in "Nutrition Client". Anyone can add their own, and
-/// built-ins can be renamed and re-symbolled — but never deleted, so the seeded
-/// names the rest of the app looks up still resolve to something.
+/// "Past Buyer" and a coach in "Nutrition Client". Anything here can be renamed,
+/// re-symbolled, or deleted — built-ins included. A starter list you can't clear
+/// out isn't a starting point, it's a permanent argument with the app.
 struct RelationshipTypeEditor: View {
 
     @Binding var mode: ContextMode
+    /// Opens straight into the new-type row, for callers who arrived by tapping
+    /// "New Type" somewhere else.
+    var startsCreating = false
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -59,7 +62,7 @@ struct RelationshipTypeEditor: View {
             } header: {
                 Text("\(kind.title) Types")
             } footer: {
-                Text("Tap a type to rename it or change its symbol. Built-in types can't be deleted.")
+                Text("Tap a type to rename it or change its symbol. Swipe to delete — including the ones Keepr started you with. Deleting a type never deletes anyone.")
             }
         }
         .listStyle(.insetGrouped)
@@ -100,6 +103,9 @@ struct RelationshipTypeEditor: View {
         }
         .onChange(of: draftName) { _, _ in duplicateWarning = nil }
         .onChange(of: draftKind) { _, _ in duplicateWarning = nil }
+        .onAppear {
+            if startsCreating, !isCreating { startCreating() }
+        }
     }
 
     // MARK: - Creator
@@ -186,13 +192,13 @@ struct RelationshipTypeEditor: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        // Full swipe is off: deletion asks first, and a gesture that ends in a
+        // dialog shouldn't feel like it already happened.
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if !tag.isBuiltIn {
-                Button(role: .destructive) {
-                    pendingDeletion = tag
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
+            Button(role: .destructive) {
+                pendingDeletion = tag
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
     }
@@ -253,7 +259,8 @@ struct RelationshipTypeEditor: View {
 
     private func delete(_ tag: RelationshipTag) {
         // Person.tags is a nullify relationship, so this unmarks people rather
-        // than removing them.
+        // than removing them. Seeding remembers the built-in was offered, so a
+        // deleted one doesn't reappear on the next launch.
         withAnimation { context.delete(tag) }
         try? context.save()
         pendingDeletion = nil
@@ -326,7 +333,7 @@ private struct RelationshipTypeDetailEditor: View {
                     }
                 } footer: {
                     if tag.isBuiltIn {
-                        Text("This is one of Keepr's built-in types. You can rename it, but it can't be deleted.")
+                        Text("One of the types Keepr started you with. Rename it, re-symbol it, or delete it from the list — it's yours.")
                     }
                 }
             }

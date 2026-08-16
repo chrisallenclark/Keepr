@@ -27,6 +27,7 @@ struct CategorizeSheet: View {
     @State private var selectedTagID: UUID?
     @State private var selectedGroupIDs: Set<UUID> = []
     @State private var howWeMet = ""
+    @State private var isShowingTypeEditor = false
     @State private var hasLoaded = false
 
     private var kind: TagKind {
@@ -94,6 +95,13 @@ struct CategorizeSheet: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.inline)
+
+                    Button {
+                        isShowingTypeEditor = true
+                    } label: {
+                        Label("New Type…", systemImage: "plus.circle")
+                            .font(.subheadline)
+                    }
                 }
 
                 if !relevantGroups.isEmpty {
@@ -142,6 +150,11 @@ struct CategorizeSheet: View {
                 }
             }
             .onAppear(perform: load)
+            .sheet(isPresented: $isShowingTypeEditor) {
+                NavigationStack {
+                    RelationshipTypeEditor(mode: .constant(mode), startsCreating: true)
+                }
+            }
         }
         .presentationDragIndicator(.visible)
     }

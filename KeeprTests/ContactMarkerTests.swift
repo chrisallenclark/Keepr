@@ -246,6 +246,33 @@ struct ContactMarkerTests {
         #expect(suggestion.cleanedGivenName == nil)
     }
 
+    @Test("A type the user deleted is not suggested back into existence")
+    func deletedTypesAreNotSuggested() throws {
+        let store = try TestStore()
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        // They don't think of anyone as a "Professional Contact" and got rid of it.
+        let unwanted = try #require(
+            try store.fetch(RelationshipTag.self).first { $0.builtInKey == "Professional Contact" }
+        )
+        store.context.delete(unwanted)
+        try store.save()
+
+        let vocabulary = MarkerVocabulary.build(
+            groups: try store.fetch(PersonGroup.self),
+            tags: try store.fetch(RelationshipTag.self)
+        )
+        let suggestion = try #require(
+            ContactCategorizer.suggestion(
+                for: contact(given: "Nina", family: "Ortega", organization: "Coastal Design"),
+                vocabulary: vocabulary
+            )
+        )
+
+        #expect(suggestion.tagName == nil, "no resurrecting a type they threw away")
+        #expect(suggestion.context == .business, "the employer still says which side they're on")
+    }
+
     // MARK: - Discovery
 
     @Test("Shorthand on several cards is offered as a group to create")

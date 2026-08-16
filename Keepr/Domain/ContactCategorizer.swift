@@ -81,7 +81,20 @@ enum ContactCategorizer {
         vocabulary: MarkerVocabulary
     ) -> CategorySuggestion? {
         let markers = ContactMarkerParser.parse(contact, vocabulary: vocabulary)
-        let inferred = suggestion(for: contact)
+        // A type the user deleted is a decision. Inferring "Vendor" from an
+        // employer field and quietly recreating it would undo that, so the
+        // inference keeps its context and drops the type it can't offer.
+        let inferred = suggestion(for: contact).map { suggestion -> CategorySuggestion in
+            // An empty vocabulary means nobody told us what exists, not that
+            // everything was deleted.
+            guard !vocabulary.types.isEmpty,
+                  let name = suggestion.tagName,
+                  !vocabulary.types.contains(where: { $0.display == name })
+            else { return suggestion }
+            var trimmed = suggestion
+            trimmed.tagName = nil
+            return trimmed
+        }
 
         guard !markers.isEmpty else { return inferred }
 
