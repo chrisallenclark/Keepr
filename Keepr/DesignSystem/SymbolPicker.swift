@@ -7,6 +7,10 @@ import SwiftUI
 /// doesn't exist renders as a blank square with no error — so every entry here
 /// has been verified to ship in iOS 17. A short list is also far quicker to pick
 /// from than five thousand icons.
+///
+/// It's weighted towards what this app is for. Nobody categorizing their
+/// business contacts needs a snowflake, a cat and a tent; they need something
+/// that reads as *client*, *past client*, *trainer*, *partner*, *meal prep*.
 struct SymbolPicker: View {
 
     @Binding var selection: String
@@ -29,7 +33,7 @@ struct SymbolPicker: View {
         guard !trimmed.isEmpty else { return Self.catalogue }
 
         return Self.catalogue.compactMap { category in
-            let matches = category.symbols.filter { $0.contains(trimmed) }
+            let matches = category.symbols.filter { $0.matches(trimmed) }
             return matches.isEmpty ? nil : Category(title: category.title, symbols: matches)
         }
     }
@@ -40,8 +44,8 @@ struct SymbolPicker: View {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: Theme.Spacing.small) {
                     ForEach(visibleCategories) { category in
                         Section {
-                            ForEach(category.symbols, id: \.self) { name in
-                                cell(name)
+                            ForEach(category.symbols) { symbol in
+                                cell(symbol.name)
                             }
                         } header: {
                             Text(category.title)
@@ -61,7 +65,7 @@ struct SymbolPicker: View {
                     ContentUnavailableView.search(text: query)
                 }
             }
-            .searchable(text: $query, prompt: "Search symbols")
+            .searchable(text: $query, prompt: "Search — client, gym, meal, money…")
             .navigationTitle("Choose a Symbol")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -116,157 +120,155 @@ extension SymbolPicker {
 
 extension SymbolPicker {
 
+    /// One symbol, plus the words someone would actually type looking for it.
+    ///
+    /// Searching by filename is useless here: nobody hunting for a client icon
+    /// types "checkmark.seal". The keywords are what make this a picker rather
+    /// than a list you scroll until something catches your eye.
+    struct Symbol: Identifiable, Hashable {
+        let name: String
+        let keywords: String
+
+        var id: String { name }
+
+        init(_ name: String, _ keywords: String = "") {
+            self.name = name
+            self.keywords = keywords
+        }
+
+        func matches(_ query: String) -> Bool {
+            name.contains(query) || keywords.contains(query)
+        }
+    }
+
     struct Category: Identifiable {
         let title: String
-        let symbols: [String]
+        let symbols: [Symbol]
 
         var id: String { title }
     }
 
-    /// Grouped the way someone shopping for an icon thinks, not the way Apple
-    /// files them. Anything ambiguous was left out rather than guessed at.
+    /// Ordered by how often this app's users reach for them, not how Apple files
+    /// them. Anything ambiguous was left out rather than guessed at.
     static let catalogue: [Category] = [
-        Category(title: "People", symbols: [
-            "person",
-            "person.2",
-            "person.3",
-            "person.crop.circle",
-            "person.2.circle",
-            "person.badge.plus",
-            "figure.2.and.child.holdinghands",
-            "figure.and.child.holdinghands",
-            "hand.wave",
-            "face.smiling",
-            "graduationcap",
-            "crown"
+        Category(title: "Clients & Deals", symbols: [
+            .init("checkmark.seal", "client current active signed confirmed"),
+            .init("person.crop.circle.badge.checkmark", "client active confirmed member"),
+            .init("sparkles", "potential prospect lead new opportunity"),
+            .init("flame", "lead hot warm urgent priority"),
+            .init("target", "prospect goal pipeline aim"),
+            .init("clock.arrow.circlepath", "past former previous lapsed alumni win back"),
+            .init("person.badge.clock", "past former pending waiting"),
+            .init("person.badge.plus", "new candidate recruit signup prospect"),
+            .init("dollarsign.circle", "money paid revenue invoice paying"),
+            .init("creditcard", "payment billing subscription"),
+            .init("banknote", "money cash revenue paid"),
+            .init("cart", "sale purchase order buyer customer"),
+            .init("bag", "sale customer buyer retail"),
+            .init("percent", "discount commission rate deal"),
+            .init("chart.line.uptrend.xyaxis", "growth investor revenue results progress"),
+            .init("signature", "contract signed agreement deal close"),
+            .init("megaphone", "marketing promotion outreach campaign"),
+            .init("star", "vip best favourite favorite top")
         ]),
-        Category(title: "Places", symbols: [
-            "house",
-            "building",
-            "building.2",
-            "building.columns",
-            "map",
-            "mappin",
-            "mappin.and.ellipse",
-            "globe",
-            "airplane",
-            "car",
-            "bus",
-            "tram",
-            "bicycle",
-            "beach.umbrella"
+        Category(title: "Business & Work", symbols: [
+            .init("briefcase", "work business professional job company"),
+            .init("building.2", "company office business corporate employer"),
+            .init("building.columns", "bank institution finance legal"),
+            .init("person.2", "partner colleague coworker connection two"),
+            .init("person.2.circle", "colleague team coworker peers"),
+            .init("person.3", "team staff crew group employees"),
+            .init("network", "connection networking contacts web referral"),
+            .init("link", "connection referral linked introduced"),
+            .init("arrow.triangle.branch", "referral introduced source pipeline"),
+            .init("laptopcomputer", "work remote tech online"),
+            .init("doc.text", "contract paperwork proposal document"),
+            .init("folder", "project account file client folder"),
+            .init("calendar", "schedule booking appointment recurring"),
+            .init("clock", "schedule time hourly session"),
+            .init("chart.bar", "results numbers performance report"),
+            .init("chart.pie", "share split breakdown equity"),
+            .init("lightbulb", "advisor idea mentor consultant"),
+            .init("graduationcap", "mentor coach teacher student education"),
+            .init("crown", "vip executive ceo founder owner boss"),
+            .init("trophy", "top best winner champion success"),
+            .init("rosette", "award certified qualified accredited"),
+            .init("key", "landlord access owner property"),
+            .init("wrench.and.screwdriver", "contractor trades service repair vendor"),
+            .init("shippingbox", "vendor supplier delivery product"),
+            .init("gearshape", "operations service ops technical"),
+            .init("globe", "international remote online web"),
+            .init("airplane", "travel remote out of town")
         ]),
-        Category(title: "Activity", symbols: [
-            "figure.run",
-            "figure.walk",
-            "figure.hiking",
-            "figure.yoga",
-            "figure.pool.swim",
-            "figure.basketball",
-            "figure.wave",
-            "dumbbell",
-            "sportscourt",
-            "gamecontroller",
-            "music.note",
-            "music.mic",
-            "guitars",
-            "paintbrush",
-            "camera",
-            "theatermasks",
-            "fork.knife"
+        Category(title: "Training & Fitness", symbols: [
+            .init("dumbbell", "training gym lifting weights personal trainer client"),
+            .init("figure.strengthtraining.traditional", "training gym lifting weights trainer"),
+            .init("figure.run", "running cardio gym fitness client"),
+            .init("figure.walk", "walking steps mobility"),
+            .init("figure.yoga", "yoga stretch mobility class"),
+            .init("figure.mind.and.body", "wellness recovery mindset coaching"),
+            .init("figure.pool.swim", "swim pool aquatics"),
+            .init("figure.basketball", "sport basketball league team"),
+            .init("sportscourt", "gym court facility club team"),
+            .init("stopwatch", "session timing interval conditioning"),
+            .init("bolt.heart", "conditioning cardio energy health"),
+            .init("waveform.path.ecg", "health progress metrics results"),
+            .init("scalemass", "weight progress body measurement"),
+            .init("heart", "health wellness personal care")
         ]),
-        Category(title: "Work", symbols: [
-            "briefcase",
-            "laptopcomputer",
-            "doc.text",
-            "folder",
-            "calendar",
-            "clock",
-            "chart.line.uptrend.xyaxis",
-            "chart.bar",
-            "chart.pie",
-            "dollarsign.circle",
-            "creditcard",
-            "banknote",
-            "checkmark.seal",
-            "target",
-            "lightbulb",
-            "megaphone",
-            "wrench.and.screwdriver"
+        Category(title: "Food & Meal Prep", symbols: [
+            .init("fork.knife", "meal prep food nutrition dinner client"),
+            .init("takeoutbag.and.cup.and.straw", "meal prep delivery takeout order food"),
+            .init("basket", "grocery shopping meal prep order"),
+            .init("carrot", "nutrition food vegetables diet meal"),
+            .init("leaf", "nutrition healthy plant diet"),
+            .init("cup.and.saucer", "coffee meeting catch up chat"),
+            .init("wineglass", "drinks dinner social client entertaining"),
+            .init("birthday.cake", "birthday celebration anniversary")
         ]),
-        Category(title: "Objects", symbols: [
-            "bag",
-            "cart",
-            "gift",
-            "shippingbox",
-            "envelope",
-            "phone",
-            "message",
-            "bell",
-            "key",
-            "lock",
-            "book",
-            "books.vertical",
-            "bookmark",
-            "paperclip",
-            "pencil",
-            "scissors",
-            "eyeglasses",
-            "bed.double",
-            "cup.and.saucer",
-            "wineglass",
-            "ticket",
-            "headphones"
+        Category(title: "People & Personal", symbols: [
+            .init("person", "person individual acquaintance someone"),
+            .init("person.crop.circle", "profile contact individual"),
+            .init("person.text.rectangle", "contact card details record"),
+            .init("hand.wave", "friend hello greeting casual"),
+            .init("face.smiling", "friend friendly casual social"),
+            .init("hands.sparkles", "thanks gratitude helper supporter"),
+            .init("house", "family home household personal"),
+            .init("figure.2.and.child.holdinghands", "family kids parents household"),
+            .init("figure.and.child.holdinghands", "family parent child"),
+            .init("gift", "gift birthday thank you present"),
+            .init("moon.stars", "night out evening social bar"),
+            .init("music.note", "music band hobby social"),
+            .init("ticket", "event concert game invite"),
+            .init("camera", "photography creative hobby"),
+            .init("book", "reading study book club"),
+            .init("car", "commute local drive neighbour"),
+            .init("mappin.and.ellipse", "place location venue local"),
+            .init("building", "neighbourhood building apartment local")
         ]),
-        Category(title: "Nature", symbols: [
-            "leaf",
-            "tree",
-            "flame",
-            "drop",
-            "bolt",
-            "sun.max",
-            "moon",
-            "moon.stars",
-            "cloud",
-            "snowflake",
-            "wind",
-            "sparkles",
-            "pawprint",
-            "dog",
-            "cat",
-            "bird",
-            "fish",
-            "mountain.2",
-            "water.waves",
-            "tent"
-        ]),
-        Category(title: "Symbols", symbols: [
-            "star",
-            "heart",
-            "flag",
-            "tag",
-            "circle",
-            "square",
-            "triangle",
-            "diamond",
-            "hexagon",
-            "seal",
-            "shield",
-            "sparkle",
-            "arrow.triangle.branch",
-            "checkmark.circle",
-            "exclamationmark.circle",
-            "questionmark.circle",
-            "info.circle",
-            "rosette",
-            "trophy",
-            "gearshape",
-            "circle.hexagongrid"
+        Category(title: "Marks & Status", symbols: [
+            .init("tag", "tag label category general"),
+            .init("bookmark", "saved shortlist keep"),
+            .init("flag", "flagged important follow up"),
+            .init("pin", "pinned priority important"),
+            .init("checkmark.circle", "done complete confirmed active"),
+            .init("exclamationmark.circle", "urgent attention issue"),
+            .init("questionmark.circle", "unknown unsure to decide uncategorized"),
+            .init("hourglass", "waiting pending slow stalled"),
+            .init("archivebox", "archived inactive dormant cold"),
+            .init("bell", "reminder follow up notify"),
+            .init("hand.thumbsup", "good positive approved happy"),
+            .init("shield", "trusted protected private"),
+            .init("lock", "private confidential sensitive"),
+            .init("eye", "watching monitor keep an eye"),
+            .init("seal", "official verified certified"),
+            .init("circle.hexagongrid", "both mixed general other"),
+            .init("square.grid.2x2", "group set collection")
         ])
     ]
 }
 
 #Preview {
-    SymbolPicker(selection: .constant("figure.run"))
+    SymbolPicker(selection: .constant("dumbbell"))
         .modelContainer(.preview)
 }

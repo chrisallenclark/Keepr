@@ -80,12 +80,14 @@ extension RelationshipTag {
     static let builtInCatalog: [BuiltIn] = [
         // Business
         .init(name: "Current Client", kind: .business, symbolName: "checkmark.seal"),
+        .init(name: "Past Client", kind: .business, symbolName: "clock.arrow.circlepath"),
         .init(name: "Potential Client", kind: .business, symbolName: "sparkles"),
         .init(name: "Lead", kind: .business, symbolName: "flame"),
         .init(name: "Business Partner", kind: .business, symbolName: "person.2"),
         .init(name: "Referral Source", kind: .business, symbolName: "arrow.triangle.branch"),
         .init(name: "Vendor", kind: .business, symbolName: "shippingbox"),
         .init(name: "Team", kind: .business, symbolName: "person.3"),
+        .init(name: "Colleague", kind: .business, symbolName: "person.2.circle"),
         .init(name: "Professional Contact", kind: .business, symbolName: "briefcase"),
         .init(name: "Investor", kind: .business, symbolName: "chart.line.uptrend.xyaxis"),
         .init(name: "Mentor", kind: .business, symbolName: "graduationcap"),
