@@ -34,6 +34,7 @@ struct EditPersonView: View {
     @State private var introducedBy = ""
     @State private var notes = ""
     @State private var selectedTagIDs: Set<UUID> = []
+    @State private var isShowingTypeEditor = false
     @State private var hasLoaded = false
 
     @FocusState private var isNameFocused: Bool
@@ -122,6 +123,11 @@ struct EditPersonView: View {
                 }
             }
             .onAppear(perform: load)
+            .sheet(isPresented: $isShowingTypeEditor) {
+                NavigationStack {
+                    RelationshipTypeEditor(mode: .constant(mode), startsCreating: true)
+                }
+            }
         }
     }
 
@@ -157,10 +163,16 @@ struct EditPersonView: View {
                 }
                 .buttonStyle(.plain)
             }
+            Button {
+                isShowingTypeEditor = true
+            } label: {
+                Label("New Type…", systemImage: "plus.circle")
+                    .font(.subheadline)
+            }
         } header: {
             Text("Relationship Type")
         } footer: {
-            Text("Pick as many as fit. Someone can be a friend and a referral source.")
+            Text("Pick as many as fit. Someone can be a friend and a referral source. Make your own if none of these are how you'd put it.")
         }
     }
 

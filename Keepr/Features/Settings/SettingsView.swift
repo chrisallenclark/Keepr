@@ -14,6 +14,7 @@ struct SettingsView: View {
 
     @AppStorage(PreferenceKey.remindersEnabled) private var remindersEnabled = true
     @AppStorage(PreferenceKey.groupLabel) private var groupLabel = GroupVocabulary.default.singular
+    @AppStorage(PreferenceKey.contextMode) private var contextModeRaw = ContextMode.business.rawValue
     @AppStorage(PreferenceKey.hasAskedForNotifications) private var hasAskedForNotifications = false
 
     @Query private var people: [Person]
@@ -40,6 +41,34 @@ struct SettingsView: View {
         }
     }
 
+    /// Settings is where people look for "how do I change the categories" —
+    /// before they think to look inside a filter menu on another tab.
+    private var organizingSection: some View {
+        Section {
+            NavigationLink {
+                RelationshipTypeEditor(mode: mode)
+            } label: {
+                Label("Relationship Types", systemImage: "tag")
+            }
+            NavigationLink {
+                GroupsView(mode: mode)
+            } label: {
+                Label(GroupVocabulary.plural(for: groupLabel), systemImage: "mappin.and.ellipse")
+            }
+        } header: {
+            Text("Organizing")
+        } footer: {
+            Text("Add your own, rename them, choose a symbol, or delete the ones you'll never use — including the ones Keepr started you with.")
+        }
+    }
+
+    private var mode: Binding<ContextMode> {
+        Binding(
+            get: { ContextMode(rawValue: contextModeRaw) ?? .business },
+            set: { contextModeRaw = $0.rawValue }
+        )
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -56,6 +85,8 @@ struct SettingsView: View {
                         )
                     }
                 }
+
+                organizingSection
 
                 vocabularySection
 

@@ -88,6 +88,9 @@ extension RelationshipTag {
         .init(name: "Team", kind: .business, symbolName: "person.3"),
         .init(name: "Professional Contact", kind: .business, symbolName: "briefcase"),
         .init(name: "Investor", kind: .business, symbolName: "chart.line.uptrend.xyaxis"),
+        .init(name: "Mentor", kind: .business, symbolName: "graduationcap"),
+        .init(name: "Advisor", kind: .business, symbolName: "lightbulb"),
+        .init(name: "Candidate", kind: .business, symbolName: "person.badge.plus"),
         // Personal
         .init(name: "Family", kind: .personal, symbolName: "house"),
         .init(name: "Close Friend", kind: .personal, symbolName: "heart"),

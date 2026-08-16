@@ -13,7 +13,7 @@ struct RelationshipTagTests {
     @Test("Seeding gives every built-in a stable key matching its original name")
     func seedingAssignsBuiltInKeys() throws {
         let store = try TestStore()
-        KeeprStore.seedIfNeeded(store.context)
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
 
         let tags = try store.fetch(RelationshipTag.self)
         #expect(tags.count == RelationshipTag.builtInCatalog.count)
@@ -28,17 +28,76 @@ struct RelationshipTagTests {
     @Test("Seeding runs once, not once per launch")
     func seedingIsIdempotent() throws {
         let store = try TestStore()
-        KeeprStore.seedIfNeeded(store.context)
-        KeeprStore.seedIfNeeded(store.context)
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
 
         let tags = try store.fetch(RelationshipTag.self)
         #expect(tags.count == RelationshipTag.builtInCatalog.count)
     }
 
+    @Test("A built-in the user deleted does not come back on the next launch")
+    func deletedBuiltInsStayDeleted() throws {
+        let store = try TestStore()
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        let vendor = try #require(
+            try store.fetch(RelationshipTag.self).first { $0.builtInKey == "Vendor" }
+        )
+        store.context.delete(vendor)
+        try store.save()
+
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        let vendorIsBack = try store.fetch(RelationshipTag.self)
+            .contains { $0.builtInKey == "Vendor" }
+        #expect(vendorIsBack == false)
+    }
+
+    @Test("A built-in added in a later version reaches an install that predates it")
+    func newBuiltInsArriveOnUpdate() throws {
+        let store = try TestStore()
+
+        // An install seeded before "Mentor", "Advisor" and "Candidate" existed:
+        // tags in the store, nothing recorded in defaults.
+        for (index, builtIn) in RelationshipTag.builtInCatalog.prefix(4).enumerated() {
+            store.context.insert(
+                RelationshipTag(
+                    name: builtIn.name,
+                    kind: builtIn.kind,
+                    isBuiltIn: true,
+                    sortOrder: index * 10,
+                    symbolName: builtIn.symbolName,
+                    builtInKey: builtIn.name
+                )
+            )
+        }
+        try store.save()
+
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        let keys = Set(try store.fetch(RelationshipTag.self).compactMap(\.builtInKey))
+        #expect(keys.count == RelationshipTag.builtInCatalog.count)
+        #expect(keys.contains("Mentor"))
+        #expect(
+            try store.fetch(RelationshipTag.self).filter { $0.builtInKey == "Family" }.count == 1,
+            "nothing already present is duplicated"
+        )
+    }
+
+    @Test("Erasing everything gives the built-ins back")
+    func wipingRestoresTheCatalog() throws {
+        let store = try TestStore()
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        KeeprStore.deleteAllData(in: store.context, defaults: store.defaults)
+
+        #expect(try store.fetch(RelationshipTag.self).count == RelationshipTag.builtInCatalog.count)
+    }
+
     @Test("A renamed built-in is still found, rather than duplicated")
     func renamedBuiltInIsStillFound() throws {
         let store = try TestStore()
-        KeeprStore.seedIfNeeded(store.context)
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
 
         let family = try #require(
             try store.fetch(RelationshipTag.self).first { $0.builtInKey == "Family" }
@@ -61,7 +120,7 @@ struct RelationshipTagTests {
     @Test("A tag the user deleted is recreated rather than crashing an import")
     func missingTagIsRecreated() throws {
         let store = try TestStore()
-        KeeprStore.seedIfNeeded(store.context)
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
 
         let vendor = try #require(
             try store.fetch(RelationshipTag.self).first { $0.builtInKey == "Vendor" }
