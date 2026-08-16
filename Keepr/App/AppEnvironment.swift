@@ -42,6 +42,8 @@ enum PreferenceKey {
     static let contextMode = "keepr.contextMode"
     static let hasOnboarded = "keepr.hasOnboarded"
     static let peopleSort = "keepr.peopleSort"
+    /// One-time switch of an existing install to alphabetical people.
+    static let didDefaultToNameSort = "keepr.didDefaultToNameSort"
     static let remindersEnabled = "keepr.remindersEnabled"
     /// Singular noun for the second axis — "Group", "Business", "App".
     static let groupLabel = "keepr.groupLabel"
