@@ -59,9 +59,17 @@ enum KeeprStore {
     /// launch. Deleting a built-in is a decision, not an accident to repair.
     @MainActor
     static func seedIfNeeded(_ context: ModelContext, defaults: UserDefaults = .standard) {
+        repairTagCatalog(context)
+
         let descriptor = FetchDescriptor<RelationshipTag>()
         let existing = (try? context.fetch(descriptor)) ?? []
+
+        // Identity by key *and* by visible name. Keys were added to the model
+        // after the first releases, so rows seeded before that carry none —
+        // trusting keys alone once made the app decide every built-in was
+        // missing and seed a second copy of all of them.
         let existingKeys = Set(existing.compactMap(\.builtInKey))
+            .union(existing.map(\.name))
         var offered = Set(defaults.stringArray(forKey: seededKeysDefault) ?? [])
 
         // A store with tags but no record of what was seeded predates this
@@ -91,9 +99,69 @@ enum KeeprStore {
             didInsert = true
         }
 
-        guard didInsert else { return }
+        // Always write the record, even when nothing was inserted. Otherwise an
+        // install that needed no seeding never gets one, and the first type the
+        // user deletes comes back on the next launch.
+        offered.formUnion(existingKeys)
         defaults.set(Array(offered).sorted(), forKey: seededKeysDefault)
+
+        guard didInsert else { return }
         try? context.save()
+    }
+
+    /// Merges duplicate relationship types and gives old built-ins their key.
+    ///
+    /// Two types with the same name and kind are indistinguishable everywhere in
+    /// the app, so there's no such thing as a deliberate pair — every one is
+    /// damage, and this is the only place that can undo it. People marked with a
+    /// discarded copy are moved to the survivor first; nobody loses a type
+    /// because of a bug in seeding.
+    @MainActor
+    static func repairTagCatalog(_ context: ModelContext) {
+        let all = (try? context.fetch(FetchDescriptor<RelationshipTag>())) ?? []
+        guard !all.isEmpty else { return }
+        var didChange = false
+
+        // Backfill keys first, so a merge keeps the row that knows what it is.
+        let catalog = Dictionary(
+            uniqueKeysWithValues: RelationshipTag.builtInCatalog.map { ("\($0.kind.rawValue)|\($0.name)", $0) }
+        )
+        for tag in all where tag.builtInKey == nil {
+            guard catalog["\(tag.kind.rawValue)|\(tag.name)"] != nil else { continue }
+            tag.builtInKey = tag.name
+            tag.isBuiltIn = true
+            didChange = true
+        }
+
+        var groups: [String: [RelationshipTag]] = [:]
+        for tag in all {
+            let key = "\(tag.kind.rawValue)|\(tag.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())"
+            groups[key, default: []].append(tag)
+        }
+
+        for duplicates in groups.values where duplicates.count > 1 {
+            // Keep the one people are actually marked with; ties go to the
+            // oldest, which is the one that was there before the bug.
+            let ordered = duplicates.sorted { lhs, rhs in
+                if lhs.peopleList.count != rhs.peopleList.count {
+                    return lhs.peopleList.count > rhs.peopleList.count
+                }
+                return lhs.createdAt < rhs.createdAt
+            }
+            guard let survivor = ordered.first else { continue }
+
+            for extra in ordered.dropFirst() {
+                for person in extra.peopleList where !person.tagList.contains(where: { $0.id == survivor.id }) {
+                    person.tags = person.tagList.filter { $0.id != extra.id } + [survivor]
+                }
+                context.delete(extra)
+                didChange = true
+            }
+        }
+
+        guard didChange else { return }
+        try? context.save()
+        Logger.persistence.notice("Repaired the relationship type catalog.")
     }
 
     /// Fetches a tag, creating it if the user has deleted or never had it.

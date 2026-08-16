@@ -84,6 +84,118 @@ struct RelationshipTagTests {
         )
     }
 
+    /// The shipped bug: `builtInKey` was added to the model after the first
+    /// releases, so rows seeded before it carry nil. Seeding matched on that key
+    /// alone, decided all thirteen built-ins were missing, and inserted a second
+    /// copy of every one of them.
+    @Test("An install seeded before keys existed doesn't get a second copy of everything")
+    func keylessBuiltInsAreRecognized() throws {
+        let store = try TestStore()
+
+        for (index, builtIn) in RelationshipTag.builtInCatalog.prefix(13).enumerated() {
+            let tag = RelationshipTag(
+                name: builtIn.name,
+                kind: builtIn.kind,
+                isBuiltIn: true,
+                sortOrder: index * 10,
+                symbolName: builtIn.symbolName
+            )
+            store.context.insert(tag)
+        }
+        try store.save()
+
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        let tags = try store.fetch(RelationshipTag.self)
+        #expect(tags.count == RelationshipTag.builtInCatalog.count, "no second set")
+        #expect(tags.allSatisfy { $0.builtInKey != nil }, "old rows are given their key")
+
+        let names = tags.map(\.name)
+        #expect(Set(names).count == names.count, "and no name appears twice")
+    }
+
+    @Test("Duplicates already on the device are merged, and people keep their type")
+    func duplicatesAreMergedOnLaunch() throws {
+        let store = try TestStore()
+
+        _ = Make.tag(store.context, name: "Vendor", isBuiltIn: true)
+        let inUse = Make.tag(store.context, name: "Vendor", isBuiltIn: true)
+        let person = Make.person(store.context, given: "Priya", family: "Raman")
+        Make.attach(inUse, to: person)
+        try store.save()
+
+        KeeprStore.repairTagCatalog(store.context)
+
+        let vendors = try store.fetch(RelationshipTag.self).filter { $0.name == "Vendor" }
+        #expect(vendors.count == 1)
+        #expect(vendors.first?.id == inUse.id, "the copy people are actually marked with survives")
+        #expect(person.tagList.count == 1, "the person is moved, not left with a deleted type")
+        #expect(person.hasTag(named: "Vendor"))
+    }
+
+    @Test("Someone marked with both copies ends up with one")
+    func mergingDoesNotDoubleMark() throws {
+        let store = try TestStore()
+
+        let first = Make.tag(store.context, name: "Lead", isBuiltIn: true)
+        let second = Make.tag(store.context, name: "Lead", isBuiltIn: true)
+        let person = Make.person(store.context, given: "Dana", family: "Whitfield")
+        Make.attach(first, to: person)
+        Make.attach(second, to: person)
+        try store.save()
+
+        KeeprStore.repairTagCatalog(store.context)
+
+        #expect(person.tagList.count == 1)
+        #expect(person.hasTag(named: "Lead"))
+    }
+
+    @Test("Two types that only differ by kind are left alone")
+    func sameNameDifferentKindIsNotADuplicate() throws {
+        let store = try TestStore()
+
+        _ = Make.tag(store.context, name: "Gym", kind: .business)
+        _ = Make.tag(store.context, name: "Gym", kind: .personal)
+        try store.save()
+
+        KeeprStore.repairTagCatalog(store.context)
+
+        #expect(try store.fetch(RelationshipTag.self).count == 2)
+    }
+
+    @Test("Deleting sticks even on an install that needed no seeding")
+    func deletionSticksWithoutAnyInsert() throws {
+        let store = try TestStore()
+
+        // Everything already present, nothing recorded: the state of an install
+        // that upgraded into this bookkeeping.
+        for builtIn in RelationshipTag.builtInCatalog {
+            store.context.insert(
+                RelationshipTag(
+                    name: builtIn.name,
+                    kind: builtIn.kind,
+                    isBuiltIn: true,
+                    symbolName: builtIn.symbolName,
+                    builtInKey: builtIn.name
+                )
+            )
+        }
+        try store.save()
+
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        let team = try #require(
+            try store.fetch(RelationshipTag.self).first { $0.builtInKey == "Team" }
+        )
+        store.context.delete(team)
+        try store.save()
+
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
+
+        let teamIsBack = try store.fetch(RelationshipTag.self).contains { $0.name == "Team" }
+        #expect(teamIsBack == false)
+    }
+
     @Test("Erasing everything gives the built-ins back")
     func wipingRestoresTheCatalog() throws {
         let store = try TestStore()

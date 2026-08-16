@@ -7,7 +7,9 @@ struct PeopleView: View {
     @Binding var mode: ContextMode
 
     @Environment(\.modelContext) private var context
-    @AppStorage(PreferenceKey.peopleSort) private var sortRaw = PeopleSort.recent.rawValue
+    // Alphabetical is what an address book is, and what the index strip needs.
+    @AppStorage(PreferenceKey.peopleSort) private var sortRaw = PeopleSort.name.rawValue
+    @AppStorage(PreferenceKey.didDefaultToNameSort) private var didDefaultToNameSort = false
 
     @Query(sort: \Person.familyName) private var people: [Person]
     @Query(sort: \RelationshipTag.sortOrder) private var tags: [RelationshipTag]
@@ -36,7 +38,7 @@ struct PeopleView: View {
     @State private var linkPair: LinkPair?
 
     private var sort: PeopleSort {
-        get { PeopleSort(rawValue: sortRaw) ?? .recent }
+        get { PeopleSort(rawValue: sortRaw) ?? .name }
         nonmutating set { sortRaw = newValue.rawValue }
     }
 
@@ -137,6 +139,7 @@ struct PeopleView: View {
                 PersonProfileView(person: person, mode: $mode)
             }
             .onAppear {
+                applyAlphabeticalDefaultOnce()
                 if LaunchOptions.screen == .profile, selectedPerson == nil {
                     selectedPerson = filtered.first
                 }
@@ -190,19 +193,47 @@ struct PeopleView: View {
         .listStyle(.plain)
     }
 
+    private var sections: [PersonSection] {
+        PeopleEngine.alphabeticalSections(filtered)
+    }
+
+    /// A–Z with the index strip, the way Contacts does it.
+    ///
+    /// The strip is worth the custom drawing: on a list of several hundred
+    /// people, flicking to the R's is the difference between the app being
+    /// usable in a hurry and not.
     private var sectionedList: some View {
-        List(selection: $selection) {
-            filterBar
-            noMatchesRow
-            ForEach(PeopleEngine.alphabeticalSections(filtered)) { section in
-                Section(section.key) {
-                    ForEach(section.people) { person in
-                        row(for: person)
+        ScrollViewReader { proxy in
+            List(selection: $selection) {
+                filterBar
+                noMatchesRow
+                ForEach(sections) { section in
+                    Section {
+                        ForEach(section.people) { person in
+                            row(for: person)
+                        }
+                    } header: {
+                        Text(section.key).id(section.key)
+                    }
+                }
+            }
+            .listStyle(.plain)
+            .overlay(alignment: .trailing) {
+                if showsIndexBar {
+                    SectionIndexBar(titles: sections.map(\.key)) { key in
+                        withAnimation(.snappy(duration: 0.2)) {
+                            proxy.scrollTo(key, anchor: .top)
+                        }
                     }
                 }
             }
         }
-        .listStyle(.plain)
+    }
+
+    /// Hidden while selecting — a drag down the edge would fight the list's own
+    /// drag-to-select — and not worth the clutter for a handful of people.
+    private var showsIndexBar: Bool {
+        !editMode.isEditing && sections.count > 2
     }
 
     /// A row opens the profile normally, and ticks the box while selecting.
@@ -334,12 +365,20 @@ struct PeopleView: View {
     /// icons: the actions are all "apply X to these people", and a menu names
     /// them in words instead of asking anyone to decode glyphs.
     private var bulkActionBar: some View {
-        HStack {
-            Button("Select All") { selection = Set(filtered.map(\.id)) }
-                .font(.subheadline)
-                .disabled(selection.count == filtered.count)
+        HStack(spacing: Theme.Spacing.large) {
+            // Done lives down here as well as in the toolbar, because the
+            // toolbar's copy is hidden while the search field is up — leaving
+            // no way out of selection without first abandoning the search.
+            Button("Done") { endSelecting() }
+                .font(.subheadline.weight(.semibold))
 
-            Spacer()
+            Spacer(minLength: 0)
+
+            Button(allVisibleSelected ? "Deselect All" : "Select All") {
+                toggleSelectAll()
+            }
+            .font(.subheadline)
+            .disabled(filtered.isEmpty)
 
             Menu {
                 bulkMenuContents
@@ -352,6 +391,28 @@ struct PeopleView: View {
         .padding(.horizontal)
         .padding(.vertical, Theme.Spacing.small)
         .background(.bar)
+    }
+
+    /// Everyone currently on screen is ticked. Judged against what's visible,
+    /// not the whole address book, so searching for "mar" and tapping Select All
+    /// means those results and nothing else.
+    private var allVisibleSelected: Bool {
+        !filtered.isEmpty && Set(filtered.map(\.id)).isSubset(of: selection)
+    }
+
+    /// Selects or clears exactly the visible people. Anyone selected before a
+    /// search narrowed the list stays selected — clearing what you can't see
+    /// would silently undo work.
+    private func toggleSelectAll() {
+        let visible = Set(filtered.map(\.id))
+        withAnimation {
+            if allVisibleSelected {
+                selection.subtract(visible)
+            } else {
+                selection.formUnion(visible)
+            }
+        }
+        Haptics.selection()
     }
 
     @ViewBuilder
@@ -546,6 +607,15 @@ struct PeopleView: View {
     }
 
     // MARK: - Actions
+
+    /// Existing installs were storing "Recent" from before alphabetical was the
+    /// default, so the new default would never reach them. Moved once; if they
+    /// then pick a different sort, that sticks.
+    private func applyAlphabeticalDefaultOnce() {
+        guard !didDefaultToNameSort else { return }
+        didDefaultToNameSort = true
+        sortRaw = PeopleSort.name.rawValue
+    }
 
     private func beginSelecting(with person: Person? = nil) {
         withAnimation {
