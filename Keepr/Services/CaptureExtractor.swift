@@ -116,12 +116,19 @@ struct HeuristicCaptureExtractor: CaptureExtracting {
 
     // MARK: - Interaction kind
 
+    /// Order matters: the first list to match wins, so the specific kinds sit
+    /// above the general ones. "Grabbed lunch" is a meal before it's in-person,
+    /// and a Zoom is a video call before it's a meeting.
     private static let kindKeywords: [(InteractionKind, [String])] = [
+        (.video, ["zoom", "facetime", "video call", "google meet", "on video"]),
         (.call, ["called", "phone call", "on the phone", "rang", "hopped on a call"]),
-        (.text, ["texted", "text from", "messaged", "dm'd", "dmed"]),
+        (.dm, ["dm'd", "dmed", "dm from", "instagram", "linkedin message", "slack"]),
+        (.text, ["texted", "text from", "messaged"]),
         (.email, ["emailed", "sent an email", "email from", "replied to his email"]),
-        (.meeting, ["meeting", "zoom", "sat down with", "presentation"]),
-        (.inPerson, ["ran into", "met", "saw", "bumped into", "in person", "lunch", "coffee", "dinner"])
+        (.meal, ["lunch", "coffee", "dinner", "breakfast", "drinks", "grabbed a bite"]),
+        (.event, ["conference", "networking event", "seminar", "expo", "workshop", "party"]),
+        (.meeting, ["meeting", "sat down with", "presentation"]),
+        (.inPerson, ["ran into", "met", "saw", "bumped into", "in person"])
     ]
 
     static func kind(of text: String) -> InteractionKind {

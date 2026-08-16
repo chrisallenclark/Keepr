@@ -47,14 +47,36 @@ enum KeeprStore {
         return container
     }
 
-    /// Seeds the built-in relationship tags exactly once.
+    /// Key holding the built-ins this install has already been offered.
+    private static let seededKeysDefault = "keepr.seededBuiltInKeys"
+
+    /// Seeds built-in relationship types, including ones added in later versions.
+    ///
+    /// Each built-in is offered exactly once *ever*, tracked by key rather than
+    /// by "is the table empty". That gets both halves right: someone who
+    /// installed before "Mentor" existed still receives it on update, and
+    /// someone who deliberately deleted "Vendor" doesn't have it reappear every
+    /// launch. Deleting a built-in is a decision, not an accident to repair.
     @MainActor
-    static func seedIfNeeded(_ context: ModelContext) {
+    static func seedIfNeeded(_ context: ModelContext, defaults: UserDefaults = .standard) {
         let descriptor = FetchDescriptor<RelationshipTag>()
         let existing = (try? context.fetch(descriptor)) ?? []
-        guard existing.isEmpty else { return }
+        let existingKeys = Set(existing.compactMap(\.builtInKey))
+        var offered = Set(defaults.stringArray(forKey: seededKeysDefault) ?? [])
 
+        // A store with tags but no record of what was seeded predates this
+        // bookkeeping. Treat what it holds as already offered so nothing is
+        // duplicated. The one cost: a built-in deleted before this update comes
+        // back once, and is then remembered. Paid a single time, at most.
+        if offered.isEmpty, !existing.isEmpty {
+            offered = existingKeys
+        }
+
+        var didInsert = false
         for (index, builtIn) in RelationshipTag.builtInCatalog.enumerated() {
+            guard !offered.contains(builtIn.name), !existingKeys.contains(builtIn.name) else {
+                continue
+            }
             context.insert(
                 RelationshipTag(
                     name: builtIn.name,
@@ -65,7 +87,12 @@ enum KeeprStore {
                     builtInKey: builtIn.name
                 )
             )
+            offered.insert(builtIn.name)
+            didInsert = true
         }
+
+        guard didInsert else { return }
+        defaults.set(Array(offered).sorted(), forKey: seededKeysDefault)
         try? context.save()
     }
 
@@ -95,7 +122,7 @@ enum KeeprStore {
 
     /// Wipes every record the app owns. Backing Apple contacts are untouched.
     @MainActor
-    static func deleteAllData(in context: ModelContext) {
+    static func deleteAllData(in context: ModelContext, defaults: UserDefaults = .standard) {
         // People cascade to interactions, memories and follow-ups.
         try? context.delete(model: Person.self)
         try? context.delete(model: Interaction.self)
@@ -105,7 +132,10 @@ enum KeeprStore {
         try? context.delete(model: PersonGroup.self)
         try? context.delete(model: PersonLink.self)
         try? context.save()
-        seedIfNeeded(context)
+        // Erasing means starting over, so the built-ins come back rather than
+        // leaving someone with an empty palette and no way to get it back.
+        defaults.removeObject(forKey: seededKeysDefault)
+        seedIfNeeded(context, defaults: defaults)
     }
 }
 

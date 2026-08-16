@@ -15,8 +15,15 @@ struct TestStore {
 
     let container: ModelContainer
     let context: ModelContext
+    /// Seeding records which built-ins it has offered, so each test needs its
+    /// own defaults or the second test in a run gets an empty catalog.
+    let defaults: UserDefaults
 
     init() throws {
+        let suite = "keepr.tests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite) ?? .standard
+        defaults.removePersistentDomain(forName: suite)
+
         let schema = Schema([
             Person.self,
             Interaction.self,

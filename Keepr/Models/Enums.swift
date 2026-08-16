@@ -123,12 +123,24 @@ enum RelationshipStatus: String, CaseIterable, Identifiable, Codable, Sendable {
 
 // MARK: - Interaction
 
+/// How an interaction happened.
+///
+/// Raw values are stored, so cases can be added without touching existing data —
+/// this list has already grown once and should be expected to grow again. It
+/// stays a fixed list rather than a user-editable model because "how did you
+/// talk" has a real ceiling: past about a dozen options, a picker costs more
+/// time than choosing precisely saves. What someone *said* is the part that
+/// varies infinitely, and that's free text.
 enum InteractionKind: String, CaseIterable, Identifiable, Codable, Sendable {
     case inPerson
     case call
+    case video
     case text
+    case dm
     case email
     case meeting
+    case meal
+    case event
     case other
 
     var id: String { rawValue }
@@ -137,9 +149,13 @@ enum InteractionKind: String, CaseIterable, Identifiable, Codable, Sendable {
         switch self {
         case .inPerson: "In Person"
         case .call: "Call"
+        case .video: "Video Call"
         case .text: "Text"
+        case .dm: "DM"
         case .email: "Email"
         case .meeting: "Meeting"
+        case .meal: "Coffee or Meal"
+        case .event: "Event"
         case .other: "Other"
         }
     }
@@ -148,9 +164,13 @@ enum InteractionKind: String, CaseIterable, Identifiable, Codable, Sendable {
         switch self {
         case .inPerson: "figure.wave"
         case .call: "phone"
+        case .video: "video"
         case .text: "message"
+        case .dm: "bubble.left.and.bubble.right"
         case .email: "envelope"
         case .meeting: "person.2"
+        case .meal: "fork.knife"
+        case .event: "calendar"
         case .other: "circle.dotted"
         }
     }

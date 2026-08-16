@@ -31,7 +31,7 @@ struct ContactMarkerTests {
 
     /// A trainer's setup: three businesses and the built-in types.
     private func trainerVocabulary(_ store: TestStore) throws -> MarkerVocabulary {
-        KeeprStore.seedIfNeeded(store.context)
+        KeeprStore.seedIfNeeded(store.context, defaults: store.defaults)
 
         let lifeTime = PersonGroup(name: "Life Time", sortOrder: 0)
         let hyp = PersonGroup(name: "Hybrid Performance", aliases: "HYP", sortOrder: 10)

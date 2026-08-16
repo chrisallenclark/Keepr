@@ -43,7 +43,9 @@ struct CaptureExtractorTests {
         ("Called Sarah about the invoice", InteractionKind.call),
         ("Texted Mike the address", InteractionKind.text),
         ("Emailed the proposal over", InteractionKind.email),
-        ("Zoom with the team", InteractionKind.meeting),
+        ("Zoom with the team", InteractionKind.video),
+        ("Grabbed lunch with Dana", InteractionKind.meal),
+        ("Met him at the conference", InteractionKind.event),
         ("Ran into Dana at the store", InteractionKind.inPerson)
     ])
     func kindDetection(input: String, expected: InteractionKind) {

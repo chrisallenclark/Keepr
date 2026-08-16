@@ -110,6 +110,11 @@ struct PeopleView: View {
             }
             .environment(\.editMode, $editMode)
             .navigationTitle(editMode.isEditing ? selectionTitle : "People")
+            // Inline, like Today. A large title scrolls away under the pinned
+            // context switcher, so the screen loses its name the moment you
+            // scroll and only gets it back by pulling down — which reads as a
+            // bug even though it's stock behaviour.
+            .navigationBarTitleDisplayMode(.inline)
             .contextSwitcher($mode)
             .searchable(text: $searchText, prompt: "Search \(mode.title.lowercased()) contacts")
             .toolbar {
@@ -200,29 +205,40 @@ struct PeopleView: View {
         .listStyle(.plain)
     }
 
-    /// Rows stay tappable-to-open normally; in edit mode the list takes over and
-    /// the same row becomes a checkbox, which is the standard iOS behaviour.
+    /// A row opens the profile normally, and ticks the box while selecting.
+    ///
+    /// The row can't be a `Button` in edit mode: a button swallows the tap, so
+    /// the list never sees it as selection and the only thing that works is the
+    /// little circle. Handing the plain row to the list — no button, no swipes,
+    /// no context menu — is what makes tapping anywhere on someone select them.
+    @ViewBuilder
     private func row(for person: Person) -> some View {
-        Button {
-            selectedPerson = person
-        } label: {
+        if editMode.isEditing {
             PersonRow(person: person, mode: mode)
-        }
-        .buttonStyle(.plain)
-        .tag(person.id)
-        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                .contentShape(.rect)
+                .tag(person.id)
+        } else {
             Button {
-                toggleFavorite(person)
+                selectedPerson = person
             } label: {
-                Label(
-                    person.isFavorite ? "Unfavorite" : "Favorite",
-                    systemImage: person.isFavorite ? "star.slash" : "star"
-                )
+                PersonRow(person: person, mode: mode)
             }
-            .tint(.yellow)
-        }
-        .contextMenu {
-            personContextMenu(person)
+            .buttonStyle(.plain)
+            .tag(person.id)
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button {
+                    toggleFavorite(person)
+                } label: {
+                    Label(
+                        person.isFavorite ? "Unfavorite" : "Favorite",
+                        systemImage: person.isFavorite ? "star.slash" : "star"
+                    )
+                }
+                .tint(.yellow)
+            }
+            .contextMenu {
+                personContextMenu(person)
+            }
         }
     }
 

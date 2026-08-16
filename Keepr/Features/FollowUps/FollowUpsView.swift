@@ -36,6 +36,7 @@ struct FollowUpsView: View {
                 }
             }
             .navigationTitle("Follow Up")
+            .navigationBarTitleDisplayMode(.inline)
             .contextSwitcher($mode)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
