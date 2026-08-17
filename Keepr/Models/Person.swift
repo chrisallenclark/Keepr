@@ -68,6 +68,13 @@ final class Person {
     /// granted the contacts-notes entitlement; nil otherwise.
     var contactNote: String?
 
+    /// How often this person is worth reaching out to, in days.
+    ///
+    /// `nil` inherits whatever their relationship types say. `0` means "never
+    /// chase me about this one" — a real answer, and different from having no
+    /// opinion, which is why it isn't just nil.
+    var cadenceDays: Int?
+
     /// Set once the user has answered for this person in the review queue —
     /// including answering "not now". Keeps a deliberate decision from being
     /// asked again every time the app opens.

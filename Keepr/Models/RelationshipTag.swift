@@ -24,6 +24,13 @@ final class RelationshipTag {
     /// Other things you call this, comma-separated: "LT Client, Training Client".
     /// Used when reading markers off a contact card at import.
     var aliases: String?
+    /// How often someone of this type is worth contacting, in days. `nil` means
+    /// no expectation — the app stays quiet about them.
+    ///
+    /// This is where cadence belongs: "clients every 30 days" is a decision made
+    /// once about a category, not re-entered for every client.
+    var cadenceDays: Int?
+
     /// Controls order in pickers and on rows; built-ins are spaced by 10.
     var sortOrder: Int = 0
     /// SF Symbol shown in filter menus.

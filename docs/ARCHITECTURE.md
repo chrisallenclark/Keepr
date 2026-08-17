@@ -105,6 +105,20 @@ two. One record serves both profiles: `labelAToB` and `labelBToA` are stored sep
   `company`/`jobTitle` the contact card supplies. The client you train at 6am who runs an
   e-commerce brand is a fact worth surfacing, and it's searchable.
 
+### Cadence
+
+`RelationshipTag.cadenceDays` holds how often someone of that type is worth contacting;
+`Person.cadenceDays` overrides it (`nil` inherits, `0` means never chase). `CadenceEngine`
+resolves the two — **shortest wins**, since a Current Client who is also a Friend needs the
+30-day promise, not the 90-day one — and measures against `lastInteractionAt ?? createdAt`,
+so a contact imported today gets the full interval and logging anything resets the clock
+with no extra step.
+
+Today shows the overdue as "Time to Reach Out". People with a cadence are excluded from the
+older `goingQuiet` heuristic: a rhythm the user set is a better answer than a blanket
+21/60-day threshold, and being told twice about one person reads as nagging. Anyone with an
+open follow-up is excluded too — a plan already exists.
+
 ### Reading shorthand off contact cards
 
 `ContactMarkers.swift` turns "Stanley LT Client" into *Stanley · Business · Current Client ·

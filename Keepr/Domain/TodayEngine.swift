@@ -3,16 +3,19 @@ import Foundation
 /// Everything the Today screen shows, computed in one pass.
 struct TodayDigest {
     var needsAttention: [FollowUp] = []
+    /// People whose own rhythm says it's time, most overdue first.
+    var dueForContact: [CadenceItem] = []
     var upcoming: [FollowUp] = []
     var goingQuiet: [Person] = []
     var recent: [Person] = []
 
     var isEmpty: Bool {
-        needsAttention.isEmpty && upcoming.isEmpty && goingQuiet.isEmpty && recent.isEmpty
+        needsAttention.isEmpty && dueForContact.isEmpty && upcoming.isEmpty
+            && goingQuiet.isEmpty && recent.isEmpty
     }
 
     /// True when there's genuinely nothing to act on — the calm state.
-    var isCaughtUp: Bool { needsAttention.isEmpty }
+    var isCaughtUp: Bool { needsAttention.isEmpty && dueForContact.isEmpty }
 }
 
 /// Pure logic behind Today. No engagement mechanics: nothing here invents
@@ -34,6 +37,7 @@ enum TodayEngine {
     static let goingQuietLimit = 5
     static let recentLimit = 6
     static let upcomingLimit = 5
+    static let dueForContactLimit = 8
 
     static func digest(
         people: [Person],
@@ -53,6 +57,9 @@ enum TodayEngine {
                 now: now,
                 calendar: calendar
             ).prefix(upcomingLimit)
+        )
+        digest.dueForContact = Array(
+            CadenceEngine.due(visible, now: now, calendar: calendar).prefix(dueForContactLimit)
         )
         digest.goingQuiet = Array(
             goingQuiet(visible, mode: mode, now: now, calendar: calendar).prefix(goingQuietLimit)
@@ -75,6 +82,9 @@ enum TodayEngine {
         return people
             .filter { person in
                 guard person.openFollowUps.isEmpty else { return false }
+                // A rhythm is a better answer than a blanket threshold, and
+                // being told twice about the same person reads as nagging.
+                guard !CadenceEngine.hasCadence(person) else { return false }
 
                 if let last = person.lastInteractionAt {
                     return last < cutoff
@@ -91,7 +101,12 @@ enum TodayEngine {
             }
     }
 
-    /// People interacted with in the last two weeks, most recent first.
+    /// People something happened with lately — an interaction, or simply being
+    /// added.
+    ///
+    /// Adding someone counts. Categorizing three new contacts and seeing nothing
+    /// appear reads as the app losing them, and "I just added these" is exactly
+    /// the list you want while the memory is fresh.
     static func recentlyActive(
         _ people: [Person],
         withinDays days: Int = 14,
@@ -101,8 +116,9 @@ enum TodayEngine {
         guard let cutoff = calendar.date(byAdding: .day, value: -days, to: now) else { return [] }
         return people
             .compactMap { person -> (Person, Date)? in
-                guard let last = person.lastInteractionAt, last >= cutoff else { return nil }
-                return (person, last)
+                let touched = max(person.lastInteractionAt ?? .distantPast, person.createdAt)
+                guard touched >= cutoff else { return nil }
+                return (person, touched)
             }
             .sorted { $0.1 > $1.1 }
             .map { $0.0 }

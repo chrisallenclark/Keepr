@@ -227,6 +227,48 @@ struct PersonProfileView: View {
         }
     }
 
+    // MARK: - Rhythm
+
+    /// How often this person is worth contacting, and where that came from.
+    ///
+    /// Shown on the profile rather than buried in settings because the override
+    /// is the whole point: one client you speak to weekly shouldn't force you to
+    /// re-time every other client.
+    @ViewBuilder
+    private var cadenceRow: some View {
+        let status = CadenceEngine.status(for: person, now: Date())
+
+        Menu {
+            Button("Use my type's rhythm") { setCadence(nil) }
+            Button("Never remind me") { setCadence(0) }
+            Divider()
+            ForEach(CadenceEngine.presets, id: \.self) { days in
+                Button(CadenceEngine.label(forDays: days)) { setCadence(days) }
+            }
+        } label: {
+            HStack {
+                Text("Reach out")
+                    .foregroundStyle(.primary)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(cadenceValueLabel(status))
+                        .foregroundStyle(.secondary)
+                    if let status, let source = status.source {
+                        Text("from \(source)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .contentShape(.rect)
+        }
+    }
+
+    private func cadenceValueLabel(_ status: CadenceStatus?) -> String {
+        if let status { return CadenceEngine.label(forDays: status.days) }
+        return person.cadenceDays == 0 ? "Never" : "No rhythm"
+    }
+
     // MARK: - Work
 
     /// Who they work for and what they actually do.
@@ -491,6 +533,7 @@ struct PersonProfileView: View {
     private var detailsSection: some View {
         Section("Details") {
             LabeledContent("Context", value: person.context.title)
+            cadenceRow
 
             if !person.tagList.isEmpty {
                 LabeledContent("Type") {
@@ -585,6 +628,14 @@ struct PersonProfileView: View {
             .first?
             .occurredAt
         try? context.save()
+    }
+
+    /// nil means "inherit from my types", 0 means "never chase me about them".
+    private func setCadence(_ days: Int?) {
+        person.cadenceDays = days
+        person.touch()
+        try? context.save()
+        Haptics.selection()
     }
 
     private func startEditingWorkNote() {

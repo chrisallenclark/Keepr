@@ -194,25 +194,30 @@ struct TodayEngineTests {
     @Test("recentlyActive returns the last 14 days, most recent first")
     func recentlyActiveDefaultWindow() throws {
         let store = try TestStore()
+        // Added long ago, so only the interactions decide who's recent.
+        let added = TestDates.days(-100)
         let yesterday = Make.person(
             store.context,
             given: "Yara",
             family: "Yesterday",
+            createdAt: added,
             lastInteractionAt: TestDates.days(-1)
         )
         let lastWeek = Make.person(
             store.context,
             given: "Lee",
             family: "LastWeek",
+            createdAt: added,
             lastInteractionAt: TestDates.days(-6)
         )
         let outside = Make.person(
             store.context,
             given: "Oda",
             family: "Outside",
+            createdAt: added,
             lastInteractionAt: TestDates.days(-20)
         )
-        let never = Make.person(store.context, given: "Nev", family: "Never")
+        let never = Make.person(store.context, given: "Nev", family: "Never", createdAt: added)
 
         let result = TodayEngine.recentlyActive(
             [outside, never, lastWeek, yesterday],
@@ -222,6 +227,31 @@ struct TodayEngineTests {
         #expect(result.map(\.id) == [yesterday.id, lastWeek.id])
     }
 
+    @Test("Someone added today is recent, even with nothing logged yet")
+    func recentlyActiveIncludesNewPeople() throws {
+        let store = try TestStore()
+        let justAdded = Make.person(
+            store.context,
+            given: "New",
+            family: "Contact",
+            createdAt: TestDates.days(-1)
+        )
+        let spokenTo = Make.person(
+            store.context,
+            given: "Old",
+            family: "Friend",
+            createdAt: TestDates.days(-200),
+            lastInteractionAt: TestDates.days(-3)
+        )
+
+        let result = TodayEngine.recentlyActive([spokenTo, justAdded], now: now, calendar: calendar)
+
+        #expect(
+            result.map(\.id) == [justAdded.id, spokenTo.id],
+            "categorizing three new contacts and seeing nothing appear reads as a bug"
+        )
+    }
+
     @Test("recentlyActive honours a custom window")
     func recentlyActiveCustomWindow() throws {
         let store = try TestStore()
@@ -229,12 +259,14 @@ struct TodayEngineTests {
             store.context,
             given: "Yara",
             family: "Yesterday",
+            createdAt: TestDates.days(-100),
             lastInteractionAt: TestDates.days(-1)
         )
         let lastWeek = Make.person(
             store.context,
             given: "Lee",
             family: "LastWeek",
+            createdAt: TestDates.days(-100),
             lastInteractionAt: TestDates.days(-6)
         )
 
@@ -334,6 +366,7 @@ struct TodayEngineTests {
                     given: "R\(index)",
                     family: "Recent\(index)",
                     relationship: .personal,
+                    createdAt: TestDates.days(-100),
                     lastInteractionAt: TestDates.days(-1 - index)
                 )
             )

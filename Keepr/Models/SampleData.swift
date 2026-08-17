@@ -44,6 +44,15 @@ enum SampleData {
         func tag(_ name: String, _ kind: TagKind) -> RelationshipTag {
             KeeprStore.tag(named: name, kind: kind, in: context)
         }
+        /// A rhythm on the type, the way the feature is meant to be used: set
+        /// once for a category rather than per person.
+        func setCadence(_ name: String, _ kind: TagKind, days: Int) {
+            tag(name, kind).cadenceDays = days
+        }
+        setCadence("Current Client", .business, days: 14)
+        setCadence("Potential Client", .business, days: 30)
+        setCadence("Business Partner", .business, days: 60)
+        setCadence("Close Friend", .personal, days: 45)
 
         // MARK: Business — the potential client from the gym
 
