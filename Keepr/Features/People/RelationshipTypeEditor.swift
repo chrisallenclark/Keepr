@@ -288,6 +288,7 @@ private struct RelationshipTypeDetailEditor: View {
 
     @State private var name = ""
     @State private var symbolName = "tag"
+    @State private var cadenceDays: Int = 0
     @State private var isShowingSymbolPicker = false
     @State private var duplicateWarning: String?
     @State private var hasLoaded = false
@@ -336,6 +337,19 @@ private struct RelationshipTypeDetailEditor: View {
                         Text("One of the types Keepr started you with. Rename it, re-symbol it, or delete it from the list — it's yours.")
                     }
                 }
+
+                Section {
+                    Picker("Reach out", selection: $cadenceDays) {
+                        Text("No rhythm").tag(0)
+                        ForEach(CadenceEngine.presets, id: \.self) { days in
+                            Text(CadenceEngine.label(forDays: days)).tag(days)
+                        }
+                    }
+                } header: {
+                    Text("Rhythm")
+                } footer: {
+                    Text("Set once here and it applies to everyone with this type. Today tells you who's gone past it, and logging any interaction resets that person's clock. Anyone who's different can be set on their own profile.")
+                }
             }
             .navigationTitle(tag.kind.title + " Type")
             .navigationBarTitleDisplayMode(.inline)
@@ -363,6 +377,7 @@ private struct RelationshipTypeDetailEditor: View {
         hasLoaded = true
         name = tag.name
         symbolName = tag.symbolName
+        cadenceDays = tag.cadenceDays ?? 0
     }
 
     private func save() {
@@ -380,6 +395,7 @@ private struct RelationshipTypeDetailEditor: View {
 
         tag.name = trimmedName
         tag.symbolName = symbolName
+        tag.cadenceDays = cadenceDays > 0 ? cadenceDays : nil
         try? context.save()
         Haptics.success()
         dismiss()

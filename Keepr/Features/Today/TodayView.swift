@@ -34,6 +34,7 @@ struct TodayView: View {
                     List {
                         reviewSection
                         followUpSection("Needs Attention", digest.needsAttention)
+                        dueForContactSection(digest.dueForContact)
                         followUpSection("Upcoming", digest.upcoming)
                         goingQuietSection(digest.goingQuiet)
                         recentSection(digest.recent)
@@ -169,6 +170,41 @@ struct TodayView: View {
         }
     }
 
+    /// The rhythm section: people whose own interval says it's time.
+    ///
+    /// Sits above Upcoming because it's the part that decays silently — a
+    /// follow-up will chase you, a client you haven't called in five weeks won't.
+    @ViewBuilder
+    private func dueForContactSection(_ items: [CadenceItem]) -> some View {
+        if !items.isEmpty {
+            Section {
+                ForEach(items) { item in
+                    Button {
+                        selectedPerson = item.person
+                    } label: {
+                        HStack(spacing: Theme.Spacing.medium) {
+                            PersonCompactRow(
+                                person: item.person,
+                                detail: RelativeDate.lastContact(item.person.lastInteractionAt)
+                            )
+
+                            Spacer(minLength: Theme.Spacing.small)
+
+                            Text(item.status.summary)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(item.status.daysOverdue > 0 ? Color.orange : Color.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("Time to Reach Out")
+            } footer: {
+                Text("Based on how often you said these relationships are worth contacting. Logging anything resets the clock.")
+            }
+        }
+    }
+
     @ViewBuilder
     private func goingQuietSection(_ quiet: [Person]) -> some View {
         if !quiet.isEmpty {
@@ -200,15 +236,22 @@ struct TodayView: View {
                     Button {
                         selectedPerson = person
                     } label: {
-                        PersonCompactRow(
-                            person: person,
-                            detail: RelativeDate.lastContact(person.lastInteractionAt)
-                        )
+                        PersonCompactRow(person: person, detail: recentDetail(for: person))
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    /// Someone who's just been added has no interaction to describe, and
+    /// "Never contacted" is a strange thing to say about a person you added an
+    /// hour ago. Say what actually happened.
+    private func recentDetail(for person: Person) -> String {
+        guard let last = person.lastInteractionAt, last >= person.createdAt else {
+            return "Added \(RelativeDate.past(person.createdAt).lowercased())"
+        }
+        return RelativeDate.lastContact(last)
     }
 
     // MARK: - Actions

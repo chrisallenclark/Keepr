@@ -27,6 +27,10 @@ struct CategorizeSheet: View {
     @State private var selectedTagID: UUID?
     @State private var selectedGroupIDs: Set<UUID> = []
     @State private var howWeMet = ""
+    @State private var memoryText = ""
+    @State private var interactionNote = ""
+    @State private var interactionKind: InteractionKind = .inPerson
+    @State private var isLoggingInteraction = false
     @State private var isShowingTypeEditor = false
     @State private var hasLoaded = false
 
@@ -137,6 +141,36 @@ struct CategorizeSheet: View {
                 } footer: {
                     Text("The first thing to fade. Worth ten seconds now.")
                 }
+
+                Section {
+                    TextField(
+                        "Runs a roofing crew, wants to lose 20 lb before his daughter's wedding…",
+                        text: $memoryText,
+                        axis: .vertical
+                    )
+                    .lineLimit(2...6)
+                } header: {
+                    Text("Worth Remembering")
+                } footer: {
+                    Text("Whatever they told you. This becomes the context on their profile, and it's searchable.")
+                }
+
+                Section {
+                    Toggle("Log this as an interaction", isOn: $isLoggingInteraction.animation())
+                        .font(.subheadline)
+
+                    if isLoggingInteraction {
+                        Picker("How", selection: $interactionKind) {
+                            ForEach(InteractionKind.allCases) { kind in
+                                Label(kind.title, systemImage: kind.symbolName).tag(kind)
+                            }
+                        }
+                        TextField("What happened", text: $interactionNote, axis: .vertical)
+                            .lineLimit(1...4)
+                    }
+                } footer: {
+                    Text("Records that you spoke today, which is also what starts the clock on how often you reach out to them.")
+                }
             }
             .navigationTitle(item.isNew ? "New Contact" : "Categorize")
             .navigationBarTitleDisplayMode(.inline)
@@ -216,6 +250,29 @@ struct CategorizeSheet: View {
         "Met at \(group.name)"
     }
 
+    /// The point of asking here rather than later: what someone tells you when
+    /// you first meet them is the part you'd otherwise lose by Thursday.
+    private func saveMemory(for person: Person) {
+        let trimmed = memoryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        context.insert(Memory(content: trimmed, person: person))
+    }
+
+    private func saveInteraction(for person: Person) {
+        guard isLoggingInteraction else { return }
+        let note = interactionNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let now = Date()
+
+        let interaction = Interaction(
+            kind: interactionKind,
+            occurredAt: now,
+            summary: note.isEmpty ? nil : note,
+            person: person
+        )
+        context.insert(interaction)
+        person.lastInteractionAt = now
+    }
+
     private func save() {
         let person: Person
 
@@ -247,6 +304,9 @@ struct CategorizeSheet: View {
 
         let trimmed = howWeMet.trimmingCharacters(in: .whitespacesAndNewlines)
         person.howWeMet = trimmed.isEmpty ? nil : trimmed
+
+        saveMemory(for: person)
+        saveInteraction(for: person)
         // Answering counts as reviewing them, even if no type was chosen.
         person.reviewedAt = Date()
         person.touch()
