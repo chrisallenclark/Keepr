@@ -294,6 +294,7 @@ struct QuickCaptureView: View {
         if (person.lastInteractionAt ?? .distantPast) < draft.occurredAt {
             person.lastInteractionAt = draft.occurredAt
         }
+        Outreach.markReplied(person, at: draft.occurredAt)
         person.touch()
         try? context.save()
 

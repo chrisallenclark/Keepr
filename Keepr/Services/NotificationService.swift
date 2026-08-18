@@ -14,13 +14,29 @@ struct FollowUpReminder: Sendable, Equatable {
     static let defaultHour = 9
 }
 
+/// Any local notification this app sends: a title, a body, a moment.
+///
+/// Follow-ups and rhythms both end up here. iOS can't run code at delivery
+/// time, so everything is worked out in advance and rescheduled whenever the
+/// app is open — which is why the content has to be plain data.
+struct LocalReminder: Sendable, Equatable {
+    let identifier: String
+    let title: String
+    let body: String
+    let fireDate: Date
+}
+
 protocol NotificationScheduling: Sendable {
     func authorizationStatus() async -> UNAuthorizationStatus
     /// Presents the system prompt. Returns whether it was granted.
     @discardableResult func requestAuthorization() async -> Bool
     /// Schedules (or replaces) the reminder. Past dates are ignored.
     func schedule(_ reminder: FollowUpReminder) async
+    func scheduleReminder(_ reminder: LocalReminder) async
     func cancel(identifier: String) async
+    /// Clears a whole family of reminders — used to rebuild the rhythm schedule
+    /// from scratch every time something changes.
+    func cancelReminders(withPrefix prefix: String) async
     func cancelAll() async
 }
 
@@ -45,14 +61,27 @@ struct LiveNotificationService: NotificationScheduling {
     }
 
     func schedule(_ reminder: FollowUpReminder) async {
+        // The person's name and the user's own words — nothing generated,
+        // nothing nagging. Seeing who it's about is the whole value of the
+        // notification; "You have a follow-up" would be useless.
+        await scheduleReminder(
+            LocalReminder(
+                identifier: reminder.identifier,
+                title: reminder.personName,
+                body: reminder.title,
+                fireDate: reminder.fireDate
+            )
+        )
+    }
+
+    func scheduleReminder(_ reminder: LocalReminder) async {
         await cancel(identifier: reminder.identifier)
         guard reminder.fireDate > Date() else { return }
         guard await authorizationStatus() == .authorized else { return }
 
         let content = UNMutableNotificationContent()
-        // The person's name and the user's own words — nothing generated, nothing nagging.
-        content.title = reminder.personName
-        content.body = reminder.title
+        content.title = reminder.title
+        content.body = reminder.body
         content.sound = .default
         content.interruptionLevel = .active
 
@@ -70,8 +99,15 @@ struct LiveNotificationService: NotificationScheduling {
         do {
             try await center.add(request)
         } catch {
-            Logger.notifications.error("Failed to schedule a follow-up reminder.")
+            Logger.notifications.error("Failed to schedule a reminder.")
         }
+    }
+
+    func cancelReminders(withPrefix prefix: String) async {
+        let pending = await center.pendingNotificationRequests()
+        let matching = pending.map(\.identifier).filter { $0.hasPrefix(prefix) }
+        guard !matching.isEmpty else { return }
+        center.removePendingNotificationRequests(withIdentifiers: matching)
     }
 
     func cancel(identifier: String) async {
@@ -90,6 +126,7 @@ struct LiveNotificationService: NotificationScheduling {
 final class StubNotificationService: NotificationScheduling, @unchecked Sendable {
     var status: UNAuthorizationStatus = .authorized
     private(set) var scheduled: [FollowUpReminder] = []
+    private(set) var reminders: [LocalReminder] = []
     private(set) var cancelled: [String] = []
 
     func authorizationStatus() async -> UNAuthorizationStatus { status }
@@ -100,14 +137,28 @@ final class StubNotificationService: NotificationScheduling, @unchecked Sendable
         scheduled.append(reminder)
     }
 
+    func scheduleReminder(_ reminder: LocalReminder) async {
+        reminders.removeAll { $0.identifier == reminder.identifier }
+        reminders.append(reminder)
+    }
+
     func cancel(identifier: String) async {
         cancelled.append(identifier)
         scheduled.removeAll { $0.identifier == identifier }
+        reminders.removeAll { $0.identifier == identifier }
+    }
+
+    func cancelReminders(withPrefix prefix: String) async {
+        let matching = reminders.map(\.identifier).filter { $0.hasPrefix(prefix) }
+        cancelled.append(contentsOf: matching)
+        reminders.removeAll { $0.identifier.hasPrefix(prefix) }
     }
 
     func cancelAll() async {
         cancelled.append(contentsOf: scheduled.map(\.identifier))
+        cancelled.append(contentsOf: reminders.map(\.identifier))
         scheduled.removeAll()
+        reminders.removeAll()
     }
 }
 

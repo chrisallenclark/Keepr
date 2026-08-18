@@ -34,6 +34,7 @@ struct TodayView: View {
                     List {
                         reviewSection
                         followUpSection("Needs Attention", digest.needsAttention)
+                        waitingSection
                         dueForContactSection(digest.dueForContact)
                         followUpSection("Upcoming", digest.upcoming)
                         goingQuietSection(digest.goingQuiet)
@@ -73,7 +74,10 @@ struct TodayView: View {
             .sheet(isPresented: $isShowingReview, onDismiss: refreshNewContactCount) {
                 ReviewView(mode: mode)
             }
-            .task { await checkForNewContacts() }
+            .task {
+                rescheduleRhythmReminders()
+                await checkForNewContacts()
+            }
         }
     }
 
@@ -170,6 +174,47 @@ struct TodayView: View {
         }
     }
 
+    /// People you've reached out to who haven't come back yet.
+    ///
+    /// The ball is in their court, so this isn't a to-do list — it's the set of
+    /// threads that are still open, which is the thing you'd otherwise only
+    /// remember by scrolling your own outbox.
+    @ViewBuilder
+    private var waitingSection: some View {
+        let waiting = Outreach.waiting(PeopleEngine.visible(people, in: mode))
+
+        if !waiting.isEmpty {
+            Section {
+                ForEach(waiting) { item in
+                    Button {
+                        selectedPerson = item.person
+                    } label: {
+                        HStack(spacing: Theme.Spacing.medium) {
+                            PersonCompactRow(person: item.person, detail: item.summary)
+                            Spacer(minLength: Theme.Spacing.small)
+                            Image(systemName: "hourglass")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button {
+                            markReplied(item.person)
+                        } label: {
+                            Label("They Replied", systemImage: "checkmark")
+                        }
+                        .tint(.green)
+                    }
+                }
+            } header: {
+                Text("Waiting on a Reply")
+            } footer: {
+                Text("You reached out and haven't heard back. Swipe when they answer.")
+            }
+        }
+    }
+
     /// The rhythm section: people whose own interval says it's time.
     ///
     /// Sits above Upcoming because it's the part that decays silently — a
@@ -196,6 +241,14 @@ struct TodayView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button {
+                            markReachedOut(item.person)
+                        } label: {
+                            Label("Reached Out", systemImage: "paperplane")
+                        }
+                        .tint(.blue)
+                    }
                 }
             } header: {
                 Text("Time to Reach Out")
@@ -284,6 +337,34 @@ struct TodayView: View {
     private func refreshNewContactCount() {
         hasCheckedContacts = false
         Task { await checkForNewContacts() }
+    }
+
+    /// Sent a text, left a voicemail, got nothing back yet. Counts as your part
+    /// done — the rhythm resets and they move to "Waiting on a Reply".
+    private func markReachedOut(_ person: Person) {
+        withAnimation {
+            Outreach.markReachedOut(person, in: context)
+        }
+        try? context.save()
+        Haptics.success()
+        rescheduleRhythmReminders()
+    }
+
+    private func markReplied(_ person: Person) {
+        withAnimation { Outreach.markReplied(person) }
+        try? context.save()
+        Haptics.light()
+    }
+
+    /// Rhythm notifications are worked out in advance, so they're rebuilt every
+    /// time this screen appears — which is also every time something that would
+    /// move a due date has just happened.
+    private func rescheduleRhythmReminders() {
+        CadenceNotificationScheduler.sync(
+            people: people,
+            using: notificationService,
+            remindersEnabled: remindersEnabled
+        )
     }
 
     private func complete(_ followUp: FollowUp) {

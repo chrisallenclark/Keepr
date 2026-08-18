@@ -182,6 +182,9 @@ struct LogInteractionView: View {
         if (person.lastInteractionAt ?? .distantPast) < occurredAt {
             person.lastInteractionAt = occurredAt
         }
+        // Logging a conversation means the wait is over. Someone who logs a call
+        // shouldn't also have to tell the app the person replied.
+        Outreach.markReplied(person, at: occurredAt)
         person.touch()
         try? context.save()
 
