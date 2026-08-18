@@ -75,6 +75,13 @@ final class Person {
     /// opinion, which is why it isn't just nil.
     var cadenceDays: Int?
 
+    /// When you last reached out and haven't heard back yet.
+    ///
+    /// Separate from `lastInteractionAt` because they answer different
+    /// questions: "have I done my part" and "did anything actually happen".
+    /// A text nobody replied to is the first and not the second.
+    var awaitingReplySince: Date?
+
     /// Set once the user has answered for this person in the review queue —
     /// including answering "not now". Keeps a deliberate decision from being
     /// asked again every time the app opens.

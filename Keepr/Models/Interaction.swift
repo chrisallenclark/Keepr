@@ -27,6 +27,10 @@ final class Interaction {
     /// True when this came in through Quick Capture rather than the person's profile.
     var isQuickCapture: Bool = false
 
+    /// Recorded as an attempt rather than a conversation — a text that went
+    /// unanswered, a voicemail. It still counts as reaching out.
+    var awaitingReply: Bool = false
+
     var person: Person?
 
     @Relationship(deleteRule: .nullify, inverse: \Memory.sourceInteraction)
@@ -42,6 +46,7 @@ final class Interaction {
         rawNote: String? = nil,
         summary: String? = nil,
         isQuickCapture: Bool = false,
+        awaitingReply: Bool = false,
         person: Person? = nil
     ) {
         self.id = UUID()
@@ -52,6 +57,7 @@ final class Interaction {
         self.rawNote = rawNote
         self.summary = summary
         self.isQuickCapture = isQuickCapture
+        self.awaitingReply = awaitingReply
         self.person = person
         self.memories = []
         self.followUps = []

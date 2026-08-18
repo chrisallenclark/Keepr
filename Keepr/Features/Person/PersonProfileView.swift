@@ -53,6 +53,7 @@ struct PersonProfileView: View {
                 .listRowSeparator(.hidden)
             }
 
+            waitingRow
             nextActionSection
             workSection
             placesSection
@@ -79,6 +80,19 @@ struct PersonProfileView: View {
                             person.isFavorite ? "Remove Favorite" : "Favorite",
                             systemImage: person.isFavorite ? "star.slash" : "star"
                         )
+                    }
+                    if person.awaitingReplySince == nil {
+                        Button {
+                            markReachedOut()
+                        } label: {
+                            Label("Reached Out — No Reply", systemImage: "paperplane")
+                        }
+                    } else {
+                        Button {
+                            markReplied()
+                        } label: {
+                            Label("They Replied", systemImage: "checkmark.bubble")
+                        }
                     }
                     Divider()
                     Button(role: .destructive) {
@@ -222,6 +236,32 @@ struct PersonProfileView: View {
                     Button("Add") { startAddingMemory() }
                         .font(.caption.weight(.semibold))
                         .textCase(nil)
+                }
+            }
+        }
+    }
+
+    // MARK: - Waiting
+
+    /// A quiet line, not an alarm: you reached out, nothing has come back yet.
+    @ViewBuilder
+    private var waitingRow: some View {
+        if let since = person.awaitingReplySince {
+            Section {
+                HStack(spacing: Theme.Spacing.medium) {
+                    Image(systemName: "hourglass")
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Waiting on a reply")
+                            .font(.subheadline.weight(.medium))
+                        Text("You reached out \(RelativeDate.past(since).lowercased()).")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Button("Replied") { markReplied() }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(.borderless)
                 }
             }
         }
@@ -628,6 +668,20 @@ struct PersonProfileView: View {
             .first?
             .occurredAt
         try? context.save()
+    }
+
+    /// Sent something, heard nothing. Their clock resets — you did your part —
+    /// and they join the waiting list until they come back.
+    private func markReachedOut() {
+        withAnimation { Outreach.markReachedOut(person, in: context) }
+        try? context.save()
+        Haptics.success()
+    }
+
+    private func markReplied() {
+        withAnimation { Outreach.markReplied(person) }
+        try? context.save()
+        Haptics.light()
     }
 
     /// nil means "inherit from my types", 0 means "never chase me about them".
