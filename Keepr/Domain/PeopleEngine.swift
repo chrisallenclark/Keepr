@@ -31,6 +31,35 @@ enum PeopleSort: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 }
 
+/// How the People screen draws its people.
+///
+/// Two answers to "how big should a contact be", both of which are right some
+/// of the time: a list is faster to search and keeps the A–Z index, a grid puts
+/// the face first and is nicer to browse. Rather than picking one forever, the
+/// screen offers both and remembers which you last used.
+enum PeopleLayout: String, CaseIterable, Identifiable, Codable, Sendable {
+    case list
+    case grid
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .list: "List"
+        case .grid: "Grid"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .list: "list.bullet"
+        case .grid: "square.grid.2x2"
+        }
+    }
+
+    var toggled: PeopleLayout { self == .list ? .grid : .list }
+}
+
 /// One A–Z section of the People list.
 struct PersonSection: Identifiable {
     let key: String

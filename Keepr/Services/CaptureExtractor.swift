@@ -205,7 +205,43 @@ struct HeuristicCaptureExtractor: CaptureExtracting {
             .first { _, keywords in keywords.contains { containsWord(haystack, $0) } }?
             .0 ?? .other
 
-        return MemoryDraft(content: content, category: category)
+        return MemoryDraft(content: content, label: label(for: clause), category: category)
+    }
+
+    // MARK: - Labels
+
+    /// Phrases that name what a fact is *about*, mapped to the label to propose.
+    ///
+    /// Order matters the same way it does for interaction kinds — the specific
+    /// sits above the general, so "favorite restaurant" is a restaurant before
+    /// it's a favorite anything.
+    ///
+    /// This list is short on purpose. A label is only worth proposing when it
+    /// would be the same word the user would have typed; anything vaguer turns
+    /// the profile into a table of headings nobody wrote and everybody has to
+    /// correct. Leaving a fact unlabeled costs nothing — it still shows up.
+    private static let labelKeywords: [(String, [String])] = [
+        ("Favorite restaurant", ["favorite restaurant", "favourite restaurant", "favorite spot", "favourite spot"]),
+        ("Travel plans", ["trip to", "traveling to", "travelling to", "flying to", "vacation in", "vacation to"]),
+        ("Birthday", ["birthday"]),
+        ("Anniversary", ["anniversary"]),
+        ("Kids", ["daughter", "son", "kids", "children", "grandkids"]),
+        ("Partner", ["wife", "husband", "spouse", "fiancé", "fiancee"]),
+        ("Lives in", ["lives in", "moved to", "based in", "relocating to"]),
+        ("From", ["grew up in", "originally from"]),
+        ("Training for", ["training for", "signed up for", "competing in"]),
+        ("Dietary", ["allergic", "vegetarian", "vegan", "gluten free", "dairy free"]),
+        ("Supports", ["season tickets", "fan of"])
+    ]
+
+    /// The label to propose for a clause, or nil when nothing fits.
+    ///
+    /// Deliberately returns nil far more often than not — see `labelKeywords`.
+    static func label(for clause: String) -> String? {
+        let haystack = matchable(clause)
+        return labelKeywords
+            .first { _, keywords in keywords.contains { containsWord(haystack, $0) } }?
+            .0
     }
 
     /// Drops the leading pronoun or connector and capitalizes, so

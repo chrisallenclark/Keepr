@@ -21,20 +21,28 @@ enum LaunchOptions {
         #endif
     }
 
-    /// Which screen to open on. `profile` opens the first person in People.
+    /// Which screen to open on.
+    ///
+    /// `profile` opens the first person in People, and `map` opens the first
+    /// connected person's relationship map — both because the screen worth
+    /// capturing is one level in, and a screenshot of an empty detail view
+    /// proves nothing.
     enum Screen: String {
         case today
         case people
         case followUp
-        case search
         case profile
+        case network
+        case map
+        case more
 
         var tab: AppTab {
             switch self {
             case .today: .today
             case .people, .profile: .people
             case .followUp: .followUp
-            case .search: .search
+            case .network, .map: .network
+            case .more: .more
             }
         }
     }

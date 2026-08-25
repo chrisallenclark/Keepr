@@ -241,7 +241,7 @@ private struct GroupMembersView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
+                .keeprList()
             }
         }
         .navigationTitle(group.name)

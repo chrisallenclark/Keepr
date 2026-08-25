@@ -188,8 +188,11 @@ jobs:
             capture people   business "$appearance"
             capture profile  business "$appearance"
             capture followUp business "$appearance"
-            capture search   business "$appearance"
+            capture network  business "$appearance"
+            capture map      business "$appearance"
+            capture more     business "$appearance"
             capture today    personal "$appearance"
+            capture people   personal "$appearance"
           done
 
           xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true

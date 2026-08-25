@@ -65,7 +65,7 @@ struct RelationshipTypeEditor: View {
                 Text("Tap a type to rename it or change its symbol. Swipe to delete — including the ones Keepr started you with. Deleting a type never deletes anyone.")
             }
         }
-        .listStyle(.insetGrouped)
+        .keeprList()
         .navigationTitle("Relationship Types")
         .navigationBarTitleDisplayMode(.inline)
         .contextSwitcher($mode)

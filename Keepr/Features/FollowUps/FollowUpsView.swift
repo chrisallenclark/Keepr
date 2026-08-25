@@ -35,7 +35,14 @@ struct FollowUpsView: View {
                     list
                 }
             }
-            .navigationTitle("Follow Up")
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Follow Up")
+                        .font(.keeprTitleInline)
+                        .foregroundStyle(.primary)
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .contextSwitcher($mode)
             .toolbar {
@@ -61,7 +68,7 @@ struct FollowUpsView: View {
     private var list: some View {
         List {
             ForEach(sections) { section in
-                Section(section.title) {
+                Section {
                     ForEach(section.items) { followUp in
                         FollowUpRow(followUp: followUp) {
                             toggle(followUp)
@@ -117,10 +124,12 @@ struct FollowUpsView: View {
                             }
                         }
                     }
+                } header: {
+                    SectionHeading(section.title, count: section.items.count)
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .keeprList()
     }
 
     // MARK: - Actions

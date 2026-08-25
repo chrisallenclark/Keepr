@@ -8,7 +8,7 @@ struct PersonHeader: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.medium) {
-            Avatar(person: person, size: .large)
+            Avatar(person: person, size: .extraLarge)
 
             VStack(spacing: Theme.Spacing.tight) {
                 Text(person.displayName)
@@ -33,7 +33,7 @@ struct PersonHeader: View {
             if !tags.isEmpty {
                 HStack(spacing: Theme.Spacing.small) {
                     ForEach(tags.prefix(3)) { tag in
-                        TagChip(tag: tag, isProminent: true)
+                        TypeBadge(tag: tag)
                     }
                 }
             }
@@ -98,40 +98,132 @@ struct QuickActions: View {
 }
 
 /// One remembered fact.
+///
+/// Reads as "label → value" when the fact has a name, and as a sentence when it
+/// doesn't. Both shapes live in the same row so the About table stays one list
+/// rather than two that happen to sit next to each other.
 struct MemoryRow: View {
     let memory: Memory
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.medium) {
-            Image(systemName: memory.category.symbolName)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(width: 20)
-                .padding(.top, 2)
+            if let label = memory.label, !label.isEmpty {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 124, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            VStack(alignment: .leading, spacing: 2) {
                 Text(memory.content)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Image(systemName: memory.category.symbolName)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+                    .padding(.top, 2)
 
-                if memory.category != .other {
-                    Text(memory.category.title)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(memory.content)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+
+                    if memory.category != .other {
+                        Text(memory.category.title)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
-            }
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
 
             if memory.importance == .high {
                 Image(systemName: "star.fill")
                     .font(.caption2)
                     .foregroundStyle(.yellow)
                     .accessibilityLabel("Important")
+                    .padding(.top, 2)
             }
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            memory.label.map { "\($0), \(memory.content)" } ?? memory.content
+        )
+    }
+}
+
+/// One "field name → value" line in the About table.
+///
+/// The same two-column shape as a labeled memory, for the facts the app already
+/// knows without anyone typing them: how you met, when you last spoke, what's
+/// next. Putting them in the same table is the point — from the reader's side
+/// there's no difference between a fact Keepr worked out and one they wrote.
+struct AboutRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 124, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label), \(value)")
+    }
+}
+
+/// The unlabeled facts, as one bulleted block.
+///
+/// Kept together under a single heading rather than one row each, because a
+/// column of bullets with no field names beside them is a list, and a list of
+/// one-line facts reads faster stacked than spaced out.
+struct KeyFactsRow: View {
+    let memories: [Memory]
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+            Text("Key facts to remember")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 124, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                ForEach(memories) { memory in
+                    HStack(alignment: .top, spacing: Theme.Spacing.small) {
+                        Text("•")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                        Text(memory.content)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Key facts to remember. " + memories.map(\.content).joined(separator: ". ")
+        )
     }
 }
 

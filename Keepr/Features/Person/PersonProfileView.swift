@@ -19,6 +19,7 @@ struct PersonProfileView: View {
     @State private var isShowingAllMemories = false
     @State private var isShowingAllInteractions = false
     @State private var newMemoryText = ""
+    @State private var newMemoryLabel = ""
     @State private var isAddingMemory = false
     @State private var isConfirmingDelete = false
     @State private var isShowingLinkEditor = false
@@ -55,16 +56,25 @@ struct PersonProfileView: View {
 
             waitingRow
             nextActionSection
+            aboutSection
+            notesSection
             workSection
             placesSection
-            memoriesSection
             connectionsSection
             timelineSection
             detailsSection
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle(person.displayName)
+        .keeprList()
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(person.displayName)
+                    .font(.keeprTitleInline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -163,29 +173,76 @@ struct PersonProfileView: View {
                 }
             }
         } header: {
-            HStack {
-                Text("Next")
-                Spacer()
+            SectionHeading("Next") {
                 if !person.openFollowUps.isEmpty {
                     Button("Add") { isShowingNewFollowUp = true }
                         .font(.caption.weight(.semibold))
-                        .textCase(nil)
                 }
             }
         }
     }
 
-    // MARK: - Memories
+    // MARK: - About
 
-    private var visibleMemories: [Memory] {
-        let all = person.visibleMemories
+    /// Facts with a name of their own — "Favorite restaurant → Eataly".
+    private var labeledMemories: [Memory] {
+        person.visibleMemories.filter(\.isLabeled)
+    }
+
+    /// Facts that are just facts. Capped until asked, because a profile is for
+    /// the sentence you need before the next conversation, not the archive.
+    private var unlabeledMemories: [Memory] {
+        let all = person.visibleMemories.filter { !$0.isLabeled }
         return isShowingAllMemories ? all : Array(all.prefix(4))
     }
 
+    private var hiddenMemoryCount: Int {
+        person.visibleMemories.filter { !$0.isLabeled }.count - unlabeledMemories.count
+    }
+
+    /// Everything worth knowing, in one table.
+    ///
+    /// The rows Keepr already knows — how you met, when you last spoke, what's
+    /// next — sit in the same two columns as the facts the user typed, because
+    /// from the reading side there's no difference between them. Adding a fact
+    /// happens here rather than behind an edit screen: a profile you have to
+    /// leave to add to is a profile that stays empty.
     @ViewBuilder
-    private var memoriesSection: some View {
+    private var aboutSection: some View {
         Section {
-            if person.visibleMemories.isEmpty, !isAddingMemory {
+            if let met = person.howWeMet, !met.isEmpty {
+                AboutRow(label: "How you met", value: met)
+            }
+
+            if !unlabeledMemories.isEmpty {
+                KeyFactsRow(memories: unlabeledMemories)
+            }
+
+            if let last = person.lastInteractionAt {
+                AboutRow(label: "Last interaction", value: RelativeDate.past(last))
+            }
+
+            if let next = person.nextFollowUp {
+                AboutRow(label: "Next follow-up", value: RelativeDate.dueWithTime(next))
+            }
+
+            ForEach(labeledMemories) { memory in
+                MemoryRow(memory: memory)
+                    .swipeActions(edge: .trailing) {
+                        memorySwipeActions(memory)
+                    }
+            }
+
+            if hiddenMemoryCount > 0 || isShowingAllMemories {
+                Button(isShowingAllMemories ? "Show Less" : "Show \(hiddenMemoryCount) More") {
+                    withAnimation { isShowingAllMemories.toggle() }
+                }
+                .font(.subheadline)
+            }
+
+            if isAddingMemory {
+                newMemoryFields
+            } else if person.visibleMemories.isEmpty {
                 Button {
                     startAddingMemory()
                 } label: {
@@ -193,50 +250,64 @@ struct PersonProfileView: View {
                         .font(.subheadline)
                 }
             }
-
-            ForEach(visibleMemories) { memory in
-                MemoryRow(memory: memory)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            delete(memory)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                        Button {
-                            archive(memory)
-                        } label: {
-                            Label("Archive", systemImage: "archivebox")
-                        }
-                        .tint(.gray)
-                    }
-            }
-
-            if isAddingMemory {
-                HStack {
-                    TextField("Something worth remembering", text: $newMemoryText, axis: .vertical)
-                        .font(.subheadline)
-                        .onSubmit(saveMemory)
-                    Button("Save", action: saveMemory)
-                        .font(.subheadline.weight(.semibold))
-                        .disabled(newMemoryText.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-
-            if person.visibleMemories.count > 4 {
-                Button(isShowingAllMemories ? "Show Less" : "Show All \(person.visibleMemories.count)") {
-                    withAnimation { isShowingAllMemories.toggle() }
-                }
-                .font(.subheadline)
-            }
         } header: {
-            HStack {
-                Text("Important Context")
-                Spacer()
-                if !person.visibleMemories.isEmpty || isAddingMemory {
+            SectionHeading("About \(person.firstNameForHeading)") {
+                if !isAddingMemory {
                     Button("Add") { startAddingMemory() }
                         .font(.caption.weight(.semibold))
-                        .textCase(nil)
                 }
+            }
+        }
+        .keeprRow()
+    }
+
+    /// A label and a value, in the order they'll be read back.
+    ///
+    /// The label is optional and stays optional — leaving it blank records a
+    /// plain sentence, which is what most of what's worth remembering is.
+    private var newMemoryFields: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            TextField("Label — optional, like \"Favorite restaurant\"", text: $newMemoryLabel)
+                .font(.subheadline)
+                .textInputAutocapitalization(.sentences)
+
+            HStack(alignment: .top) {
+                TextField("Something worth remembering", text: $newMemoryText, axis: .vertical)
+                    .font(.subheadline)
+                    .onSubmit(saveMemory)
+                Button("Save", action: saveMemory)
+                    .font(.subheadline.weight(.semibold))
+                    .disabled(newMemoryText.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func memorySwipeActions(_ memory: Memory) -> some View {
+        Button(role: .destructive) {
+            delete(memory)
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+        Button {
+            archive(memory)
+        } label: {
+            Label("Archive", systemImage: "archivebox")
+        }
+        .tint(.gray)
+    }
+
+    // MARK: - Notes
+
+    /// The user's own longer writing about this person, set apart from the
+    /// structured rows above it.
+    @ViewBuilder
+    private var notesSection: some View {
+        if let notes = person.notes?.trimmingCharacters(in: .whitespacesAndNewlines), !notes.isEmpty {
+            Section {
+                NoteBlock(title: "Personal notes", text: notes)
+                    .listRowInsets(EdgeInsets())
+                    .keeprBareRow()
             }
         }
     }
@@ -362,7 +433,7 @@ struct PersonProfileView: View {
                     }
                 }
             } header: {
-                Text("What They Do")
+                SectionHeading("What They Do")
             }
         } else {
             Section {
@@ -373,7 +444,7 @@ struct PersonProfileView: View {
                         .font(.subheadline)
                 }
             } header: {
-                Text("What They Do")
+                SectionHeading("What They Do")
             } footer: {
                 Text("Who they work for, what they run, what they're good at. The thing you'd want in front of you before the next conversation.")
             }
@@ -420,14 +491,11 @@ struct PersonProfileView: View {
                 }
             }
         } header: {
-            HStack {
-                Text(groupPlural)
-                Spacer()
+            SectionHeading(groupPlural) {
                 if !places.isEmpty {
                     placeMenu {
                         Text("Add")
                             .font(.caption.weight(.semibold))
-                            .textCase(nil)
                     }
                 }
             }
@@ -494,12 +562,9 @@ struct PersonProfileView: View {
                     }
                 }
             } header: {
-                HStack {
-                    Text("Connections")
-                    Spacer()
+                SectionHeading("Connections", count: connections.count) {
                     Button("Link") { isShowingLinkEditor = true }
                         .font(.caption.weight(.semibold))
-                        .textCase(nil)
                 }
             }
         } else {
@@ -511,7 +576,7 @@ struct PersonProfileView: View {
                         .font(.subheadline)
                 }
             } header: {
-                Text("Connections")
+                SectionHeading("Connections")
             } footer: {
                 Text("Their partner, their assistant, whoever introduced you.")
             }
@@ -555,13 +620,10 @@ struct PersonProfileView: View {
                 .font(.subheadline)
             }
         } header: {
-            HStack {
-                Text("Interactions")
-                Spacer()
+            SectionHeading("Interactions", count: person.timeline.count) {
                 if !person.timeline.isEmpty {
                     Button("Log") { isShowingLogInteraction = true }
                         .font(.caption.weight(.semibold))
-                        .textCase(nil)
                 }
             }
         }
@@ -630,12 +692,13 @@ struct PersonProfileView: View {
         let content = newMemoryText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty else { return }
 
-        let memory = Memory(content: content, person: person)
+        let memory = Memory(content: content, label: newMemoryLabel, person: person)
         context.insert(memory)
         person.touch()
         try? context.save()
 
         newMemoryText = ""
+        newMemoryLabel = ""
         isAddingMemory = false
         Haptics.success()
     }

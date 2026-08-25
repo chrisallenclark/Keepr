@@ -130,7 +130,7 @@ struct ContactImportView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .keeprList()
         .searchable(text: $query, prompt: "Search contacts")
         .overlay {
             if results.isEmpty {

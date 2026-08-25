@@ -35,6 +35,14 @@ final class RelationshipTag {
     var sortOrder: Int = 0
     /// SF Symbol shown in filter menus.
     var symbolName: String = "tag"
+    /// Which of `Theme.Tint` this type is shown in, by raw value.
+    ///
+    /// Optional so it can be added without a migration, and so a type that has
+    /// never been given one still resolves to a stable color derived from its
+    /// name rather than to nothing. Stored as the tint's string rather than a
+    /// color, which keeps the model free of UI types and lets the palette be
+    /// retuned later without touching anyone's data.
+    var colorKey: String?
 
     var createdAt: Date = Date()
 
@@ -47,7 +55,8 @@ final class RelationshipTag {
         sortOrder: Int = 0,
         symbolName: String = "tag",
         builtInKey: String? = nil,
-        aliases: String? = nil
+        aliases: String? = nil,
+        colorKey: String? = nil
     ) {
         self.id = UUID()
         self.name = name
@@ -57,6 +66,7 @@ final class RelationshipTag {
         self.aliases = aliases
         self.sortOrder = sortOrder
         self.symbolName = symbolName
+        self.colorKey = colorKey
         self.createdAt = Date()
         self.people = []
     }
@@ -70,6 +80,16 @@ extension RelationshipTag {
     }
 
     var peopleList: [Person] { people ?? [] }
+
+    /// The color this type is shown in.
+    ///
+    /// Falls back to a stable choice derived from the name, so a type the user
+    /// invented looks as considered as a built-in without anyone having to pick
+    /// a swatch. Keyed on `builtInKey ?? name` so renaming "Family" doesn't also
+    /// recolor it.
+    var tint: Theme.Tint {
+        Theme.Tint.resolve(key: colorKey, fallbackSeed: builtInKey ?? name)
+    }
 }
 
 // MARK: - Built-in catalog
@@ -82,29 +102,35 @@ extension RelationshipTag {
         let name: String
         let kind: TagKind
         let symbolName: String
+        let tint: Theme.Tint
     }
 
+    /// Tints group by meaning rather than reaching for variety. Green is
+    /// everyone who might bring work in, teal is everyone you work alongside,
+    /// orange is anything with heat on it, and graphite is the settled and the
+    /// merely filed. Blue is reserved for the two that pay — a current client
+    /// and an investor — so it stays worth noticing.
     static let builtInCatalog: [BuiltIn] = [
         // Business
-        .init(name: "Current Client", kind: .business, symbolName: "checkmark.seal"),
-        .init(name: "Past Client", kind: .business, symbolName: "clock.arrow.circlepath"),
-        .init(name: "Potential Client", kind: .business, symbolName: "sparkles"),
-        .init(name: "Lead", kind: .business, symbolName: "flame"),
-        .init(name: "Business Partner", kind: .business, symbolName: "person.2"),
-        .init(name: "Referral Source", kind: .business, symbolName: "arrow.triangle.branch"),
-        .init(name: "Vendor", kind: .business, symbolName: "shippingbox"),
-        .init(name: "Team", kind: .business, symbolName: "person.3"),
-        .init(name: "Colleague", kind: .business, symbolName: "person.2.circle"),
-        .init(name: "Professional Contact", kind: .business, symbolName: "briefcase"),
-        .init(name: "Investor", kind: .business, symbolName: "chart.line.uptrend.xyaxis"),
-        .init(name: "Mentor", kind: .business, symbolName: "graduationcap"),
-        .init(name: "Advisor", kind: .business, symbolName: "lightbulb"),
-        .init(name: "Candidate", kind: .business, symbolName: "person.badge.plus"),
+        .init(name: "Current Client", kind: .business, symbolName: "checkmark.seal", tint: .blue),
+        .init(name: "Past Client", kind: .business, symbolName: "clock.arrow.circlepath", tint: .graphite),
+        .init(name: "Potential Client", kind: .business, symbolName: "sparkles", tint: .green),
+        .init(name: "Lead", kind: .business, symbolName: "flame", tint: .orange),
+        .init(name: "Business Partner", kind: .business, symbolName: "person.2", tint: .teal),
+        .init(name: "Referral Source", kind: .business, symbolName: "arrow.triangle.branch", tint: .green),
+        .init(name: "Vendor", kind: .business, symbolName: "shippingbox", tint: .graphite),
+        .init(name: "Team", kind: .business, symbolName: "person.3", tint: .teal),
+        .init(name: "Colleague", kind: .business, symbolName: "person.2.circle", tint: .teal),
+        .init(name: "Professional Contact", kind: .business, symbolName: "briefcase", tint: .graphite),
+        .init(name: "Investor", kind: .business, symbolName: "chart.line.uptrend.xyaxis", tint: .blue),
+        .init(name: "Mentor", kind: .business, symbolName: "graduationcap", tint: .purple),
+        .init(name: "Advisor", kind: .business, symbolName: "lightbulb", tint: .purple),
+        .init(name: "Candidate", kind: .business, symbolName: "person.badge.plus", tint: .orange),
         // Personal
-        .init(name: "Family", kind: .personal, symbolName: "house"),
-        .init(name: "Close Friend", kind: .personal, symbolName: "heart"),
-        .init(name: "Friend", kind: .personal, symbolName: "hand.wave"),
-        .init(name: "Acquaintance", kind: .personal, symbolName: "person")
+        .init(name: "Family", kind: .personal, symbolName: "house", tint: .orange),
+        .init(name: "Close Friend", kind: .personal, symbolName: "heart", tint: .pink),
+        .init(name: "Friend", kind: .personal, symbolName: "hand.wave", tint: .purple),
+        .init(name: "Acquaintance", kind: .personal, symbolName: "person", tint: .graphite)
     ]
 
 }

@@ -108,7 +108,7 @@ struct ReviewView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .keeprList()
     }
 
     private func row(_ item: ReviewItem) -> some View {

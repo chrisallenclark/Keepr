@@ -8,15 +8,22 @@ import SwiftUI
 struct Avatar: View {
 
     enum Size {
+        /// Inside a dense list — Today, Search, the importer.
         case small
+        /// A row that is mostly about the person.
         case medium
+        /// The People list and the relationship map, where the photo is the
+        /// thing you actually recognize someone by.
         case large
+        /// A profile header.
+        case extraLarge
 
         var diameter: CGFloat {
             switch self {
             case .small: 36
             case .medium: 44
-            case .large: 84
+            case .large: 56
+            case .extraLarge: 88
             }
         }
 
@@ -24,7 +31,8 @@ struct Avatar: View {
             switch self {
             case .small: .subheadline
             case .medium: .headline
-            case .large: .largeTitle
+            case .large: .title3
+            case .extraLarge: .largeTitle
             }
         }
     }
@@ -41,7 +49,7 @@ struct Avatar: View {
                     .scaledToFill()
             } else {
                 Circle()
-                    .fill(.quaternary)
+                    .fill(Theme.Palette.fill)
                     .overlay {
                         Text(initials)
                             .font(size.font)
@@ -73,6 +81,7 @@ extension Avatar {
         Avatar(imageData: nil, initials: "JM", size: .small)
         Avatar(imageData: nil, initials: "SM", size: .medium)
         Avatar(imageData: nil, initials: "MR", size: .large)
+        Avatar(imageData: nil, initials: "AL", size: .extraLarge)
     }
     .padding()
 }

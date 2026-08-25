@@ -57,7 +57,7 @@ struct SearchView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .keeprList()
     }
 
     private var startState: some View {

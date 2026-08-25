@@ -86,10 +86,10 @@ enum SampleData {
         )
         addMemories(
             [
-                ("Owns Martinez Roofing", .work, .high),
-                ("Wants to lose 20 lb", .goals, .high),
-                ("Daughter is getting married in the spring", .family, .normal),
-                ("Trains at Life Time in the mornings", .personal, .normal)
+                ("Owns Martinez Roofing", nil, .work, .high),
+                ("Wants to lose 20 lb", "Goal", .goals, .high),
+                ("Getting married in the spring", "Daughter", .family, .normal),
+                ("Trains at Life Time in the mornings", nil, .personal, .normal)
             ],
             to: jake,
             from: jakeChat,
@@ -138,9 +138,9 @@ enum SampleData {
         )
         addMemories(
             [
-                ("Going to Italy in September", .importantDate, .high),
-                ("Trains Tuesday and Thursday mornings", .preferences, .normal),
-                ("Two kids, 7 and 10", .family, .normal)
+                ("Italy — September", "Travel plans", .importantDate, .high),
+                ("Tuesday and Thursday mornings", "Trains", .preferences, .normal),
+                ("Two, ages 7 and 10", "Kids", .family, .normal)
             ],
             to: sarah,
             from: sarahCall,
@@ -199,9 +199,9 @@ enum SampleData {
         )
         addMemories(
             [
-                ("Sends 2–3 referrals a month", .business, .high),
-                ("Wants to co-host a fall workshop", .goals, .normal),
-                ("Runs the Delray half marathon every year", .interests, .low)
+                ("Sends 2–3 referrals a month", nil, .business, .high),
+                ("Wants to co-host a fall workshop", nil, .goals, .normal),
+                ("Delray half marathon, every year", "Runs", .interests, .low)
             ],
             to: michael,
             from: michaelMeeting,
@@ -242,7 +242,7 @@ enum SampleData {
             in: context
         )
         addMemories(
-            [("Considering small-group training for her team", .business, .normal)],
+            [("Considering small-group training for her team", nil, .business, .normal)],
             to: dana,
             from: nil,
             at: daysAgo(38),
@@ -297,8 +297,8 @@ enum SampleData {
         )
         addMemories(
             [
-                ("Starting a new job on the 1st", .work, .high),
-                ("Allergic to shellfish", .preferences, .high)
+                ("Starting a new job on the 1st", nil, .work, .high),
+                ("Allergic to shellfish", "Dietary", .preferences, .high)
             ],
             to: alex,
             from: alexText,
@@ -332,8 +332,8 @@ enum SampleData {
         )
         addMemories(
             [
-                ("Wants to visit in October", .importantDate, .high),
-                ("Birthday: March 14", .importantDate, .high)
+                ("Wants to visit in October", nil, .importantDate, .high),
+                ("March 14", "Birthday", .importantDate, .high)
             ],
             to: mom,
             from: nil,
@@ -370,7 +370,7 @@ enum SampleData {
             in: context
         )
         addMemories(
-            [("House hunting with Maya", .personal, .normal)],
+            [("House hunting with Maya", nil, .personal, .normal)],
             to: ben,
             from: nil,
             at: daysAgo(95),
@@ -403,18 +403,30 @@ enum SampleData {
         context.insert(homeStudio)
         homeStudio.members = [sarah, dana]
 
-        // The referral that started the client relationship, as a link rather
-        // than a note — it reads from both ends and survives a rename.
-        context.insert(
-            PersonLink(
-                personA: sarah,
-                personB: michael,
-                labelAToB: "Referred By",
-                labelBToA: "Referred",
-                note: "Sent her over after her half marathon",
-                createdAt: daysAgo(240)
+        // A small web rather than one link, because the relationship map only
+        // says anything once someone has more than one connection — and the
+        // shape it's built to show is "this client came from that referral,
+        // who I met through this friend".
+        let links: [(Person, Person, String, String, String?, Int)] = [
+            (sarah, michael, "Referred By", "Referred", "Sent her over after her half marathon", 240),
+            (michael, jake, "Referred", "Referred By", "Roofing job at the gym", 150),
+            (sarah, dana, "Introduced By", "Introduced", "Met at the Delray mixer", 120),
+            (sarah, alex, "Knows", "Knows", nil, 60),
+            (michael, dana, "Met At Event", "Met At Event", "Same networking breakfast", 45),
+            (mom, ben, "Family", "Family", nil, 1200)
+        ]
+        for (personA, personB, aToB, bToA, note, age) in links {
+            context.insert(
+                PersonLink(
+                    personA: personA,
+                    personB: personB,
+                    labelAToB: aToB,
+                    labelBToA: bToA,
+                    note: note,
+                    createdAt: daysAgo(age)
+                )
             )
-        )
+        }
 
         try? context.save()
     }
@@ -449,7 +461,7 @@ enum SampleData {
 
     @MainActor
     private static func addMemories(
-        _ items: [(String, MemoryCategory, Priority)],
+        _ items: [(String, String?, MemoryCategory, Priority)],
         to person: Person,
         from interaction: Interaction?,
         at date: Date,
@@ -459,8 +471,9 @@ enum SampleData {
             context.insert(
                 Memory(
                     content: item.0,
-                    category: item.1,
-                    importance: item.2,
+                    label: item.1,
+                    category: item.2,
+                    importance: item.3,
                     createdAt: date,
                     person: person,
                     sourceInteraction: interaction

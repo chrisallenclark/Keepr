@@ -92,7 +92,8 @@ enum KeeprStore {
                     isBuiltIn: true,
                     sortOrder: index * 10,
                     symbolName: builtIn.symbolName,
-                    builtInKey: builtIn.name
+                    builtInKey: builtIn.name,
+                    colorKey: builtIn.tint.rawValue
                 )
             )
             offered.insert(builtIn.name)
@@ -130,6 +131,19 @@ enum KeeprStore {
             guard catalog["\(tag.kind.rawValue)|\(tag.name)"] != nil else { continue }
             tag.builtInKey = tag.name
             tag.isBuiltIn = true
+            didChange = true
+        }
+
+        // Built-ins seeded before types had colors carry none, so they would
+        // fall back to a hashed tint and "Current Client" would come out some
+        // arbitrary color on an install that predates this. Give them the one
+        // from the catalog, matched on the key so a renamed built-in is still
+        // found. Only ever fills a blank — a color the user chose is never
+        // overwritten.
+        for tag in all where tag.colorKey == nil {
+            guard let key = tag.builtInKey,
+                  let builtIn = catalog["\(tag.kind.rawValue)|\(key)"] else { continue }
+            tag.colorKey = builtIn.tint.rawValue
             didChange = true
         }
 

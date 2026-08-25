@@ -140,6 +140,12 @@ struct LinkRole: Hashable, Identifiable, Sendable {
     static let social: [LinkRole] = [
         .init(name: "Friend", inverse: "Friend", symbolName: "hand.wave"),
         .init(name: "Neighbor", inverse: "Neighbor", symbolName: "building.2"),
+        // How you came to know someone is the most useful thing the map shows,
+        // and it reads differently from each end — you were introduced *by*
+        // them, they introduced *you*.
+        .init(name: "Introduced By", inverse: "Introduced", symbolName: "hand.raised"),
+        .init(name: "Introduced", inverse: "Introduced By", symbolName: "hand.raised"),
+        .init(name: "Met At Event", inverse: "Met At Event", symbolName: "calendar"),
         .init(name: "Knows", inverse: "Knows", symbolName: "person.2")
     ]
 

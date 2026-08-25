@@ -10,6 +10,7 @@ struct PeopleView: View {
     // Alphabetical is what an address book is, and what the index strip needs.
     @AppStorage(PreferenceKey.peopleSort) private var sortRaw = PeopleSort.name.rawValue
     @AppStorage(PreferenceKey.didDefaultToNameSort) private var didDefaultToNameSort = false
+    @AppStorage(PreferenceKey.peopleLayout) private var layoutRaw = PeopleLayout.list.rawValue
 
     @Query(sort: \Person.familyName) private var people: [Person]
     @Query(sort: \RelationshipTag.sortOrder) private var tags: [RelationshipTag]
@@ -40,6 +41,11 @@ struct PeopleView: View {
     private var sort: PeopleSort {
         get { PeopleSort(rawValue: sortRaw) ?? .name }
         nonmutating set { sortRaw = newValue.rawValue }
+    }
+
+    private var layout: PeopleLayout {
+        get { PeopleLayout(rawValue: layoutRaw) ?? .list }
+        nonmutating set { layoutRaw = newValue.rawValue }
     }
 
     private var place: PlaceFilter {
@@ -104,6 +110,8 @@ struct PeopleView: View {
                 // the filter disappears exactly when it's needed.
                 if filtered.isEmpty, !hasActiveFilters {
                     emptyState
+                } else if layout == .grid {
+                    grid
                 } else if sort == .name {
                     sectionedList
                 } else {
@@ -111,12 +119,19 @@ struct PeopleView: View {
                 }
             }
             .environment(\.editMode, $editMode)
-            .navigationTitle(editMode.isEditing ? selectionTitle : "People")
             // Inline, like Today. A large title scrolls away under the pinned
             // context switcher, so the screen loses its name the moment you
             // scroll and only gets it back by pulling down — which reads as a
             // bug even though it's stock behaviour.
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(editMode.isEditing ? selectionTitle : "People")
+                        .font(.keeprTitleInline)
+                        .foregroundStyle(.primary)
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
             .contextSwitcher($mode)
             .searchable(text: $searchText, prompt: "Search \(mode.title.lowercased()) contacts")
             .toolbar {
@@ -188,9 +203,10 @@ struct PeopleView: View {
             noMatchesRow
             ForEach(filtered) { person in
                 row(for: person)
+                    .keeprRow()
             }
         }
-        .listStyle(.plain)
+        .keeprList()
     }
 
     private var sections: [PersonSection] {
@@ -211,13 +227,14 @@ struct PeopleView: View {
                     Section {
                         ForEach(section.people) { person in
                             row(for: person)
+                                .keeprRow()
                         }
                     } header: {
-                        Text(section.key).id(section.key)
+                        SectionHeading(section.key).id(section.key)
                     }
                 }
             }
-            .listStyle(.plain)
+            .keeprList()
             .overlay(alignment: .trailing) {
                 if showsIndexBar {
                     SectionIndexBar(titles: sections.map(\.key)) { key in
@@ -288,20 +305,70 @@ struct PeopleView: View {
         // Hidden only while selecting, where every row is a checkbox and a chip
         // row would just be one more thing to accidentally tick.
         if !editMode.isEditing {
-            VStack(alignment: .leading, spacing: 0) {
-                if !typeFacets.isEmpty {
-                    FilterChipRow(title: "Type", facets: typeFacets, selection: $selectedTag)
-                }
-                if !placeFacets.isEmpty {
-                    FilterChipRow(title: groupLabel, facets: placeFacets, selection: $selectedPlaceID)
+            filterBarContent
+                .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+        }
+    }
+
+    /// The chips themselves, free of any list-row chrome, so the grid — which
+    /// isn't a list — can show exactly the same control.
+    private var filterBarContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if !typeFacets.isEmpty {
+                FilterChipRow(title: "Type", facets: typeFacets, selection: $selectedTag)
+            }
+            if !placeFacets.isEmpty {
+                FilterChipRow(title: groupLabel, facets: placeFacets, selection: $selectedPlaceID)
+            } else {
+                addAPlaceRow
+            }
+        }
+    }
+
+    // MARK: - Grid
+
+    /// Two columns of cards: the face first, the classification under it.
+    ///
+    /// Not a `List`, so this is the one place that gives up swipe actions and
+    /// the A–Z index — a grid has no alphabetical spine to index into. Favorite
+    /// and Select live in the long-press menu instead, which is where a grid
+    /// puts them everywhere else on the phone.
+    private var grid: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
+                filterBarContent
+
+                if filtered.isEmpty {
+                    noMatchesContent
+                        .padding(.top, Theme.Spacing.large)
                 } else {
-                    addAPlaceRow
+                    LazyVGrid(columns: gridColumns, spacing: Theme.Spacing.medium) {
+                        ForEach(filtered) { person in
+                            Button {
+                                selectedPerson = person
+                            } label: {
+                                PersonCard(person: person, mode: mode)
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu { personContextMenu(person) }
+                        }
+                    }
+                    .padding(.horizontal, Theme.Spacing.medium)
+                    .padding(.top, Theme.Spacing.small)
                 }
             }
-            .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            .padding(.bottom, Theme.Spacing.large)
         }
+        .background(Theme.Palette.ground)
+    }
+
+    private var gridColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: Theme.Spacing.medium),
+            GridItem(.flexible(), spacing: Theme.Spacing.medium)
+        ]
     }
 
     /// Shown until the first place exists, because "Place" is the half of this
@@ -322,24 +389,35 @@ struct PeopleView: View {
     @ViewBuilder
     private var noMatchesRow: some View {
         if filtered.isEmpty {
-            VStack(spacing: Theme.Spacing.small) {
-                Text("Nobody matches that combination")
-                    .font(.subheadline.weight(.medium))
-                Button("Clear Filters") {
-                    withAnimation {
-                        selectedTag = nil
-                        selectedPlaceID = nil
-                    }
-                }
-                .font(.subheadline)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Theme.Spacing.large)
-            .listRowSeparator(.hidden)
+            noMatchesContent
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
         }
     }
 
+    private var noMatchesContent: some View {
+        VStack(spacing: Theme.Spacing.small) {
+            Text("Nobody matches that combination")
+                .font(.subheadline.weight(.medium))
+            Button("Clear Filters") {
+                withAnimation {
+                    selectedTag = nil
+                    selectedPlaceID = nil
+                }
+            }
+            .font(.subheadline)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Spacing.large)
+    }
+
     private var emptyState: some View {
+        emptyStateContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.Palette.ground)
+    }
+
+    private var emptyStateContent: some View {
         Group {
             if !searchText.isEmpty {
                 ContentUnavailableView.search(text: searchText)
@@ -518,6 +596,12 @@ struct PeopleView: View {
 
             Divider()
 
+            Picker("Layout", selection: Binding(get: { layout }, set: { setLayout($0) })) {
+                ForEach(PeopleLayout.allCases) { option in
+                    Label(option.title, systemImage: option.symbolName).tag(option)
+                }
+            }
+
             Picker("Sort", selection: Binding(get: { sort }, set: { sort = $0 })) {
                 ForEach(PeopleSort.allCases) { option in
                     Label(option.title, systemImage: option.symbolName).tag(option)
@@ -617,11 +701,24 @@ struct PeopleView: View {
         sortRaw = PeopleSort.name.rawValue
     }
 
+    /// Selecting drops back to the list.
+    ///
+    /// Every bulk action is "apply this to these rows", and the affordances
+    /// people reach for — drag down the edge, tap the circle, Select All —
+    /// all assume rows. A grid of tickable cards would be a worse version of
+    /// the same screen, so the grid hands the job back rather than half-doing it.
     private func beginSelecting(with person: Person? = nil) {
         withAnimation {
+            layout = .list
             editMode = .active
             selection = person.map { [$0.id] } ?? []
         }
+    }
+
+    private func setLayout(_ value: PeopleLayout) {
+        guard value != layout else { return }
+        withAnimation(.snappy(duration: 0.2)) { layout = value }
+        Haptics.selection()
     }
 
     private func endSelecting() {
@@ -724,20 +821,20 @@ struct LinkPair: Identifiable {
 
 // MARK: - Row
 
-/// One person in the People list: who they are, how they're classified, and
-/// when you last spoke.
+/// One person in the People list: who they are, how they're classified, what
+/// you owe them, and when you last spoke.
 struct PersonRow: View {
     let person: Person
     let mode: ContextMode
 
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
-            Avatar(person: person, size: .medium)
+            Avatar(person: person, size: .large)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: Theme.Spacing.tight) {
                     Text(person.displayName)
-                        .font(.body.weight(.medium))
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
@@ -749,33 +846,29 @@ struct PersonRow: View {
                     }
                 }
 
-                if let subtitle = person.subtitle {
-                    Text(subtitle)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                TypeBadgeRow(tags: person.headlineTags(for: mode))
 
-                TagRow(tags: person.headlineTags(for: mode))
+                if let detail = person.rowDetail {
+                    Label {
+                        Text(detail.text)
+                    } icon: {
+                        if let symbolName = detail.symbolName {
+                            Image(systemName: symbolName)
+                        }
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption)
+                    .foregroundStyle(detail.isOverdue ? Theme.Palette.overdue : Color.secondary)
+                    .lineLimit(1)
+                }
             }
 
             Spacer(minLength: Theme.Spacing.small)
 
-            VStack(alignment: .trailing, spacing: 3) {
-                if let last = person.lastInteractionAt {
-                    Text(RelativeDate.past(last))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                if let next = person.nextFollowUp {
-                    Label(
-                        RelativeDate.due(next.dueDate),
-                        systemImage: "bell"
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(next.isOverdue() ? Color.orange : Color.secondary)
-                    .labelStyle(.titleAndIcon)
-                }
+            if let last = person.lastInteractionAt {
+                Text(RelativeDate.past(last))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.vertical, Theme.Spacing.tight)
@@ -784,7 +877,121 @@ struct PersonRow: View {
     }
 }
 
-#Preview {
+// MARK: - Card
+
+/// One person in the grid: the face first, then who they are to you.
+///
+/// Carries the same facts as the row in a different order — a grid is for
+/// recognizing someone, a list is for finding them — which is why both exist
+/// rather than one being a smaller copy of the other.
+struct PersonCard: View {
+    let person: Person
+    let mode: ContextMode
+
+    var body: some View {
+        KeeprCard {
+            VStack(spacing: Theme.Spacing.small) {
+                ZStack(alignment: .topTrailing) {
+                    Avatar(person: person, size: .large)
+                    if person.isFavorite {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                            .accessibilityLabel("Favorite")
+                            .offset(x: 4, y: -2)
+                    }
+                }
+
+                Text(person.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+
+                TypeBadgeRow(tags: person.headlineTags(for: mode), limit: 1)
+
+                if let context = person.cardContext {
+                    Text(context)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+
+                if let detail = person.rowDetail {
+                    Label {
+                        Text(detail.text)
+                    } icon: {
+                        if let symbolName = detail.symbolName {
+                            Image(systemName: symbolName)
+                        }
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption2)
+                    .foregroundStyle(detail.isOverdue ? Theme.Palette.overdue : Color.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Row content
+
+/// The one line under a person that says what's outstanding.
+struct PersonRowDetail {
+    let text: String
+    var symbolName: String?
+    var isOverdue = false
+}
+
+extension Person {
+
+    /// What to say about this person in one line.
+    ///
+    /// An open follow-up wins, because it's the only one of these that is a
+    /// promise. Failing that, whatever you wrote down about how you know them —
+    /// which is the thing that actually jogs a memory in a list of two hundred
+    /// names.
+    var rowDetail: PersonRowDetail? {
+        if let next = nextFollowUp {
+            return PersonRowDetail(
+                text: next.title,
+                symbolName: "bell",
+                isOverdue: next.isOverdue()
+            )
+        }
+        if let met = howWeMet?.trimmed, !met.isEmpty {
+            return PersonRowDetail(text: met)
+        }
+        if let work = workNote?.trimmed, !work.isEmpty {
+            return PersonRowDetail(text: work)
+        }
+        return nil
+    }
+
+    /// The grid card's middle line: where the relationship lives, or who they
+    /// work for. Never the same string the detail line is already showing.
+    var cardContext: String? {
+        if let place = groupList.min(by: { $0.sortOrder < $1.sortOrder }) {
+            return place.name
+        }
+        if let subtitle { return subtitle }
+        guard let met = howWeMet?.trimmed, !met.isEmpty, rowDetail?.text != met else { return nil }
+        return met
+    }
+}
+
+private extension String {
+    var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
+}
+
+#Preview("People") {
     PeopleView(mode: .constant(.business))
         .modelContainer(.preview)
 }

@@ -17,7 +17,6 @@ struct TodayView: View {
     @Query(sort: \Person.updatedAt, order: .reverse) private var people: [Person]
 
     @State private var isShowingCapture = false
-    @State private var isShowingSettings = false
     @State private var isShowingReview = false
     @State private var selectedPerson: Person?
     @State private var newContactCount = 0
@@ -40,19 +39,22 @@ struct TodayView: View {
                         goingQuietSection(digest.goingQuiet)
                         recentSection(digest.recent)
                     }
-                    .listStyle(.insetGrouped)
+                    .keeprList()
                 }
             }
-            .navigationTitle(greeting)
             .navigationBarTitleDisplayMode(.inline)
             .contextSwitcher($mode)
             .toolbar {
+                // The app's name rather than a greeting, and set in the serif
+                // that only ever names things. Inline rather than a large title
+                // for the same reason as everywhere else: a large title scrolls
+                // away under the pinned context switch, and a screen that loses
+                // its name on the first flick reads as broken.
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        isShowingSettings = true
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
-                    }
+                    Text("Keepr")
+                        .font(.keeprTitleInline)
+                        .foregroundStyle(.primary)
+                        .accessibilityAddTraits(.isHeader)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -68,10 +70,7 @@ struct TodayView: View {
             .sheet(isPresented: $isShowingCapture) {
                 QuickCaptureView(mode: mode)
             }
-            .sheet(isPresented: $isShowingSettings) {
-                SettingsView()
-            }
-            .sheet(isPresented: $isShowingReview, onDismiss: refreshNewContactCount) {
+                .sheet(isPresented: $isShowingReview, onDismiss: refreshNewContactCount) {
                 ReviewView(mode: mode)
             }
             .task {
@@ -124,11 +123,18 @@ struct TodayView: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .keeprRow()
             }
         }
     }
 
     private var caughtUp: some View {
+        contentUnavailable
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.Palette.ground)
+    }
+
+    private var contentUnavailable: some View {
         ContentUnavailableView {
             Label("You're caught up.", systemImage: "checkmark.circle")
         } description: {
@@ -146,7 +152,7 @@ struct TodayView: View {
     @ViewBuilder
     private func followUpSection(_ title: String, _ followUps: [FollowUp]) -> some View {
         if !followUps.isEmpty {
-            Section(title) {
+            Section {
                 ForEach(followUps) { followUp in
                     FollowUpRow(followUp: followUp) {
                         complete(followUp)
@@ -169,7 +175,10 @@ struct TodayView: View {
                         }
                         .tint(.orange)
                     }
+                    .keeprRow()
                 }
+            } header: {
+                SectionHeading(title, count: followUps.count)
             }
         }
     }
@@ -206,9 +215,10 @@ struct TodayView: View {
                         }
                         .tint(.green)
                     }
+                    .keeprRow()
                 }
             } header: {
-                Text("Waiting on a Reply")
+                SectionHeading("Waiting on a Reply", count: waiting.count)
             } footer: {
                 Text("You reached out and haven't heard back. Swipe when they answer.")
             }
@@ -237,7 +247,7 @@ struct TodayView: View {
 
                             Text(item.status.summary)
                                 .font(.caption.weight(.medium))
-                                .foregroundStyle(item.status.daysOverdue > 0 ? Color.orange : Color.secondary)
+                                .foregroundStyle(item.status.daysOverdue > 0 ? Theme.Palette.overdue : Color.secondary)
                         }
                     }
                     .buttonStyle(.plain)
@@ -249,9 +259,10 @@ struct TodayView: View {
                         }
                         .tint(.blue)
                     }
+                    .keeprRow()
                 }
             } header: {
-                Text("Time to Reach Out")
+                SectionHeading("Time to Reach Out", count: items.count)
             } footer: {
                 Text("Based on how often you said these relationships are worth contacting. Logging anything resets the clock.")
             }
@@ -272,9 +283,10 @@ struct TodayView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .keeprRow()
                 }
             } header: {
-                Text("Going Quiet")
+                SectionHeading("Going Quiet", count: quiet.count)
             } footer: {
                 Text("No interaction logged in a while, and nothing planned.")
             }
@@ -284,7 +296,7 @@ struct TodayView: View {
     @ViewBuilder
     private func recentSection(_ recent: [Person]) -> some View {
         if !recent.isEmpty {
-            Section("Recent") {
+            Section {
                 ForEach(recent) { person in
                     Button {
                         selectedPerson = person
@@ -292,7 +304,10 @@ struct TodayView: View {
                         PersonCompactRow(person: person, detail: recentDetail(for: person))
                     }
                     .buttonStyle(.plain)
+                    .keeprRow()
                 }
+            } header: {
+                SectionHeading("Recent")
             }
         }
     }
@@ -308,14 +323,6 @@ struct TodayView: View {
     }
 
     // MARK: - Actions
-
-    private var greeting: String {
-        switch Calendar.current.component(.hour, from: Date()) {
-        case 0..<12: "Good Morning"
-        case 12..<17: "Good Afternoon"
-        default: "Good Evening"
-        }
-    }
 
     /// Reads the address book once per launch of this screen to see what's new.
     ///
@@ -413,28 +420,39 @@ struct FollowUpRow: View {
             Button {
                 onOpenPerson?()
             } label: {
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .top, spacing: Theme.Spacing.small) {
                     if showsPerson, let person = followUp.person {
-                        Text(person.displayName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
+                        Avatar(person: person, size: .small)
                     }
 
-                    Text(followUp.title)
-                        .font(.subheadline)
-                        .foregroundStyle(followUp.isCompleted ? .tertiary : .secondary)
-                        .strikethrough(followUp.isCompleted, color: .secondary)
-                        .multilineTextAlignment(.leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        if showsPerson, let person = followUp.person {
+                            Text(person.displayName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                        }
 
+                        Text(followUp.title)
+                            .font(.subheadline)
+                            .foregroundStyle(followUp.isCompleted ? .tertiary : .secondary)
+                            .strikethrough(followUp.isCompleted, color: .secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Spacer(minLength: Theme.Spacing.small)
+
+                    // The due date sits on the right rather than under the
+                    // title, so a column of follow-ups reads as a schedule.
                     HStack(spacing: Theme.Spacing.tight) {
                         if followUp.priority == .high, !followUp.isCompleted {
                             Image(systemName: "exclamationmark")
-                                .foregroundStyle(.orange)
                         }
                         Text(dueText)
-                            .foregroundStyle(followUp.isOverdue() ? Color.orange : Color.secondary)
+                            .monospacedDigit()
                     }
                     .font(.caption)
+                    .foregroundStyle(followUp.isOverdue() ? Theme.Palette.overdue : Color.secondary)
+                    .multilineTextAlignment(.trailing)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)

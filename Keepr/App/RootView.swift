@@ -1,20 +1,26 @@
 import SwiftData
 import SwiftUI
 
-/// The four places the app can be. Settings deliberately isn't one of them —
-/// it lives behind a toolbar button on Today.
+/// The five places the app can be.
+///
+/// Four of these are the daily loop — what needs doing, who everyone is, what
+/// you promised, and how they connect. The fifth is everything else: Search,
+/// the two taxonomies, and Settings. Settings used to hide behind a gear in the
+/// corner of Today, which is a fine place to put something nobody should find.
 enum AppTab: String, Hashable, CaseIterable {
     case today
     case people
     case followUp
-    case search
+    case network
+    case more
 
     var title: String {
         switch self {
         case .today: "Today"
         case .people: "People"
         case .followUp: "Follow Up"
-        case .search: "Search"
+        case .network: "Network"
+        case .more: "More"
         }
     }
 
@@ -23,7 +29,8 @@ enum AppTab: String, Hashable, CaseIterable {
         case .today: "sun.max"
         case .people: "person.2"
         case .followUp: "bell"
-        case .search: "magnifyingglass"
+        case .network: "point.3.connected.trianglepath.dotted"
+        case .more: "ellipsis"
         }
     }
 }
@@ -57,9 +64,13 @@ struct RootView: View {
                 .tabItem { Label(AppTab.followUp.title, systemImage: AppTab.followUp.symbolName) }
                 .tag(AppTab.followUp)
 
-            SearchView()
-                .tabItem { Label(AppTab.search.title, systemImage: AppTab.search.symbolName) }
-                .tag(AppTab.search)
+            NetworkView(mode: mode)
+                .tabItem { Label(AppTab.network.title, systemImage: AppTab.network.symbolName) }
+                .tag(AppTab.network)
+
+            MoreView(mode: mode)
+                .tabItem { Label(AppTab.more.title, systemImage: AppTab.more.symbolName) }
+                .tag(AppTab.more)
         }
         .onAppear(perform: applyLaunchOptions)
         .fullScreenCover(isPresented: $isShowingOnboarding) {

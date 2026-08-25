@@ -42,6 +42,8 @@ enum PreferenceKey {
     static let contextMode = "keepr.contextMode"
     static let hasOnboarded = "keepr.hasOnboarded"
     static let peopleSort = "keepr.peopleSort"
+    /// List or grid on the People screen.
+    static let peopleLayout = "keepr.peopleLayout"
     /// One-time switch of an existing install to alphabetical people.
     static let didDefaultToNameSort = "keepr.didDefaultToNameSort"
     static let remindersEnabled = "keepr.remindersEnabled"

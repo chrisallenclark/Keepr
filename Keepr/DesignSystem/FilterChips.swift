@@ -65,18 +65,21 @@ struct FilterChipRow: View {
                     .lineLimit(1)
                 if showsCount {
                     Text("\(facet.count)")
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.8) : Color.secondary)
+                        .monospacedDigit()
+                        .foregroundStyle(isSelected ? Theme.Palette.ground.opacity(0.75) : Color.secondary)
                 }
             }
             .font(.subheadline)
             .fontWeight(isSelected ? .semibold : .regular)
-            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .foregroundStyle(isSelected ? Theme.Palette.ground : Color.primary)
             .padding(.horizontal, Theme.Spacing.medium)
             .padding(.vertical, Theme.Spacing.small)
-            .background(
-                isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.quaternary),
-                in: .capsule
-            )
+            .background(isSelected ? Color.accentColor : Theme.Palette.card, in: .capsule)
+            .overlay {
+                if !isSelected {
+                    Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: 1)
+                }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
@@ -112,5 +115,5 @@ struct FilterChipRow: View {
             selection: .constant(nil)
         )
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Theme.Palette.ground)
 }

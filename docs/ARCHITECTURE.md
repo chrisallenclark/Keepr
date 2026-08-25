@@ -16,20 +16,56 @@ memory + follow-ups, organized around one idea — **Business ↔ Personal**.
 | Minimum iOS | **17.0** | SwiftData floor. iOS 18-only APIs (limited Contacts access) are `#available`-gated |
 | Devices | iPhone only (`TARGETED_DEVICE_FAMILY = 1`), portrait | Focus. iPad/Mac are roadmap |
 | Dependencies | **None** | Everything V0.1 needs exists in Apple frameworks |
+| Palette | **A small custom one** (V0.2) | See below — the one place this table changed |
 | Sync | Local-only at V0.1, CloudKit-ready model | Ship a correct local build first (see §6) |
 | Networking | None | No backend, no analytics, no AI API in V0.1 |
 
 Frameworks used: SwiftUI, SwiftData, Contacts, ContactsUI, UserNotifications, UIKit
-(haptics only), SF Symbols. **Not** used: EventKit, MessageUI, CloudKit (yet).
+(haptics and dynamic colors), SF Symbols. **Not** used: EventKit, MessageUI, CloudKit (yet).
+
+### The palette (amended in V0.2)
+
+V0.1 shipped with **no custom palette at all** — every surface came from the system. That
+kept the app native and free of maintenance, and it also made it look like every other
+list-shaped app on the phone. V0.2 adds a deliberately small set of surface colors in
+`Theme.Palette`: a warm paper `ground`, a `card` that sits on it, a `hairline`, a quiet
+`fill`, and one `overdue` warm orange. `Theme.Tint` adds seven background/foreground pairs
+that relationship types are shown in.
+
+The constraints that made the original decision right are kept:
+
+* Every color is a **dynamic color** built from a light and a dark value through
+  `UIColor { traits in … }`, so there is one code path and dark mode cannot be forgotten.
+* **Text is still system semantic** — `.primary`, `.secondary`, `.tertiary`. Nothing here
+  restates a text color, so contrast settings and accessibility overrides keep working.
+* **Controls are still stock.** Lists are `.insetGrouped` with the scroll background hidden,
+  which is what gives rows their card shape — so swipe actions, section indexes, separators
+  and selection all behave exactly as iOS users expect. The one exception is
+  `ContextSwitcher`, which is now a custom capsule: `UISegmentedControl` can be recolored
+  but not reshaped, and it pays for the stock control it replaced by carrying its own
+  Dynamic Type sizing and `.isSelected` traits.
+* Serif titles use `.fontDesign(.serif)` — New York, already on the device. No bundled font.
 
 ## 2. Information architecture
 
-Four tabs. Settings lives behind a toolbar entry on Today, not a tab.
+Five tabs (V0.2; four in V0.1).
 
 1. **Today** — what needs attention right now (overdue, due today, upcoming, going quiet, recent).
-2. **People** — all relationships, filter + sort + search.
+2. **People** — all relationships, filter + sort + search, as a list or a grid.
 3. **Follow Up** — the full task list: overdue / today / upcoming / someday / completed.
-4. **Search** — global search across people, memories, interactions, notes.
+4. **Network** — pick a person, walk their relationship map.
+5. **More** — Search, relationship types, groups, Settings.
+
+Search moved off the tab bar and Settings moved onto it, which is the same correction twice.
+Most searching starts from the field already on People; the global one — across memories,
+interactions and notes — is a deliberate act, not a daily tab. Settings was behind a gear in
+the corner of Today, which in practice meant nobody found it.
+
+**People: list or grid.** `PeopleLayout` is remembered in `@AppStorage`, and list is the
+default. The grid is better for browsing and the list for finding, and neither is right all
+the time. The grid gives up the A–Z index (a grid has no alphabetical spine) and routes
+favorite and select through a long-press menu; choosing **Select** returns to the list,
+because every bulk action is "apply this to these rows".
 
 ### The context switch
 
@@ -98,7 +134,11 @@ two. One record serves both profiles: `labelAToB` and `labelBToA` are stored sep
 * **RelationshipTag** — a *model*, not an enum, so the taxonomy can evolve without a
   migration. Seeded once with built-ins (`isBuiltIn`); users can add their own. A built-in
   is found by `builtInKey`, never by visible name — renaming "Family" must not silently
-  create a second "Family" on the next import.
+  create a second "Family" on the next import. `colorKey` names one of `Theme.Tint`; it is
+  optional, so a type without one still resolves to a **stable** tint hashed from its name
+  (FNV-1a rather than `hashValue`, which Swift seeds per process and would recolor every tag
+  on every launch). Built-ins seeded before colors existed are backfilled in
+  `KeeprStore.repairTagCatalog`, which only ever fills a blank.
 * **PersonGroup** — a name, a symbol, an optional detail ("Delray"), and optional
   comma-separated `aliases` ("LT, LTF"). Membership only; no ranking, no roles.
 * **Person.workNote** — what they actually do, in the user's words, separate from the
@@ -135,8 +175,18 @@ rather than a label. If the markers would consume the entire name, the name is l
 `ContactMarkerParser.candidates(in:vocabulary:)` closes the setup loop: shorthand seen on
 two or more cards but unknown to Keepr is offered at the top of the importer as a group to
 create, so the feature works for someone who hasn't configured anything yet.
-* **PersonLink** — a labelled connection between two people, with an optional note.
-* **Memory** — structured fact: content, category, importance, archived, source interaction.
+* **PersonLink** — a labelled connection between two people, with an optional note. This is
+  what the Network tab draws. `NetworkLayout` (in `Domain/`, pure and unit-tested) arranges a
+  person's connections on one or two rings around them; a ring rather than a force-directed
+  graph because a physics layout wanders between launches and needs the whole graph in view
+  to settle, and a map you can't recognize twice isn't a map.
+* **Memory** — structured fact: content, optional **label**, category, importance, archived,
+  source interaction. A labeled fact reads "Favorite restaurant → Eataly" and becomes its own
+  row in the profile's About table; an unlabeled one stays a sentence under "Key facts to
+  remember". The label is optional because plenty of what's worth remembering has no field
+  name, and inventing one for "she's been through a rough year" would be worse than nothing.
+  `HeuristicCaptureExtractor` proposes a label only from a short table of unambiguous phrases
+  and leaves the rest blank — see §6, the same posture as everything else it suggests.
 * **Interaction** — a logged meaningful interaction: kind, date, title, raw note, summary.
   Only ever what the *user* records. See §5.
 * **FollowUp** — person, due date, optional time, note, priority, completed, snooze.
@@ -147,7 +197,8 @@ Raw strings are predicate- and sort-friendly and survive case renames safely.
 ### Query strategy
 
 `@Query` fetches with a sort descriptor; context/tag/status filtering happens in pure
-functions in `Domain/` (`PeopleEngine`, `TodayEngine`, `FollowUpEngine`, `SearchEngine`). At V0.1 scale (thousands of people) this is
+functions in `Domain/` (`PeopleEngine`, `TodayEngine`, `FollowUpEngine`, `SearchEngine`,
+`NetworkLayout`). At V0.1 scale (thousands of people) this is
 comfortably fast, and it makes all the interesting logic unit-testable without a store.
 If profiling ever says otherwise, the same predicates move into `@Query`.
 
@@ -208,3 +259,7 @@ CloudKit console, and gate it behind a Settings toggle. Nothing in the UI layer 
 Model-backed extraction, voice capture, semantic search, relationship summaries, calendar
 and email integration, widgets, App Intents/Siri/Shortcuts, share-sheet capture, Watch,
 iPad/Mac, pipeline stages, subscriptions, any backend.
+
+Also deferred: a whole-network graph. The Network tab is deliberately one person at a time —
+past roughly twenty linked people a single graph crosses more edges than it connects, and no
+amount of pinching fixes it on a phone.

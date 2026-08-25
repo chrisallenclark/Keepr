@@ -266,6 +266,15 @@ extension Person {
         return role.isEmpty ? nil : role
     }
 
+    /// The name to put in "About Amy".
+    ///
+    /// Their first name if there is one, otherwise whatever they're called —
+    /// "About Amy" beats "About Amy Lewis", and both beat a bare "About".
+    var firstNameForHeading: String {
+        let first = displayName.split(separator: " ").first.map(String.init)
+        return first ?? displayName
+    }
+
     var initials: String {
         let parts = displayName
             .split(separator: " ")

@@ -203,4 +203,40 @@ struct CaptureExtractorTests {
         let draft = await extractor.extract(from: repeated, now: now)
         #expect(draft.memories.count == 1)
     }
+
+    // MARK: - Labels
+
+    @Test("A fact with a recognizable subject gets a label proposed")
+    func proposesLabels() async {
+        let draft = await extractor.extract(
+            from: "Amy's daughter plays for Westside United, and she has a trip to Italy in July.",
+            now: now
+        )
+
+        let labels = Set(draft.memories.compactMap(\.label))
+        #expect(labels.contains("Kids"))
+        #expect(labels.contains("Travel plans"))
+    }
+
+    @Test("A fact with no obvious subject is left unlabeled rather than guessed at")
+    func leavesUncertainFactsUnlabeled() async throws {
+        let draft = await extractor.extract(from: "He owns a roofing company.", now: now)
+
+        let fact = try #require(draft.memories.first)
+        #expect(fact.label == nil)
+    }
+
+    @Test("Labels match whole words, so a substring doesn't trigger one")
+    func labelsMatchWholeWords() {
+        // "sonic" contains "son"; "personal" contains "son" too. Neither is a child.
+        #expect(HeuristicCaptureExtractor.label(for: "Sonic branding is his personal project") == nil)
+        #expect(HeuristicCaptureExtractor.label(for: "His son just started college") == "Kids")
+    }
+
+    @Test("The more specific label wins over the more general one")
+    func specificLabelWins() {
+        #expect(
+            HeuristicCaptureExtractor.label(for: "Her favorite restaurant is Eataly") == "Favorite restaurant"
+        )
+    }
 }

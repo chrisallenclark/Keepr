@@ -15,7 +15,7 @@ dependencies. Everything stays on the device.
 
 ---
 
-## Status: V0.1
+## Status: V0.2
 
 The loop that works today:
 
@@ -25,18 +25,19 @@ The loop that works today:
 | Area | What's there |
 |---|---|
 | **Today** | Overdue and due-today follow-ups, upcoming, relationships going quiet, recent activity. Calm when there's nothing to do. |
-| **People** | Filter by relationship type, five sort orders, A–Z sections, search, swipe to favorite, context menu to call/text/email. |
+| **People** | Type × group filter chips with live counts, list or grid, five sort orders, A–Z sections, search, swipe to favorite, context menu to call/text/email. |
+| **Network** | Pick a person, see everyone they're linked to around them, tap anyone to re-centre and walk outward. |
 | **Follow Up** | Overdue / Today / This Week / Later / Completed, swipe to complete, snooze a day or a week. |
-| **Search** | Across names, companies, tags, memories, interactions, notes and follow-ups — grouped by *why* each person matched. Ignores the Business/Personal switch. |
-| **Person profile** | Header, one-tap Message / Call / Email / Log, next action, remembered facts, interaction timeline, details. |
+| **Search** | Across names, companies, tags, memories, interactions, notes and follow-ups — grouped by *why* each person matched. Ignores the Business/Personal switch. Lives under **More**. |
+| **Person profile** | Header, one-tap Message / Call / Email / Log, next action, an About table of labeled facts, personal notes, connections, interaction timeline, details. |
 | **Log Interaction** | Type, date, note, facts to remember, optional follow-up — one sheet. |
-| **Quick Capture** | Type a sentence; on-device extraction proposes the person, the facts and the follow-up. Every suggestion is a toggle you confirm. |
+| **Quick Capture** | Type a sentence; on-device extraction proposes the person, the facts, a label for each fact, and the follow-up. Every suggestion is a toggle you confirm. |
 | **Contacts** | Just-in-time permission, full / limited (iOS 18) / denied all handled, multi-select import, manual entry always available. |
 | **Reminders** | One local notification per follow-up. Off until you turn reminders on. |
-| **Settings** | Permission status, sample data toggle, delete all data, and an honest "what Keepr can't do" page. |
+| **Settings** | Permission status, sample data toggle, delete all data, and an honest "what Keepr can't do" page. Lives under **More**. |
 
 Deliberately **not** built yet: iCloud sync, model-backed extraction, voice capture, semantic
-search, widgets, App Intents, calendar/email integration, iPad/Mac. See
+search, widgets, App Intents, calendar/email integration, a whole-network graph, iPad/Mac. See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §9.
 
 ## What Keepr can't do

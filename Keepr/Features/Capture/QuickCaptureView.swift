@@ -154,20 +154,34 @@ struct QuickCaptureView: View {
             if !draft.memories.isEmpty {
                 Section {
                     ForEach($draft.memories) { $memory in
-                        Toggle(isOn: $memory.isSelected) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(memory.content)
-                                    .font(.subheadline)
-                                Text(memory.category.title)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                            Toggle(isOn: $memory.isSelected) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(memory.content)
+                                        .font(.subheadline)
+                                    Text(memory.category.title)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            // The label is only shown once the fact is being
+                            // kept, and it's a field rather than a line of
+                            // text: a proposed label is a guess, and the
+                            // cheapest moment to correct one is while you're
+                            // already looking at the fact it belongs to.
+                            if memory.isSelected {
+                                TextField("Label — optional", text: $memory.labelText)
+                                .font(.caption)
+                                .textInputAutocapitalization(.sentences)
+                                .padding(.leading, Theme.Spacing.tight)
                             }
                         }
                     }
                 } header: {
                     Text("Remember")
                 } footer: {
-                    Text("Turn off anything that isn't worth keeping.")
+                    Text("Turn off anything that isn't worth keeping. A label makes a fact its own row on their profile — \"Favorite restaurant\", \"Kids\".")
                 }
             }
 
@@ -266,6 +280,7 @@ struct QuickCaptureView: View {
             context.insert(
                 Memory(
                     content: memory.content,
+                    label: memory.label,
                     category: memory.category,
                     importance: memory.importance,
                     person: person,
