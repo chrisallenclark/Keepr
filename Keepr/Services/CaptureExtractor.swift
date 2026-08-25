@@ -20,6 +20,13 @@ struct CaptureDraft: Sendable {
 /// Turns free text into a draft. The one seam where AI will later plug in.
 protocol CaptureExtracting: Sendable {
     func extract(from text: String, now: Date) async -> CaptureDraft
+    /// Everything someone said about a person, split up and filed.
+    ///
+    /// Different contract from `extract`: a quick note should suggest little
+    /// and stay quiet when unsure, but a brain dump has to keep *everything* —
+    /// typing six things and getting four back, with no way to know which two
+    /// were dropped, is worse than no feature at all.
+    func facts(from text: String) async -> [MemoryDraft]
 }
 
 /// On-device extraction using nothing but Foundation: sentence segmentation,
@@ -59,6 +66,23 @@ struct HeuristicCaptureExtractor: CaptureExtracting {
         return draft
     }
 
+    /// Splits a dump into one draft per fact, keeping all of it.
+    func facts(from text: String) async -> [MemoryDraft] {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return [] }
+
+        return Self.dumpClauses(in: normalized)
+            .compactMap { clause -> MemoryDraft? in
+                let content = Self.cleanedFact(clause)
+                guard content.count > 2 else { return nil }
+                return MemoryDraft(content: content, category: Self.category(of: clause))
+            }
+            // A generous cap rather than the quick-note one: a dump is meant to
+            // be long, and silently truncating someone's memory of a meeting is
+            // exactly the failure this feature exists to prevent.
+            .reduced(limit: 40)
+    }
+
     // MARK: - Summary
 
     static func summary(from text: String, limit: Int = 140) -> String {
@@ -96,6 +120,86 @@ struct HeuristicCaptureExtractor: CaptureExtracting {
             }
             .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " .!?")) }
             .filter { $0.count > 3 }
+    }
+
+    /// Splitting for spoken input.
+    ///
+    /// Dictation arrives with almost no punctuation — "he owns a roofing
+    /// company he's got two kids wants to lose weight before the wedding" — so
+    /// the spoken joins have to count as breaks too, or the whole dump lands as
+    /// one paragraph and the categories are meaningless.
+    /// Each pair is what to look for and what to leave behind. The pronoun has
+    /// to survive the split — cutting " and he " out of "…company and he's got
+    /// two kids" leaves "'s got two kids", which is not a fact anyone wrote.
+    static let spokenBreaks: [(find: String, replace: String)] = [
+        (" and then ", "|"),
+        (" and also ", "|"),
+        (" but also ", "|"),
+        (" oh and ", "|"),
+        (" also ", "|"),
+        (" plus ", "|"),
+        (" and he ", "|he "),
+        (" and she ", "|she "),
+        (" and they ", "|they "),
+        (" and we ", "|we "),
+        (" and his ", "|his "),
+        (" and her ", "|her "),
+        (" and their ", "|their "),
+        (" and i ", "|i "),
+        // Spoken English contracts almost every one of these, so the plain
+        // forms above would miss "and he's got two kids" entirely.
+        (" and he's ", "|he's "),
+        (" and she's ", "|she's "),
+        (" and they're ", "|they're "),
+        (" and they've ", "|they've "),
+        (" and we're ", "|we're "),
+        (" and i'm ", "|i'm "),
+        (" and it's ", "|it's "),
+        (" he said ", "|he said "),
+        (" she said ", "|she said "),
+        (" they said ", "|they said "),
+        (" apparently ", "|apparently "),
+        (" turns out ", "|turns out ")
+    ]
+
+    static func dumpClauses(in text: String) -> [String] {
+        // Newlines are the strongest signal there is: someone typing a list on
+        // separate lines means separate facts, whatever the punctuation says.
+        text
+            .split(whereSeparator: \.isNewline)
+            .flatMap { line -> [String] in
+                var working = String(line)
+                for join in spokenBreaks {
+                    working = working.replacingOccurrences(
+                        of: join.find,
+                        with: join.replace,
+                        options: [.caseInsensitive]
+                    )
+                }
+                return working
+                    .split(separator: "|")
+                    .flatMap { sentences(in: String($0)) }
+            }
+            .flatMap { sentence -> [String] in
+                // Long sentences still get comma-split; short ones are left
+                // whole, since "two kids, 7 and 10" is one fact, not three.
+                guard sentence.count > 60 else { return [sentence] }
+                return sentence
+                    .replacingOccurrences(of: ", and ", with: "|")
+                    .replacingOccurrences(of: ";", with: "|")
+                    .split(separator: "|")
+                    .map(String.init)
+            }
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " .!?,")) }
+            .filter { $0.count > 2 }
+    }
+
+    /// The category a clause belongs to, or `.other` when nothing matches.
+    static func category(of clause: String) -> MemoryCategory {
+        let haystack = matchable(clause)
+        return categoryKeywords
+            .first { _, keywords in keywords.contains { containsWord(haystack, $0) } }?
+            .0 ?? .other
     }
 
     // MARK: - Keyword matching
@@ -320,4 +424,6 @@ struct NoopCaptureExtractor: CaptureExtracting {
     func extract(from text: String, now: Date) async -> CaptureDraft {
         CaptureDraft(summary: text, occurredAt: now)
     }
+
+    func facts(from text: String) async -> [MemoryDraft] { [] }
 }

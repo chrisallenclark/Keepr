@@ -16,13 +16,13 @@ struct PersonProfileView: View {
     @State private var isShowingLogInteraction = false
     @State private var isShowingEdit = false
     @State private var isShowingNewFollowUp = false
-    @State private var isShowingAllMemories = false
     @State private var isShowingAllInteractions = false
     @State private var newMemoryText = ""
     @State private var isAddingMemory = false
     @State private var isConfirmingDelete = false
     @State private var isShowingLinkEditor = false
     @State private var isShowingNewPlace = false
+    @State private var isShowingBrainDump = false
     @State private var isEditingWorkNote = false
     @State private var workNoteDraft = ""
 
@@ -117,6 +117,9 @@ struct PersonProfileView: View {
         .sheet(isPresented: $isShowingLinkEditor) {
             PersonLinkEditor(person: person)
         }
+        .sheet(isPresented: $isShowingBrainDump) {
+            BrainDumpView(person: person)
+        }
         .sheet(isPresented: $isShowingNewPlace) {
             // Creating a place from a profile means "put them here", so the
             // person is added the moment it's saved.
@@ -177,24 +180,35 @@ struct PersonProfileView: View {
 
     // MARK: - Memories
 
-    private var visibleMemories: [Memory] {
-        let all = person.visibleMemories
-        return isShowingAllMemories ? all : Array(all.prefix(4))
-    }
-
+    /// The profile shows a portrait, not an archive.
+    ///
+    /// Three facts, chosen to span different categories so they read like a
+    /// person rather than a filing cabinet, then a row of category pills saying
+    /// what else is on file. Everything else is one tap away. A brain dump can
+    /// add fifteen facts without this screen getting any longer.
     @ViewBuilder
     private var memoriesSection: some View {
+        let all = person.visibleMemories
+        let headline = MemoryEngine.headline(all)
+        let groups = MemoryEngine.summaryCounts(all)
+
         Section {
-            if person.visibleMemories.isEmpty, !isAddingMemory {
+            if all.isEmpty, !isAddingMemory {
+                Button {
+                    isShowingBrainDump = true
+                } label: {
+                    Label("Brain dump what you know", systemImage: "brain")
+                        .font(.subheadline)
+                }
                 Button {
                     startAddingMemory()
                 } label: {
-                    Label("Remember something about them", systemImage: "plus.circle")
+                    Label("Add one thing", systemImage: "plus.circle")
                         .font(.subheadline)
                 }
             }
 
-            ForEach(visibleMemories) { memory in
+            ForEach(headline) { memory in
                 MemoryRow(memory: memory)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
@@ -222,23 +236,74 @@ struct PersonProfileView: View {
                 }
             }
 
-            if person.visibleMemories.count > 4 {
-                Button(isShowingAllMemories ? "Show Less" : "Show All \(person.visibleMemories.count)") {
-                    withAnimation { isShowingAllMemories.toggle() }
+            if groups.count > 1 || all.count > headline.count {
+                categoryPills(groups)
+            }
+
+            if !all.isEmpty {
+                NavigationLink {
+                    MemoryLibraryView(person: person)
+                } label: {
+                    Label(
+                        "See everything · \(MemoryEngine.totalLabel(all.count))",
+                        systemImage: "chevron.right.circle"
+                    )
+                    .font(.subheadline)
                 }
-                .font(.subheadline)
             }
         } header: {
             HStack {
-                Text("Important Context")
+                Text("What You Know")
                 Spacer()
-                if !person.visibleMemories.isEmpty || isAddingMemory {
-                    Button("Add") { startAddingMemory() }
-                        .font(.caption.weight(.semibold))
-                        .textCase(nil)
+                if !all.isEmpty || isAddingMemory {
+                    Menu {
+                        Button {
+                            isShowingBrainDump = true
+                        } label: {
+                            Label("Brain Dump", systemImage: "brain")
+                        }
+                        Button {
+                            startAddingMemory()
+                        } label: {
+                            Label("Add One Thing", systemImage: "plus.circle")
+                        }
+                    } label: {
+                        Text("Add")
+                            .font(.caption.weight(.semibold))
+                            .textCase(nil)
+                    }
                 }
             }
         }
+    }
+
+    /// What else is on file, at a glance. Deliberately counts rather than
+    /// content — the pills are a map, not another list to read.
+    private func categoryPills(_ groups: [MemoryGroup]) -> some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Theme.Spacing.small) {
+                ForEach(groups) { group in
+                    NavigationLink {
+                        MemoryLibraryView(person: person)
+                    } label: {
+                        HStack(spacing: Theme.Spacing.tight) {
+                            Image(systemName: group.category.symbolName)
+                            Text(group.category.title)
+                            Text("\(group.count)")
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.vertical, 5)
+                        .background(.quaternary, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 0))
     }
 
     // MARK: - Waiting
@@ -620,10 +685,7 @@ struct PersonProfileView: View {
     }
 
     private func startAddingMemory() {
-        withAnimation {
-            isAddingMemory = true
-            isShowingAllMemories = true
-        }
+        withAnimation { isAddingMemory = true }
     }
 
     private func saveMemory() {
