@@ -117,7 +117,10 @@ struct MemoryEngineTests {
         let groups = MemoryEngine.grouped(person.visibleMemories)
 
         #expect(groups.map(\.category) == [.work, .family, .interests])
-        #expect(groups.allSatisfy { $0.count == 1 })
+        // Computed outside the macro: `allSatisfy` is rethrowing, and inside
+        // `#expect` the expansion demands a `try` the closure doesn't need.
+        let oneEach = groups.allSatisfy { $0.count == 1 }
+        #expect(oneEach)
     }
 
     @Test("Within a category, starred facts sit at the top")
@@ -213,7 +216,8 @@ struct BrainDumpExtractionTests {
     func draftsStartSelected() async {
         let facts = await extractor.facts(from: "Runs a roofing crew\nLoves fishing")
 
-        #expect(facts.allSatisfy(\.isSelected))
+        let allOn = facts.allSatisfy { $0.isSelected }
+        #expect(allOn)
     }
 
     @Test("An empty dump produces nothing rather than an empty card")
