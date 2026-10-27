@@ -13,7 +13,7 @@ import SwiftData
 /// health information about someone who isn't the user. Nothing here is ever
 /// logged, and nothing leaves the device.
 @Model
-final class Attachment {
+final class PersonFile {
 
     var id: UUID = UUID()
 
@@ -22,7 +22,7 @@ final class Attachment {
     /// readable a year later.
     var title: String = ""
 
-    var kindRaw: String = AttachmentKind.image.rawValue
+    var kindRaw: String = PersonFileKind.image.rawValue
 
     /// Lowercase, no dot. Used to write a real filename when sharing.
     var fileExtension: String = "jpg"
@@ -51,7 +51,7 @@ final class Attachment {
 
     init(
         title: String,
-        kind: AttachmentKind = .image,
+        kind: PersonFileKind = .image,
         fileExtension: String = "jpg",
         data: Data? = nil,
         thumbnailData: Data? = nil,
@@ -77,10 +77,10 @@ final class Attachment {
     }
 }
 
-extension Attachment {
+extension PersonFile {
 
-    var kind: AttachmentKind {
-        get { AttachmentKind(rawValue: kindRaw) ?? .other }
+    var kind: PersonFileKind {
+        get { PersonFileKind(rawValue: kindRaw) ?? .other }
         set { kindRaw = newValue.rawValue }
     }
 
@@ -90,13 +90,13 @@ extension Attachment {
     }
 
     /// A real filename for the share sheet, so what lands in Files or Mail is
-    /// named after the person and the date rather than "Attachment".
+    /// named after the person and the date rather than "File".
     var suggestedFileName: String {
         let safe = title
             .components(separatedBy: CharacterSet.alphanumerics.union(.whitespaces).inverted)
             .joined()
             .trimmingCharacters(in: .whitespaces)
-        let base = safe.isEmpty ? "Attachment" : safe
+        let base = safe.isEmpty ? "File" : safe
         return fileExtension.isEmpty ? base : "\(base).\(fileExtension)"
     }
 

@@ -14,7 +14,7 @@ enum KeeprStore {
         Interaction.self,
         Memory.self,
         FollowUp.self,
-        Attachment.self,
+        PersonFile.self,
         RelationshipTag.self,
         PersonGroup.self,
         PersonLink.self
@@ -197,7 +197,7 @@ enum KeeprStore {
         try? context.delete(model: Interaction.self)
         try? context.delete(model: Memory.self)
         try? context.delete(model: FollowUp.self)
-        try? context.delete(model: Attachment.self)
+        try? context.delete(model: PersonFile.self)
         try? context.delete(model: RelationshipTag.self)
         try? context.delete(model: PersonGroup.self)
         try? context.delete(model: PersonLink.self)

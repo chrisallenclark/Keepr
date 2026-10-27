@@ -38,7 +38,7 @@ struct SearchEngineTests {
         )
 
         let byFile = Make.person(context, given: "Wendy", family: "Sharp")
-        _ = Make.attachment(context, title: "Delta scan week 1", person: byFile)
+        _ = Make.file(context, title: "Delta scan week 1", person: byFile)
 
         let byFollowUp = Make.person(context, given: "Uma", family: "Vance")
         _ = Make.followUp(context, title: "Send delta report", due: TestDates.dayStart(2), person: byFollowUp)

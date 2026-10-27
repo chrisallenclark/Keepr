@@ -85,7 +85,7 @@ struct ContentSearchTests {
     func fileTitlesMatch() throws {
         let store = try TestStore()
         let person = Make.person(store.context, given: "Jake")
-        _ = Make.attachment(store.context, title: "InBody scan week 1", person: person)
+        _ = Make.file(store.context, title: "InBody scan week 1", person: person)
 
         let reason = try #require(PeopleEngine.reason(for: person, query: "inbody"))
         #expect(reason.field == .file)

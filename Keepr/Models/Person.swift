@@ -102,8 +102,8 @@ final class Person {
     @Relationship(deleteRule: .cascade, inverse: \FollowUp.person)
     var followUps: [FollowUp]?
 
-    @Relationship(deleteRule: .cascade, inverse: \Attachment.person)
-    var attachments: [Attachment]?
+    @Relationship(deleteRule: .cascade, inverse: \PersonFile.person)
+    var files: [PersonFile]?
 
     @Relationship(deleteRule: .nullify, inverse: \RelationshipTag.people)
     var tags: [RelationshipTag]?
@@ -162,7 +162,7 @@ final class Person {
         self.interactions = []
         self.memories = []
         self.followUps = []
-        self.attachments = []
+        self.files = []
         self.tags = []
         self.groups = []
         self.linksAsA = []
@@ -195,8 +195,8 @@ extension Person {
 
     /// Files on this profile, newest first — a stack of check-in scans is only
     /// useful if the latest one is on top.
-    var attachmentList: [Attachment] {
-        (attachments ?? []).sorted { $0.capturedAt > $1.capturedAt }
+    var fileList: [PersonFile] {
+        (files ?? []).sorted { $0.capturedAt > $1.capturedAt }
     }
     var tagList: [RelationshipTag] { tags ?? [] }
     var groupList: [PersonGroup] { groups ?? [] }

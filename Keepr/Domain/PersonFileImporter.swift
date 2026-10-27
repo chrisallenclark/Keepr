@@ -3,11 +3,11 @@ import PDFKit
 import UIKit
 import UniformTypeIdentifiers
 
-/// Everything a new attachment needs, worked out before anything is saved.
-struct AttachmentPayload: Sendable {
+/// Everything a new file needs, worked out before anything is saved.
+struct PersonFilePayload: Sendable {
     var data: Data
     var thumbnail: Data?
-    var kind: AttachmentKind
+    var kind: PersonFileKind
     var fileExtension: String
 
     var byteCount: Int { data.count }
@@ -24,7 +24,7 @@ struct AttachmentPayload: Sendable {
 ///
 /// Documents and PDFs are stored byte-for-byte: a signed form has to stay the
 /// file it was.
-enum AttachmentImporter {
+enum PersonFileImporter {
 
     /// Long edge, in pixels, that imported photos are fitted inside.
     /// Chosen so a sheet of printed numbers stays readable when zoomed.
@@ -58,18 +58,18 @@ enum AttachmentImporter {
     /// Prepares a photo picked from the library or taken with the camera.
     /// Returns nil when the data isn't a decodable image, so a failed import
     /// says so instead of saving an empty row.
-    static func photo(from data: Data) -> AttachmentPayload? {
+    static func photo(from data: Data) -> PersonFilePayload? {
         guard let image = UIImage(data: data) else { return nil }
         return photo(from: image)
     }
 
-    static func photo(from image: UIImage) -> AttachmentPayload? {
+    static func photo(from image: UIImage) -> PersonFilePayload? {
         let target = fittedSize(for: image.size)
         let resized = target == image.size ? image : redraw(image, at: target)
 
         guard let jpeg = resized.jpegData(compressionQuality: jpegQuality) else { return nil }
 
-        return AttachmentPayload(
+        return PersonFilePayload(
             data: jpeg,
             thumbnail: thumbnail(from: resized),
             kind: .image,
@@ -82,11 +82,11 @@ enum AttachmentImporter {
     /// Prepares a file picked out of Files. Kept verbatim; a PDF additionally
     /// gets a thumbnail of its first page, so a profile shows the plan rather
     /// than a generic document icon.
-    static func file(from data: Data, fileExtension: String) -> AttachmentPayload {
+    static func file(from data: Data, fileExtension: String) -> PersonFilePayload {
         let normalized = fileExtension
             .trimmingCharacters(in: CharacterSet(charactersIn: " ."))
             .lowercased()
-        let kind = AttachmentKind(fileExtension: normalized)
+        let kind = PersonFileKind(fileExtension: normalized)
 
         // An image arriving through the file picker still benefits from the
         // photo path — it's the same bytes doing the same job.
@@ -94,7 +94,7 @@ enum AttachmentImporter {
             return payload
         }
 
-        return AttachmentPayload(
+        return PersonFilePayload(
             data: data,
             thumbnail: kind == .pdf ? pdfThumbnail(from: data) : nil,
             kind: kind,
@@ -109,7 +109,7 @@ enum AttachmentImporter {
     /// Never the camera's filename: "IMG_4821" tells you nothing a year later,
     /// while "Photo · Mar 3" is the thing you'd actually scan a list for.
     static func defaultTitle(
-        for kind: AttachmentKind,
+        for kind: PersonFileKind,
         on date: Date = Date(),
         existingTitles: [String] = []
     ) -> String {

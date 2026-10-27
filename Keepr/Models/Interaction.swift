@@ -36,8 +36,8 @@ final class Interaction {
     @Relationship(deleteRule: .nullify, inverse: \Memory.sourceInteraction)
     var memories: [Memory]?
 
-    @Relationship(deleteRule: .nullify, inverse: \Attachment.sourceInteraction)
-    var attachments: [Attachment]?
+    @Relationship(deleteRule: .nullify, inverse: \PersonFile.sourceInteraction)
+    var files: [PersonFile]?
 
     @Relationship(deleteRule: .nullify, inverse: \FollowUp.sourceInteraction)
     var followUps: [FollowUp]?
@@ -64,7 +64,7 @@ final class Interaction {
         self.person = person
         self.memories = []
         self.followUps = []
-        self.attachments = []
+        self.files = []
     }
 }
 

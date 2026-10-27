@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// Built around the consultation case: photograph their results, name it, and
 /// have the stack read chronologically a year later. Newest first, because the
 /// question is almost always "what did the last one say".
-struct AttachmentsView: View {
+struct PersonFilesView: View {
 
     let person: Person
 
@@ -23,11 +23,11 @@ struct AttachmentsView: View {
     @State private var isImporting = false
     @State private var importError: String?
     @State private var quickLookURL: URL?
-    @State private var renaming: Attachment?
+    @State private var renaming: PersonFile?
 
     var body: some View {
         List {
-            if person.attachmentList.isEmpty {
+            if person.fileList.isEmpty {
                 Section {
                     ContentUnavailableView {
                         Label("No files yet", systemImage: "folder")
@@ -38,18 +38,18 @@ struct AttachmentsView: View {
                 }
             }
 
-            ForEach(person.attachmentList) { attachment in
-                AttachmentRow(attachment: attachment)
+            ForEach(person.fileList) { file in
+                PersonFileRow(file: file)
                     .contentShape(.rect)
-                    .onTapGesture { open(attachment) }
+                    .onTapGesture { open(file) }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
-                            delete(attachment)
+                            delete(file)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
                         Button {
-                            renaming = attachment
+                            renaming = file
                         } label: {
                             Label("Rename", systemImage: "pencil")
                         }
@@ -57,24 +57,24 @@ struct AttachmentsView: View {
                     }
                     .contextMenu {
                         Button {
-                            renaming = attachment
+                            renaming = file
                         } label: {
                             Label("Rename & Date", systemImage: "pencil")
                         }
-                        if let url = exportURL(for: attachment) {
+                        if let url = exportURL(for: file) {
                             ShareLink(item: url) {
                                 Label("Share", systemImage: "square.and.arrow.up")
                             }
                         }
                         Button(role: .destructive) {
-                            delete(attachment)
+                            delete(file)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
                     }
             }
 
-            if !person.attachmentList.isEmpty {
+            if !person.fileList.isEmpty {
                 Section {
                     Text("Files are stored on this device only, inside Keepr. Nothing is uploaded.")
                         .font(.footnote)
@@ -112,8 +112,8 @@ struct AttachmentsView: View {
             addPickedPhotos(items)
         }
         .quickLookPreview($quickLookURL)
-        .sheet(item: $renaming) { attachment in
-            AttachmentDetailsEditor(attachment: attachment)
+        .sheet(item: $renaming) { file in
+            PersonFileDetailsEditor(file: file)
         }
         .overlay {
             if isImporting {
@@ -166,7 +166,7 @@ struct AttachmentsView: View {
             var failures = 0
             for item in items {
                 guard let data = try? await item.loadTransferable(type: Data.self),
-                      let payload = AttachmentImporter.photo(from: data) else {
+                      let payload = PersonFileImporter.photo(from: data) else {
                     failures += 1
                     continue
                 }
@@ -185,7 +185,7 @@ struct AttachmentsView: View {
     }
 
     private func addPhoto(_ image: UIImage) {
-        guard let payload = AttachmentImporter.photo(from: image) else {
+        guard let payload = PersonFileImporter.photo(from: image) else {
             importError = "That photo couldn't be saved."
             return
         }
@@ -210,7 +210,7 @@ struct AttachmentsView: View {
                 failures += 1
                 continue
             }
-            var payload = AttachmentImporter.file(
+            var payload = PersonFileImporter.file(
                 from: data,
                 fileExtension: url.pathExtension
             )
@@ -229,19 +229,19 @@ struct AttachmentsView: View {
 
     /// Inserts one prepared file. Titles default to kind and date; a file picked
     /// out of Files keeps its own name, which is usually already meaningful.
-    private func insert(_ payload: AttachmentPayload, titledAfter name: String? = nil) {
-        let existing = person.attachmentList.map(\.title)
+    private func insert(_ payload: PersonFilePayload, titledAfter name: String? = nil) {
+        let existing = person.fileList.map(\.title)
         let title: String = {
             if let name, !name.trimmingCharacters(in: .whitespaces).isEmpty {
                 return name
             }
-            return AttachmentImporter.defaultTitle(
+            return PersonFileImporter.defaultTitle(
                 for: payload.kind,
                 existingTitles: existing
             )
         }()
 
-        let attachment = Attachment(
+        let file = PersonFile(
             title: title,
             kind: payload.kind,
             fileExtension: payload.fileExtension,
@@ -250,7 +250,7 @@ struct AttachmentsView: View {
             byteCount: payload.byteCount,
             person: person
         )
-        context.insert(attachment)
+        context.insert(file)
         person.touch()
         try? context.save()
     }
@@ -259,14 +259,14 @@ struct AttachmentsView: View {
 
     /// Writes the bytes to a temporary file so Quick Look can show it. Nothing
     /// readable is left behind beyond the app's own sandbox.
-    private func exportURL(for attachment: Attachment) -> URL? {
-        guard let data = attachment.data else { return nil }
+    private func exportURL(for file: PersonFile) -> URL? {
+        guard let data = file.data else { return nil }
 
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("KeeprPreview", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let url = directory.appendingPathComponent(attachment.suggestedFileName)
+        let url = directory.appendingPathComponent(file.suggestedFileName)
         do {
             try data.write(to: url, options: .atomic)
             return url
@@ -275,16 +275,16 @@ struct AttachmentsView: View {
         }
     }
 
-    private func open(_ attachment: Attachment) {
-        guard let url = exportURL(for: attachment) else {
+    private func open(_ file: PersonFile) {
+        guard let url = exportURL(for: file) else {
             importError = "That file is missing its contents."
             return
         }
         quickLookURL = url
     }
 
-    private func delete(_ attachment: Attachment) {
-        context.delete(attachment)
+    private func delete(_ file: PersonFile) {
+        context.delete(file)
         person.touch()
         try? context.save()
         Haptics.light()
@@ -294,23 +294,23 @@ struct AttachmentsView: View {
 // MARK: - Row
 
 /// One file: its preview, what it's called, and when it's from.
-struct AttachmentRow: View {
-    let attachment: Attachment
+struct PersonFileRow: View {
+    let file: PersonFile
 
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
             preview
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(attachment.title)
+                Text(file.title)
                     .font(.subheadline.weight(.medium))
                     .lineLimit(1)
 
-                Text(attachment.capturedAt.formatted(date: .abbreviated, time: .omitted))
+                Text(file.capturedAt.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                if let note = attachment.note, !note.isEmpty {
+                if let note = file.note, !note.isEmpty {
                     Text(note)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -320,7 +320,7 @@ struct AttachmentRow: View {
 
             Spacer(minLength: Theme.Spacing.small)
 
-            Text(attachment.sizeLabel)
+            Text(file.sizeLabel)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -328,14 +328,14 @@ struct AttachmentRow: View {
 
     @ViewBuilder
     private var preview: some View {
-        if let data = attachment.thumbnailData, let image = UIImage(data: data) {
+        if let data = file.thumbnailData, let image = UIImage(data: data) {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(width: 44, height: 44)
                 .clipShape(.rect(cornerRadius: Theme.Radius.chip))
         } else {
-            Image(systemName: attachment.kind.symbolName)
+            Image(systemName: file.kind.symbolName)
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .frame(width: 44, height: 44)
@@ -349,9 +349,9 @@ struct AttachmentRow: View {
 /// Naming and dating a file is the whole difference between a folder of photos
 /// and a record you can read. Both are editable, and the date defaults to today
 /// rather than pretending to know when the photo was taken.
-struct AttachmentDetailsEditor: View {
+struct PersonFileDetailsEditor: View {
 
-    @Bindable var attachment: Attachment
+    @Bindable var file: PersonFile
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -360,12 +360,12 @@ struct AttachmentDetailsEditor: View {
         NavigationStack {
             Form {
                 Section("Name") {
-                    TextField("What this is", text: $attachment.title)
+                    TextField("What this is", text: $file.title)
                 }
                 Section {
                     DatePicker(
                         "Date",
-                        selection: $attachment.capturedAt,
+                        selection: $file.capturedAt,
                         displayedComponents: .date
                     )
                 } footer: {
@@ -375,8 +375,8 @@ struct AttachmentDetailsEditor: View {
                     TextField(
                         "Anything worth remembering about it",
                         text: Binding(
-                            get: { attachment.note ?? "" },
-                            set: { attachment.note = $0.isEmpty ? nil : $0 }
+                            get: { file.note ?? "" },
+                            set: { file.note = $0.isEmpty ? nil : $0 }
                         ),
                         axis: .vertical
                     )
@@ -454,17 +454,17 @@ struct CameraCaptureView: UIViewControllerRepresentable {
 /// The square preview used on the profile strip. Falls back to the file-kind
 /// icon rather than an empty box, so a PDF without a renderable first page
 /// still reads as a document.
-struct AttachmentThumbnail: View {
-    let attachment: Attachment
+struct PersonFileThumbnail: View {
+    let file: PersonFile
 
     var body: some View {
         Group {
-            if let data = attachment.thumbnailData, let image = UIImage(data: data) {
+            if let data = file.thumbnailData, let image = UIImage(data: data) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                Image(systemName: attachment.kind.symbolName)
+                Image(systemName: file.kind.symbolName)
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

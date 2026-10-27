@@ -263,11 +263,11 @@ enum MemoryCategory: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 }
 
-// MARK: - Attachments
+// MARK: - Files
 
 /// What kind of file is on a profile. Drives the icon and whether it gets a
 /// thumbnail or a filename row.
-enum AttachmentKind: String, CaseIterable, Identifiable, Codable, Sendable {
+enum PersonFileKind: String, CaseIterable, Identifiable, Codable, Sendable {
     case image
     case pdf
     case document

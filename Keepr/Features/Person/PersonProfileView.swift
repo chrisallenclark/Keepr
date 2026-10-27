@@ -316,24 +316,24 @@ struct PersonProfileView: View {
     /// tap away in the same way the memories section defers to the library.
     @ViewBuilder
     private var filesSection: some View {
-        let files = person.attachmentList
+        let files = person.fileList
 
         Section {
             if files.isEmpty {
                 NavigationLink {
-                    AttachmentsView(person: person)
+                    PersonFilesView(person: person)
                 } label: {
                     Label("Add a photo or file", systemImage: "paperclip")
                         .font(.subheadline)
                 }
             } else {
                 NavigationLink {
-                    AttachmentsView(person: person)
+                    PersonFilesView(person: person)
                 } label: {
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         HStack(spacing: Theme.Spacing.small) {
                             ForEach(files.prefix(4)) { file in
-                                AttachmentThumbnail(attachment: file)
+                                PersonFileThumbnail(file: file)
                             }
                             if files.count > 4 {
                                 Text("+\(files.count - 4)")

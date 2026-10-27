@@ -130,7 +130,7 @@ enum SearchEngine {
         }
         // Files are searchable by what you named them, which is the whole
         // reason a photo gets a name instead of keeping "IMG_4821".
-        if let file = (person.attachments ?? []).first(where: { contains($0.title) || contains($0.note) }) {
+        if let file = (person.files ?? []).first(where: { contains($0.title) || contains($0.note) }) {
             return SearchResult(person: person, field: .file, snippet: file.title)
         }
         if contains(person.notes) || contains(person.howWeMet) || contains(person.introducedBy) {
