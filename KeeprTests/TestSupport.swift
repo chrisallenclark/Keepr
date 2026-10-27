@@ -216,6 +216,31 @@ enum Make {
         return memory
     }
 
+    static func file(
+        _ context: ModelContext,
+        title: String,
+        kind: PersonFileKind = .image,
+        fileExtension: String = "jpg",
+        data: Data? = Data([0xFF, 0xD8, 0xFF]),
+        byteCount: Int = 3,
+        capturedAt: Date = TestDates.now,
+        note: String? = nil,
+        person: Person? = nil
+    ) -> PersonFile {
+        let file = PersonFile(
+            title: title,
+            kind: kind,
+            fileExtension: fileExtension,
+            data: data,
+            byteCount: byteCount,
+            capturedAt: capturedAt,
+            note: note
+        )
+        context.insert(file)
+        file.person = person
+        return file
+    }
+
     static func followUp(
         _ context: ModelContext,
         title: String = "Follow up",

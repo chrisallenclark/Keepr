@@ -331,7 +331,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Keepr;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Keepr uses the camera so you can photograph things worth keeping on a profile, such as consultation results or a signed form. Photos stay on your device.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Keepr links your relationship profiles to your contacts so you can see who's who and reach them with one tap. Your contacts never leave your device.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Keepr lets you attach existing photos to a profile. Photos you choose stay on your device.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -359,7 +361,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Keepr;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Keepr uses the camera so you can photograph things worth keeping on a profile, such as consultation results or a signed form. Photos stay on your device.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Keepr links your relationship profiles to your contacts so you can see who's who and reach them with one tap. Your contacts never leave your device.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Keepr lets you attach existing photos to a profile. Photos you choose stay on your device.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

@@ -282,15 +282,93 @@ struct HeuristicCaptureExtractor: CaptureExtracting {
 
     // MARK: - Facts
 
+    /// Order is the whole design here: the first list to match wins, so the
+    /// narrow shelves sit above the broad ones. "Could introduce me to someone
+    /// at his company" is an opportunity before it's a work fact, and "lost 20
+    /// pounds" is progress while "wants to lose 20 pounds" is still a goal —
+    /// which is why one list has "lost" and the other has "lose".
+    ///
+    /// Keywords are matched on whole words, so short, common fragments are
+    /// avoided deliberately: bare "back" would catch "get back to him", and
+    /// "free" would catch "free weights". The multi-word forms cost nothing and
+    /// don't misfire.
     private static let categoryKeywords: [(MemoryCategory, [String])] = [
-        (.importantDate, ["birthday", "anniversary", "wedding", "vacation", "trip to", "getting married"]),
-        (.family, ["wife", "husband", "kids", "children", "daughter", "son", "married", "baby", "grandkids"]),
-        (.work, ["owns", "runs a", "works at", "works for", "founded", "company", "business", "job", "hiring", "ceo", "manager"]),
-        (.goals, ["wants to", "trying to", "training for", "hoping to", "plans to", "goal", "lose", "aiming"]),
-        (.interests, ["loves", "enjoys", "plays", "fan of", "collects", "hobby", "runs the"]),
-        (.preferences, ["prefers", "allergic", "hates", "doesn't like", "likes his", "vegetarian", "vegan"]),
-        (.personal, ["lives in", "moved to", "grew up", "originally from", "house"]),
-        (.business, ["client", "referral", "pricing", "proposal", "contract", "invoice", "budget"])
+        (.goals, [
+            "wants to", "trying to", "training for", "hoping to", "plans to", "goal",
+            "lose", "aiming", "signed up for", "working toward", "by the end of",
+            "wants me to", "would like to", "dreams of"
+        ]),
+        (.importantDate, [
+            "birthday", "anniversary", "wedding", "vacation", "trip to",
+            "getting married", "due date", "retiring", "graduation"
+        ]),
+        (.health, [
+            "injury", "injured", "surgery", "allergic", "allergy", "knee", "knees",
+            "shoulder", "hip", "wrist", "ankle", "elbow", "rotator cuff", "acl",
+            "herniated", "bad back", "lower back", "back pain", "back issues",
+            "bulging disc", "sciatica", "arthritis", "tendinitis", "plantar",
+            "diabetic", "diabetes", "asthma", "blood pressure", "cholesterol",
+            "thyroid", "autoimmune", "medication", "meds", "physical therapy",
+            "concussion", "recovering", "pregnant", "sleep apnea", "insomnia",
+            "chronic", "flare up", "cleared by", "cortisone"
+        ]),
+        (.progress, [
+            "lost", "dropped", "down to", "hit", "benched", "squatted", "deadlifted",
+            "pr", "personal best", "ran a", "finished", "completed", "milestone",
+            "so far", "since we started", "improved", "gained", "stuck to",
+            "showed up every", "streak", "first time"
+        ]),
+        (.family, [
+            "wife", "husband", "partner", "fiancee", "fiance", "kids", "children",
+            "daughter", "daughters", "son", "sons", "married", "divorced", "baby",
+            "grandkids", "grandchildren", "mom", "dad", "mother", "father",
+            "brother", "sister", "stepson", "stepdaughter", "twins", "expecting"
+        ]),
+        (.schedule, [
+            "trains", "works out", "schedule", "mornings", "evenings", "afternoons",
+            "weekends", "weekdays", "travels", "traveling", "on the road", "shift",
+            "night shift", "time zone", "busy season", "off on", "early riser",
+            "night owl", "only available", "lunch break", "picks up the kids"
+        ]),
+        (.opportunity, [
+            "could introduce", "can introduce", "knows a", "knows someone",
+            "knows the", "looking for", "in the market", "might need", "asked about",
+            "referral", "referred", "refer", "connect me", "introduce me",
+            "interested in working", "wants a quote", "investor", "owns the building",
+            "sits on the board", "warm lead", "worth pitching", "good fit for"
+        ]),
+        (.work, [
+            "owns", "owner", "runs a", "works at", "works for", "founded", "company",
+            "business", "job", "hiring", "ceo", "manager", "self employed",
+            "contractor", "franchise", "employees", "crew", "shop", "practice",
+            "got promoted", "new role", "laid off", "retired from"
+        ]),
+        (.interests, [
+            "loves", "enjoys", "plays", "fan of", "collects", "hobby", "runs the",
+            "obsessed with", "watches", "golfs", "hunts", "fishes",
+            "season tickets", "band", "church"
+        ]),
+        (.style, [
+            "blunt", "direct", "chatty", "talkative", "quiet", "reserved", "guarded",
+            "responds", "never answers", "no small talk", "straight to the point",
+            "competitive", "skeptical", "easygoing", "intense", "needs reassurance",
+            "overthinks", "checks in", "hates being sold", "takes a while to"
+        ]),
+        (.preferences, [
+            "prefers", "hates", "doesn't like", "likes his", "likes her",
+            "vegetarian", "vegan", "pescatarian", "gluten", "dairy", "black coffee",
+            "won't", "always orders", "can't stand", "picky"
+        ]),
+        (.personal, [
+            "lives in", "moved to", "grew up", "originally from", "house", "apartment",
+            "bought a", "renting", "commutes", "military", "veteran", "went to school",
+            "studied", "immigrated", "dog", "cat", "pets"
+        ]),
+        (.business, [
+            "client", "pricing", "proposal", "contract", "invoice", "budget",
+            "package", "pays", "paid", "renewal", "cancelled", "discount",
+            "month to month", "deposit", "card on file"
+        ])
     ]
 
     /// Phrases that mean "this clause states something about the person".

@@ -46,6 +46,10 @@ struct PeopleView: View {
         PlaceFilter(facetID: selectedPlaceID)
     }
 
+    private func reason(for person: Person) -> SearchResult? {
+        PeopleEngine.reason(for: person, query: searchText)
+    }
+
     private var filtered: [Person] {
         PeopleEngine.sort(
             PeopleEngine.filter(
@@ -118,7 +122,7 @@ struct PeopleView: View {
             // bug even though it's stock behaviour.
             .navigationBarTitleDisplayMode(.inline)
             .contextSwitcher($mode)
-            .searchable(text: $searchText, prompt: "Search \(mode.title.lowercased()) contacts")
+            .searchable(text: $searchText, prompt: "Name, company, or anything you noted")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { filterMenu }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -245,14 +249,14 @@ struct PeopleView: View {
     @ViewBuilder
     private func row(for person: Person) -> some View {
         if editMode.isEditing {
-            PersonRow(person: person, mode: mode)
+            PersonRow(person: person, mode: mode, reason: reason(for: person))
                 .contentShape(.rect)
                 .tag(person.id)
         } else {
             Button {
                 selectedPerson = person
             } label: {
-                PersonRow(person: person, mode: mode)
+                PersonRow(person: person, mode: mode, reason: reason(for: person))
             }
             .buttonStyle(.plain)
             .tag(person.id)
@@ -729,6 +733,17 @@ struct LinkPair: Identifiable {
 struct PersonRow: View {
     let person: Person
     let mode: ContextMode
+    /// Why this person came up in a search, when they came up in one.
+    var reason: SearchResult? = nil
+
+    /// A name or company hit needs no explanation — the row already shows it.
+    /// A memory or a file does, and that line replaces the tag row rather than
+    /// adding to it, so a search result is the same height as any other row.
+    private var explanation: SearchResult? {
+        guard let reason, reason.field > .tag, let snippet = reason.snippet,
+              !snippet.isEmpty else { return nil }
+        return reason
+    }
 
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
@@ -756,7 +771,18 @@ struct PersonRow: View {
                         .lineLimit(1)
                 }
 
-                TagRow(tags: person.headlineTags(for: mode))
+                if let explanation, let snippet = explanation.snippet {
+                    Label {
+                        Text(snippet).lineLimit(2)
+                    } icon: {
+                        Image(systemName: explanation.field.symbolName)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+                } else {
+                    TagRow(tags: person.headlineTags(for: mode))
+                }
             }
 
             Spacer(minLength: Theme.Spacing.small)
