@@ -6,6 +6,7 @@ enum SearchField: Int, CaseIterable, Comparable {
     case company
     case tag
     case memory
+    case writeUp
     case interaction
     case file
     case note
@@ -21,9 +22,10 @@ enum SearchField: Int, CaseIterable, Comparable {
         case .company: "Company"
         case .tag: "Tag"
         case .memory: "Memory"
+        case .writeUp: "Note"
         case .interaction: "Interaction"
         case .file: "File"
-        case .note: "Note"
+        case .note: "Profile"
         case .followUp: "Follow-up"
         }
     }
@@ -33,9 +35,10 @@ enum SearchField: Int, CaseIterable, Comparable {
         switch self {
         case .name, .company, .tag: "People"
         case .memory: "Memories"
+        case .writeUp: "Notes"
         case .interaction: "Interactions"
         case .file: "Files"
-        case .note: "Notes"
+        case .note: "Details"
         case .followUp: "Follow-ups"
         }
     }
@@ -46,6 +49,7 @@ enum SearchField: Int, CaseIterable, Comparable {
         case .company: "building.2"
         case .tag: "tag"
         case .memory: "lightbulb"
+        case .writeUp: "doc.text"
         case .interaction: "bubble.left.and.bubble.right"
         case .file: "paperclip"
         case .note: "note.text"
@@ -124,6 +128,13 @@ enum SearchEngine {
         }
         if let memory = person.memoryList.first(where: { contains($0.content) }) {
             return SearchResult(person: person, field: .memory, snippet: memory.content)
+        }
+        // Pasted write-ups are long, so they're the most likely place a
+        // half-remembered phrase actually lives. The snippet is the note's
+        // title rather than the matching line: a line pulled out of the middle
+        // of a transcript reads as nonsense without it.
+        if let note = (person.conversationNotes ?? []).first(where: { contains($0.title) || contains($0.body) }) {
+            return SearchResult(person: person, field: .writeUp, snippet: note.title)
         }
         if let interaction = person.interactionList.first(where: { contains($0.searchableText) }) {
             return SearchResult(person: person, field: .interaction, snippet: interaction.headline)

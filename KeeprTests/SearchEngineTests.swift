@@ -37,18 +37,29 @@ struct SearchEngineTests {
             notes: "Prefers delta over gamma"
         )
 
+        let byWriteUp = Make.person(context, given: "Xena", family: "Royce")
+        _ = Make.note(
+            context,
+            title: "Kickoff",
+            body: "Agreed the delta milestones before anything else.",
+            person: byWriteUp
+        )
+
         let byFile = Make.person(context, given: "Wendy", family: "Sharp")
         _ = Make.file(context, title: "Delta scan week 1", person: byFile)
 
         let byFollowUp = Make.person(context, given: "Uma", family: "Vance")
         _ = Make.followUp(context, title: "Send delta report", due: TestDates.dayStart(2), person: byFollowUp)
 
-        return [byFollowUp, byNote, byFile, byInteraction, byMemory, byTag, byCompany, byName]
+        return [
+            byFollowUp, byNote, byFile, byInteraction, byWriteUp,
+            byMemory, byTag, byCompany, byName
+        ]
     }
 
     // MARK: - Ranking
 
-    @Test("Fields rank name > company > tag > memory > interaction > file > note > follow-up")
+    @Test("Fields rank identity, then memories, notes, interactions, files, details, follow-ups")
     func fieldRanking() throws {
         let store = try TestStore()
         let people = makeRankingFixture(store)
@@ -57,7 +68,8 @@ struct SearchEngineTests {
 
         #expect(
             results.map(\.field) == [
-                .name, .company, .tag, .memory, .interaction, .file, .note, .followUp
+                .name, .company, .tag, .memory, .writeUp,
+                .interaction, .file, .note, .followUp
             ]
         )
     }
@@ -283,7 +295,8 @@ struct SearchEngineTests {
         #expect(SearchField.name < SearchField.company)
         #expect(SearchField.company < SearchField.tag)
         #expect(SearchField.tag < SearchField.memory)
-        #expect(SearchField.memory < SearchField.interaction)
+        #expect(SearchField.memory < SearchField.writeUp)
+        #expect(SearchField.writeUp < SearchField.interaction)
         #expect(SearchField.interaction < SearchField.file)
         #expect(SearchField.file < SearchField.note)
         #expect(SearchField.note < SearchField.followUp)

@@ -23,6 +23,8 @@ struct PersonProfileView: View {
     @State private var isShowingLinkEditor = false
     @State private var isShowingNewPlace = false
     @State private var isShowingBrainDump = false
+    @State private var isShowingNoteComposer = false
+    @State private var isFilesExpanded = false
     @State private var isEditingWorkNote = false
     @State private var workNoteDraft = ""
 
@@ -58,6 +60,7 @@ struct PersonProfileView: View {
             workSection
             placesSection
             memoriesSection
+            notesSection
             filesSection
             connectionsSection
             timelineSection
@@ -120,6 +123,9 @@ struct PersonProfileView: View {
         }
         .sheet(isPresented: $isShowingBrainDump) {
             BrainDumpView(person: person)
+        }
+        .sheet(isPresented: $isShowingNoteComposer) {
+            NoteComposerView(person: person)
         }
         .sheet(isPresented: $isShowingNewPlace) {
             // Creating a place from a profile means "put them here", so the
@@ -307,13 +313,67 @@ struct PersonProfileView: View {
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 0))
     }
 
+    // MARK: - Notes
+
+    /// Conversation write-ups as cards that open where they sit.
+    ///
+    /// Two on the profile, because the point of this section is "do I have
+    /// notes on them, and what was the last one" — not reading four meetings
+    /// end to end. The rest are behind one tap, in the same card language.
+    @ViewBuilder
+    private var notesSection: some View {
+        let notes = person.noteList
+
+        Section {
+            if notes.isEmpty {
+                Button {
+                    isShowingNoteComposer = true
+                } label: {
+                    Label("Paste a summary or meeting notes", systemImage: "doc.on.clipboard")
+                        .font(.subheadline)
+                }
+            } else {
+                ForEach(notes.prefix(2)) { note in
+                    NoteCard(note: note, showsActions: false)
+                        .floatingCardRow()
+                }
+
+                if notes.count > 2 {
+                    NavigationLink {
+                        NotesListView(person: person)
+                    } label: {
+                        Label(
+                            "All \(notes.count) notes",
+                            systemImage: "chevron.right.circle"
+                        )
+                        .font(.subheadline)
+                    }
+                }
+            }
+        } header: {
+            HStack {
+                Text("Notes")
+                Spacer()
+                if !notes.isEmpty {
+                    Button {
+                        isShowingNoteComposer = true
+                    } label: {
+                        Text("Add")
+                            .font(.caption.weight(.semibold))
+                            .textCase(nil)
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Files
 
-    /// A strip of what's on file, not a file browser.
+    /// Files as one card that opens to show what's in it.
     ///
-    /// Four thumbnails answer "have I got their last results" at a glance,
-    /// which is the question this section exists for; everything else is one
-    /// tap away in the same way the memories section defers to the library.
+    /// Closed it answers "is anything on file"; open it shows the thumbnails
+    /// and the latest name, which is the actual question with a stack of
+    /// check-in scans. Managing them is a screen of its own.
     @ViewBuilder
     private var filesSection: some View {
         let files = person.fileList
@@ -327,43 +387,61 @@ struct PersonProfileView: View {
                         .font(.subheadline)
                 }
             } else {
-                NavigationLink {
-                    PersonFilesView(person: person)
-                } label: {
+                FloatingCard {
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        HStack(spacing: Theme.Spacing.small) {
-                            ForEach(files.prefix(4)) { file in
-                                PersonFileThumbnail(file: file)
-                            }
-                            if files.count > 4 {
-                                Text("+\(files.count - 4)")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 56, height: 56)
-                                    .background(.quaternary, in: .rect(cornerRadius: Theme.Radius.chip))
-                            }
-                        }
-
-                        if let newest = files.first {
-                            Text("Latest: \(newest.title)")
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+                            Image(systemName: "paperclip")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                                .frame(width: 16)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(files.count == 1 ? "1 file" : "\(files.count) files")
+                                    .font(.subheadline.weight(.semibold))
+                                if let newest = files.first {
+                                    Text("Latest: \(newest.title)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                        .lineLimit(1)
+                                }
+                            }
+
+                            Spacer(minLength: Theme.Spacing.tight)
+                            DisclosureChevron(isExpanded: isFilesExpanded)
+                        }
+
+                        if isFilesExpanded {
+                            Divider()
+
+                            ScrollView(.horizontal) {
+                                HStack(spacing: Theme.Spacing.small) {
+                                    ForEach(files.prefix(8)) { file in
+                                        PersonFileThumbnail(file: file, size: 72)
+                                    }
+                                }
+                            }
+                            .scrollIndicators(.hidden)
+
+                            NavigationLink {
+                                PersonFilesView(person: person)
+                            } label: {
+                                Label("Open Files", systemImage: "folder")
+                                    .font(.caption.weight(.medium))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.tint)
                         }
                     }
                 }
+                .contentShape(.rect)
+                .onTapGesture {
+                    withAnimation(.snappy(duration: 0.26)) { isFilesExpanded.toggle() }
+                    Haptics.light()
+                }
+                .floatingCardRow()
             }
         } header: {
-            HStack {
-                Text("Files")
-                Spacer()
-                if !files.isEmpty {
-                    Text(files.count == 1 ? "1 file" : "\(files.count) files")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textCase(nil)
-                }
-            }
+            Text("Files")
         }
     }
 
