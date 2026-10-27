@@ -173,7 +173,9 @@ struct BrainDumpView: View {
                                 draft.wrappedValue.category = category
                                 Haptics.selection()
                             } label: {
-                                Label(category.title, systemImage: category.symbolName)
+                                Text(category.title)
+                                Text(category.explanation)
+                                Image(systemName: category.symbolName)
                             }
                         }
                     } label: {

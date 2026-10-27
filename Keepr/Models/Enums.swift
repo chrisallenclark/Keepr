@@ -178,9 +178,21 @@ enum InteractionKind: String, CaseIterable, Identifiable, Codable, Sendable {
 
 // MARK: - Memory
 
+/// The shelves a remembered fact can sit on.
+///
+/// Deliberately a fixed list rather than free-form: the profile only stays
+/// scannable if "what else is on file" can be said in a row of counts, and that
+/// needs a vocabulary small enough to hold in your head. Cases are only added
+/// when a whole kind of fact was landing in `other` — the signal that a shelf
+/// is missing, not that the list is too short.
 enum MemoryCategory: String, CaseIterable, Identifiable, Codable, Sendable {
     case work
     case family
+    case health
+    case progress
+    case schedule
+    case style
+    case opportunity
     case interests
     case goals
     case preferences
@@ -195,6 +207,11 @@ enum MemoryCategory: String, CaseIterable, Identifiable, Codable, Sendable {
         switch self {
         case .work: "Work"
         case .family: "Family"
+        case .health: "Health"
+        case .progress: "Progress"
+        case .schedule: "Schedule"
+        case .style: "How They Are"
+        case .opportunity: "Opportunity"
         case .interests: "Interests"
         case .goals: "Goals"
         case .preferences: "Preferences"
@@ -205,17 +222,88 @@ enum MemoryCategory: String, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
 
+    /// One line explaining what belongs here, shown when picking a category by
+    /// hand. Without it "Progress" and "Goals" look like the same shelf.
+    var explanation: String {
+        switch self {
+        case .work: "What they do and who they do it for"
+        case .family: "Partner, kids, parents, who matters to them"
+        case .health: "Injuries, conditions, allergies, what to work around"
+        case .progress: "Wins and milestones — what's changed since you met"
+        case .schedule: "When they're free, when they train, when they travel"
+        case .style: "How they communicate and what they respond to"
+        case .opportunity: "Who they could introduce you to, what they might need"
+        case .interests: "What they do for fun"
+        case .goals: "What they're trying to achieve"
+        case .preferences: "Likes, dislikes, how they want things done"
+        case .personal: "Where they live, where they're from, their story"
+        case .business: "Money, contracts, pricing, the commercial side"
+        case .importantDate: "Birthdays, anniversaries, dates to know"
+        case .other: "Everything that doesn't fit a shelf yet"
+        }
+    }
+
     var symbolName: String {
         switch self {
         case .work: "building.2"
         case .family: "figure.2.and.child.holdinghands"
+        case .health: "heart.text.square"
+        case .progress: "chart.line.uptrend.xyaxis"
+        case .schedule: "clock"
+        case .style: "quote.bubble"
+        case .opportunity: "arrow.triangle.branch"
         case .interests: "sparkles"
         case .goals: "target"
-        case .preferences: "heart"
+        case .preferences: "hand.thumbsup"
         case .personal: "person"
         case .business: "briefcase"
         case .importantDate: "calendar"
         case .other: "note.text"
+        }
+    }
+}
+
+// MARK: - Attachments
+
+/// What kind of file is on a profile. Drives the icon and whether it gets a
+/// thumbnail or a filename row.
+enum AttachmentKind: String, CaseIterable, Identifiable, Codable, Sendable {
+    case image
+    case pdf
+    case document
+    case other
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .image: "Photo"
+        case .pdf: "PDF"
+        case .document: "Document"
+        case .other: "File"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .image: "photo"
+        case .pdf: "doc.richtext"
+        case .document: "doc.text"
+        case .other: "doc"
+        }
+    }
+
+    /// Best guess from a filename extension, for files picked out of Files.
+    init(fileExtension: String) {
+        switch fileExtension.lowercased() {
+        case "jpg", "jpeg", "png", "heic", "heif", "gif", "webp", "tiff":
+            self = .image
+        case "pdf":
+            self = .pdf
+        case "txt", "rtf", "doc", "docx", "pages", "csv", "numbers", "xls", "xlsx":
+            self = .document
+        default:
+            self = .other
         }
     }
 }

@@ -37,15 +37,18 @@ struct SearchEngineTests {
             notes: "Prefers delta over gamma"
         )
 
+        let byFile = Make.person(context, given: "Wendy", family: "Sharp")
+        _ = Make.attachment(context, title: "Delta scan week 1", person: byFile)
+
         let byFollowUp = Make.person(context, given: "Uma", family: "Vance")
         _ = Make.followUp(context, title: "Send delta report", due: TestDates.dayStart(2), person: byFollowUp)
 
-        return [byFollowUp, byNote, byInteraction, byMemory, byTag, byCompany, byName]
+        return [byFollowUp, byNote, byFile, byInteraction, byMemory, byTag, byCompany, byName]
     }
 
     // MARK: - Ranking
 
-    @Test("Fields rank name > company > tag > memory > interaction > note > follow-up")
+    @Test("Fields rank name > company > tag > memory > interaction > file > note > follow-up")
     func fieldRanking() throws {
         let store = try TestStore()
         let people = makeRankingFixture(store)
@@ -53,7 +56,9 @@ struct SearchEngineTests {
         let results = SearchEngine.search("delta", in: people)
 
         #expect(
-            results.map(\.field) == [.name, .company, .tag, .memory, .interaction, .note, .followUp]
+            results.map(\.field) == [
+                .name, .company, .tag, .memory, .interaction, .file, .note, .followUp
+            ]
         )
     }
 
@@ -279,7 +284,8 @@ struct SearchEngineTests {
         #expect(SearchField.company < SearchField.tag)
         #expect(SearchField.tag < SearchField.memory)
         #expect(SearchField.memory < SearchField.interaction)
-        #expect(SearchField.interaction < SearchField.note)
+        #expect(SearchField.interaction < SearchField.file)
+        #expect(SearchField.file < SearchField.note)
         #expect(SearchField.note < SearchField.followUp)
     }
 }

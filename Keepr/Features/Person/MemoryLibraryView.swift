@@ -15,6 +15,7 @@ struct MemoryLibraryView: View {
 
     @State private var query = ""
     @State private var isShowingBrainDump = false
+    @State private var refileResult: Int?
 
     private var groups: [MemoryGroup] {
         let all = person.visibleMemories
@@ -35,6 +36,11 @@ struct MemoryLibraryView: View {
                         Image(systemName: group.category.symbolName)
                         Text(group.category.title)
                         Spacer()
+                        if group.category == .other, !refilable.isEmpty {
+                            Button("File \(refilable.count)", action: refileOthers)
+                                .font(.caption.weight(.semibold))
+                                .textCase(nil)
+                        }
                         Text("\(group.count)")
                             .foregroundStyle(.tertiary)
                     }
@@ -56,6 +62,13 @@ struct MemoryLibraryView: View {
         }
         .sheet(isPresented: $isShowingBrainDump) {
             BrainDumpView(person: person)
+        }
+        .alert("Filed", isPresented: refileAlert) {
+            Button("OK", role: .cancel) { refileResult = nil }
+        } message: {
+            Text(refileResult == 1
+                 ? "One fact moved out of Other."
+                 : "\(refileResult ?? 0) facts moved out of Other.")
         }
         .overlay {
             if groups.isEmpty {
@@ -127,7 +140,12 @@ struct MemoryLibraryView: View {
                     Button {
                         move(memory, to: category)
                     } label: {
-                        Label(category.title, systemImage: category.symbolName)
+                        // Title plus one line of "what belongs here", because
+                        // Goals and Progress are indistinguishable from their
+                        // names alone.
+                        Text(category.title)
+                        Text(category.explanation)
+                        Image(systemName: category.symbolName)
                     }
                 }
             }
@@ -139,6 +157,34 @@ struct MemoryLibraryView: View {
             return "From \(source.headline.lowercased()) · \(RelativeDate.past(memory.createdAt))"
         }
         return "Added \(RelativeDate.past(memory.createdAt).lowercased())"
+    }
+
+    // MARK: - Re-filing
+
+    /// Facts in Other that today's rules would now place somewhere.
+    private var refilable: [(memory: Memory, category: MemoryCategory)] {
+        MemoryEngine.refilable(person.memoryList) { content in
+            HeuristicCaptureExtractor.category(of: content)
+        }
+    }
+
+    private var refileAlert: Binding<Bool> {
+        Binding(get: { refileResult != nil }, set: { if !$0 { refileResult = nil } })
+    }
+
+    private func refileOthers() {
+        let proposals = refilable
+        guard !proposals.isEmpty else { return }
+
+        withAnimation {
+            for proposal in proposals {
+                proposal.memory.category = proposal.category
+                proposal.memory.updatedAt = Date()
+            }
+        }
+        try? context.save()
+        refileResult = proposals.count
+        Haptics.success()
     }
 
     // MARK: - Actions

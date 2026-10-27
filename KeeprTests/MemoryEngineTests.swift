@@ -192,6 +192,7 @@ struct BrainDumpExtractionTests {
             Two kids, 7 and 10
             Wants to lose 20 lb
             Allergic to shellfish
+            Prefers black coffee
             Birthday is March 14
             """
 
@@ -201,6 +202,7 @@ struct BrainDumpExtractionTests {
         #expect(byCategory[.work]?.isEmpty == false)
         #expect(byCategory[.family]?.isEmpty == false)
         #expect(byCategory[.goals]?.isEmpty == false)
+        #expect(byCategory[.health]?.isEmpty == false, "an allergy is health, not a preference")
         #expect(byCategory[.preferences]?.isEmpty == false)
         #expect(byCategory[.importantDate]?.isEmpty == false)
     }

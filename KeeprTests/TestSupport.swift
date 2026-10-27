@@ -216,6 +216,31 @@ enum Make {
         return memory
     }
 
+    static func attachment(
+        _ context: ModelContext,
+        title: String,
+        kind: AttachmentKind = .image,
+        fileExtension: String = "jpg",
+        data: Data? = Data([0xFF, 0xD8, 0xFF]),
+        byteCount: Int = 3,
+        capturedAt: Date = TestDates.now,
+        note: String? = nil,
+        person: Person? = nil
+    ) -> Attachment {
+        let attachment = Attachment(
+            title: title,
+            kind: kind,
+            fileExtension: fileExtension,
+            data: data,
+            byteCount: byteCount,
+            capturedAt: capturedAt,
+            note: note
+        )
+        context.insert(attachment)
+        attachment.person = person
+        return attachment
+    }
+
     static func followUp(
         _ context: ModelContext,
         title: String = "Follow up",

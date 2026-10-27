@@ -25,8 +25,9 @@ enum MemoryEngine {
     /// then the softer detail. Roughly the order you'd want them in your head
     /// walking into a room.
     static let categoryOrder: [MemoryCategory] = [
-        .work, .business, .goals, .family, .importantDate,
-        .preferences, .interests, .personal, .other
+        .work, .business, .opportunity, .goals, .progress,
+        .health, .schedule, .family, .importantDate,
+        .style, .preferences, .interests, .personal, .other
     ]
 
     /// The few facts worth printing on the profile itself.
@@ -89,6 +90,28 @@ enum MemoryEngine {
     /// how much of it.
     static func summaryCounts(_ memories: [Memory]) -> [MemoryGroup] {
         grouped(memories)
+    }
+
+    /// Facts sitting in `other` that a fresh pass would now file somewhere.
+    ///
+    /// Categorization improves between releases, and the facts already on
+    /// record don't benefit retroactively — someone who brain-dumped before
+    /// "Health" existed has a pile of injuries filed under Other. This offers
+    /// the re-file rather than performing it: silently rewriting the user's own
+    /// filing decisions would be worse than leaving them wrong.
+    ///
+    /// `classify` is injected so this stays testable without the extractor.
+    static func refilable(
+        _ memories: [Memory],
+        classify: (String) -> MemoryCategory
+    ) -> [(memory: Memory, category: MemoryCategory)] {
+        memories
+            .filter { $0.category == .other && !$0.isArchived }
+            .compactMap { memory in
+                let proposed = classify(memory.content)
+                guard proposed != .other else { return nil }
+                return (memory, proposed)
+            }
     }
 
     /// "14 things" / "1 thing" — used on the button that opens the full list.

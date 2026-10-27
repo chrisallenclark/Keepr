@@ -133,17 +133,25 @@ enum PeopleEngine {
         return result
     }
 
-    /// Lightweight name/company/tag match used by the People search field.
+    /// Whether this person matches the People search field.
+    ///
+    /// Delegates to `SearchEngine`, which means typing "soccer" into the People
+    /// list finds the person whose daughter plays soccer — not just people with
+    /// "soccer" in their name. A search box that only matched names would be
+    /// asking the user to remember the thing they opened the app to look up.
     static func matches(_ person: Person, query: String) -> Bool {
-        let haystack = [
-            person.fullName,
-            person.preferredName ?? "",
-            person.company ?? "",
-            person.jobTitle ?? "",
-            person.workNote ?? "",
-            person.tagList.map(\.name).joined(separator: " ")
-        ].joined(separator: " ")
-        return haystack.localizedStandardContains(query)
+        SearchEngine.bestMatch(for: person, query: query) != nil
+    }
+
+    /// Why this person matched, so the row can say so.
+    ///
+    /// Returned separately from `filter` rather than threaded through it: the
+    /// facet counts call `filter` several times per keystroke and have no use
+    /// for the reasons.
+    static func reason(for person: Person, query: String) -> SearchResult? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return SearchEngine.bestMatch(for: person, query: trimmed)
     }
 
     static func sort(_ people: [Person], by sort: PeopleSort) -> [Person] {

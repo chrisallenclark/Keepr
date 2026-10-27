@@ -7,6 +7,7 @@ enum SearchField: Int, CaseIterable, Comparable {
     case tag
     case memory
     case interaction
+    case file
     case note
     case followUp
 
@@ -21,6 +22,7 @@ enum SearchField: Int, CaseIterable, Comparable {
         case .tag: "Tag"
         case .memory: "Memory"
         case .interaction: "Interaction"
+        case .file: "File"
         case .note: "Note"
         case .followUp: "Follow-up"
         }
@@ -32,6 +34,7 @@ enum SearchField: Int, CaseIterable, Comparable {
         case .name, .company, .tag: "People"
         case .memory: "Memories"
         case .interaction: "Interactions"
+        case .file: "Files"
         case .note: "Notes"
         case .followUp: "Follow-ups"
         }
@@ -44,6 +47,7 @@ enum SearchField: Int, CaseIterable, Comparable {
         case .tag: "tag"
         case .memory: "lightbulb"
         case .interaction: "bubble.left.and.bubble.right"
+        case .file: "paperclip"
         case .note: "note.text"
         case .followUp: "bell"
         }
@@ -123,6 +127,11 @@ enum SearchEngine {
         }
         if let interaction = person.interactionList.first(where: { contains($0.searchableText) }) {
             return SearchResult(person: person, field: .interaction, snippet: interaction.headline)
+        }
+        // Files are searchable by what you named them, which is the whole
+        // reason a photo gets a name instead of keeping "IMG_4821".
+        if let file = (person.attachments ?? []).first(where: { contains($0.title) || contains($0.note) }) {
+            return SearchResult(person: person, field: .file, snippet: file.title)
         }
         if contains(person.notes) || contains(person.howWeMet) || contains(person.introducedBy) {
             let snippet = contains(person.notes) ? person.notes : person.howWeMet

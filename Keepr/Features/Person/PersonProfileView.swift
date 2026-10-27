@@ -58,6 +58,7 @@ struct PersonProfileView: View {
             workSection
             placesSection
             memoriesSection
+            filesSection
             connectionsSection
             timelineSection
             detailsSection
@@ -304,6 +305,66 @@ struct PersonProfileView: View {
         }
         .scrollIndicators(.hidden)
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 0))
+    }
+
+    // MARK: - Files
+
+    /// A strip of what's on file, not a file browser.
+    ///
+    /// Four thumbnails answer "have I got their last results" at a glance,
+    /// which is the question this section exists for; everything else is one
+    /// tap away in the same way the memories section defers to the library.
+    @ViewBuilder
+    private var filesSection: some View {
+        let files = person.attachmentList
+
+        Section {
+            if files.isEmpty {
+                NavigationLink {
+                    AttachmentsView(person: person)
+                } label: {
+                    Label("Add a photo or file", systemImage: "paperclip")
+                        .font(.subheadline)
+                }
+            } else {
+                NavigationLink {
+                    AttachmentsView(person: person)
+                } label: {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        HStack(spacing: Theme.Spacing.small) {
+                            ForEach(files.prefix(4)) { file in
+                                AttachmentThumbnail(attachment: file)
+                            }
+                            if files.count > 4 {
+                                Text("+\(files.count - 4)")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 56, height: 56)
+                                    .background(.quaternary, in: .rect(cornerRadius: Theme.Radius.chip))
+                            }
+                        }
+
+                        if let newest = files.first {
+                            Text("Latest: \(newest.title)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+            }
+        } header: {
+            HStack {
+                Text("Files")
+                Spacer()
+                if !files.isEmpty {
+                    Text(files.count == 1 ? "1 file" : "\(files.count) files")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
+                }
+            }
+        }
     }
 
     // MARK: - Waiting
