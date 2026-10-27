@@ -70,6 +70,27 @@ enum SampleData {
             isSampleData: true
         )
         context.insert(jake)
+
+        addNote(
+            "Consultation — Jake",
+            body: """
+                Runs a roofing crew of nine. Busiest April through October, so \
+                training has to survive a 5am start.
+
+                Lower back flares up after long days on ladders. Cleared by his \
+                doctor for deadlifts, wants to be careful.
+
+                Goal is 20 lb down before his sister's wedding in June.
+
+                Blunt, hates being sold to. Wants the plan, not the pitch.
+
+                Mentioned his business partner is looking for a trainer as well.
+                """,
+            at: daysAgo(21),
+            isPinned: true,
+            for: jake,
+            in: context
+        )
         jake.tags = [tag("Potential Client", .business), tag("Lead", .business)]
         jake.workNote = "Runs a roofing crew of nine. Knows every contractor in Delray."
 
@@ -125,6 +146,23 @@ enum SampleData {
         )
         context.insert(sarah)
         sarah.tags = [tag("Current Client", .business)]
+
+        addNote(
+            "Check-In · Week 12",
+            body: """
+                Down 2 lb this week, 14 total since we started.
+
+                Travel: Italy for two weeks in September. Wants to keep lifting \
+                while she's away — hotel gym only, so dumbbells and bands.
+
+                Squat depth is finally consistent. Added 15 lb to her working set.
+
+                Said her sister is asking about training too.
+                """,
+            at: daysAgo(3),
+            for: sarah,
+            in: context
+        )
 
         let sarahCall = interaction(
             .call,
@@ -467,6 +505,29 @@ enum SampleData {
                 )
             )
         }
+    }
+
+    @MainActor
+    private static func addNote(
+        _ title: String,
+        body: String,
+        source: NoteSource = .recorder,
+        at date: Date,
+        isPinned: Bool = false,
+        for person: Person,
+        in context: ModelContext
+    ) {
+        context.insert(
+            ConversationNote(
+                title: title,
+                body: body,
+                source: source,
+                occurredAt: date,
+                createdAt: date,
+                isPinned: isPinned,
+                person: person
+            )
+        )
     }
 
     @MainActor

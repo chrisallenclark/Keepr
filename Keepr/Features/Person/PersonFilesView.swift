@@ -456,6 +456,7 @@ struct CameraCaptureView: UIViewControllerRepresentable {
 /// still reads as a document.
 struct PersonFileThumbnail: View {
     let file: PersonFile
+    var size: CGFloat = 56
 
     var body: some View {
         Group {
@@ -471,7 +472,7 @@ struct PersonFileThumbnail: View {
                     .background(.quaternary)
             }
         }
-        .frame(width: 56, height: 56)
+        .frame(width: size, height: size)
         .clipShape(.rect(cornerRadius: Theme.Radius.chip))
     }
 }

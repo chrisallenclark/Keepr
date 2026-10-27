@@ -14,6 +14,9 @@ import SwiftUI
 struct BrainDumpView: View {
 
     let person: Person
+    /// Text to start from, used when facts are being pulled out of a
+    /// conversation write-up rather than typed fresh.
+    var initialText: String = ""
 
     @Environment(\.captureExtractor) private var extractor
     @Environment(\.modelContext) private var context
@@ -26,6 +29,10 @@ struct BrainDumpView: View {
     @State private var alsoLogInteraction = false
 
     @FocusState private var isWriting: Bool
+
+    /// Set once `initialText` has been moved into `text`, so returning from the
+    /// review step doesn't wipe out the user's edits by seeding again.
+    @State private var hasSeeded = false
 
     private var trimmed: String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -97,7 +104,16 @@ struct BrainDumpView: View {
                 .foregroundStyle(.secondary)
                 .padding(Theme.Spacing.medium)
         }
-        .onAppear { isWriting = true }
+        .onAppear {
+            // Seeded text means the user is pulling facts out of something they
+            // already have, so the keyboard shouldn't jump up over it.
+            if !hasSeeded, !initialText.isEmpty, text.isEmpty {
+                text = initialText
+                hasSeeded = true
+            } else if text.isEmpty {
+                isWriting = true
+            }
+        }
     }
 
     private static let placeholder = """

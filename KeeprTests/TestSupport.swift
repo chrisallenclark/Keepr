@@ -225,7 +225,8 @@ enum Make {
         byteCount: Int = 3,
         capturedAt: Date = TestDates.now,
         note: String? = nil,
-        person: Person? = nil
+        person: Person? = nil,
+        conversationNote: ConversationNote? = nil
     ) -> PersonFile {
         let file = PersonFile(
             title: title,
@@ -238,7 +239,31 @@ enum Make {
         )
         context.insert(file)
         file.person = person
+        file.conversationNote = conversationNote
         return file
+    }
+
+    static func note(
+        _ context: ModelContext,
+        title: String,
+        body: String = "",
+        source: NoteSource = .pasted,
+        occurredAt: Date = TestDates.now,
+        isPinned: Bool = false,
+        person: Person? = nil,
+        sourceInteraction: Interaction? = nil
+    ) -> ConversationNote {
+        let note = ConversationNote(
+            title: title,
+            body: body,
+            source: source,
+            occurredAt: occurredAt,
+            isPinned: isPinned
+        )
+        context.insert(note)
+        note.person = person
+        note.sourceInteraction = sourceInteraction
+        return note
     }
 
     static func followUp(

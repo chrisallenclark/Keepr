@@ -105,6 +105,11 @@ final class Person {
     @Relationship(deleteRule: .cascade, inverse: \PersonFile.person)
     var files: [PersonFile]?
 
+    /// Named in full because `notes` is already the user's own free-text note
+    /// on the person. `noteList` is what everything outside this file uses.
+    @Relationship(deleteRule: .cascade, inverse: \ConversationNote.person)
+    var conversationNotes: [ConversationNote]?
+
     @Relationship(deleteRule: .nullify, inverse: \RelationshipTag.people)
     var tags: [RelationshipTag]?
 
@@ -163,6 +168,7 @@ final class Person {
         self.memories = []
         self.followUps = []
         self.files = []
+        self.conversationNotes = []
         self.tags = []
         self.groups = []
         self.linksAsA = []
@@ -195,8 +201,22 @@ extension Person {
 
     /// Files on this profile, newest first — a stack of check-in scans is only
     /// useful if the latest one is on top.
+    ///
+    /// Images belonging to a write-up are left out: they're shown inside that
+    /// note, and listing them twice would make Files look full of strays.
     var fileList: [PersonFile] {
-        (files ?? []).sorted { $0.capturedAt > $1.capturedAt }
+        (files ?? [])
+            .filter { !$0.belongsToNote }
+            .sorted { $0.capturedAt > $1.capturedAt }
+    }
+
+    /// Conversation write-ups: pinned first, then most recent.
+    var noteList: [ConversationNote] {
+        (conversationNotes ?? []).sorted { lhs, rhs in
+            lhs.isPinned == rhs.isPinned
+                ? lhs.occurredAt > rhs.occurredAt
+                : lhs.isPinned
+        }
     }
     var tagList: [RelationshipTag] { tags ?? [] }
     var groupList: [PersonGroup] { groups ?? [] }

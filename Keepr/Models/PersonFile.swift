@@ -49,6 +49,10 @@ final class PersonFile {
     /// The interaction this came out of, when it came from one.
     var sourceInteraction: Interaction?
 
+    /// The write-up this image belongs to, for summaries that only exist as
+    /// screenshots. A file with a note isn't loose in the person's Files.
+    var conversationNote: ConversationNote?
+
     init(
         title: String,
         kind: PersonFileKind = .image,
@@ -60,7 +64,8 @@ final class PersonFile {
         createdAt: Date = Date(),
         note: String? = nil,
         person: Person? = nil,
-        sourceInteraction: Interaction? = nil
+        sourceInteraction: Interaction? = nil,
+        conversationNote: ConversationNote? = nil
     ) {
         self.id = UUID()
         self.title = title
@@ -74,6 +79,7 @@ final class PersonFile {
         self.note = note
         self.person = person
         self.sourceInteraction = sourceInteraction
+        self.conversationNote = conversationNote
     }
 }
 
@@ -101,4 +107,8 @@ extension PersonFile {
     }
 
     var isImage: Bool { kind == .image }
+
+    /// True when this image is part of a write-up rather than a file in its own
+    /// right. Those are shown inside the note, not in the Files list.
+    var belongsToNote: Bool { conversationNote != nil }
 }

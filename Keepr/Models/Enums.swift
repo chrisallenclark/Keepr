@@ -263,6 +263,37 @@ enum MemoryCategory: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 }
 
+// MARK: - Conversation notes
+
+/// Where a write-up came from. Shown on the card, because "from a recording"
+/// and "you typed this" deserve different trust.
+enum NoteSource: String, CaseIterable, Identifiable, Codable, Sendable {
+    case recorder
+    case pasted
+    case typed
+    case screenshot
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .recorder: "From a recording"
+        case .pasted: "Pasted in"
+        case .typed: "Written here"
+        case .screenshot: "Screenshots"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .recorder: "waveform"
+        case .pasted: "doc.on.clipboard"
+        case .typed: "pencil"
+        case .screenshot: "photo.on.rectangle.angled"
+        }
+    }
+}
+
 // MARK: - Files
 
 /// What kind of file is on a profile. Drives the icon and whether it gets a
