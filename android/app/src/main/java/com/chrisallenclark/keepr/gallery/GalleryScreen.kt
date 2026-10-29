@@ -173,8 +173,8 @@ private fun TypePage() {
             }
         }
         SectionSpacer()
+        val c = KeeprTheme.colors
         GroupedSection(header = "Hierarchy") {
-            val c = KeeprTheme.colors
             listOf("Primary" to c.label, "Secondary" to c.secondaryLabel, "Tertiary" to c.tertiaryLabel, "Quaternary" to c.quaternaryLabel, "Accent" to c.accent).forEach { (name, color) ->
                 row { ListRow { KText("$name — Send the September training block", color = color, style = t.subheadline, maxLines = 1) } }
             }
