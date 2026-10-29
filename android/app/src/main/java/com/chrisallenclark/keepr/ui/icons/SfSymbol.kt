@@ -58,3 +58,6 @@ fun symbolSize(style: TextStyle): Dp = (style.fontSize.value * 1.2f).dp
 fun sfSymbolDrawable(name: String): Int = sfSymbolTable[name] ?: R.drawable.sf_circle
 
 fun isKnownSfSymbol(name: String): Boolean = name in sfSymbolTable
+
+/** Every SF Symbol name the app knows, in table order. */
+val sfSymbolNames: List<String> get() = sfSymbolTable.keys.toList()

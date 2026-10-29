@@ -39,6 +39,7 @@ checkmark.bubble	mark_chat_read
 checkmark.circle	check_circle
 checkmark.circle.fill	check_circle	fill
 checkmark.seal	verified
+chevron.left	chevron_left		weight=600
 chevron.down	keyboard_arrow_down		weight=600
 chevron.right	chevron_right		weight=600
 chevron.right.circle	arrow_circle_right
@@ -57,6 +58,7 @@ doc.on.clipboard	content_paste
 doc.richtext	article
 doc.text	description
 dumbbell	fitness_center
+ellipsis	more_horiz
 ellipsis.circle	pending
 envelope	mail
 envelope.fill	mail	fill

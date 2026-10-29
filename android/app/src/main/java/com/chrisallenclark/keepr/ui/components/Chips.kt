@@ -50,7 +50,7 @@ fun TagChip(
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         if (symbolName != null) SfSymbol(symbolName, tint, style)
-        KText(name, style = style, color = tint, maxLines = 1)
+        KText(name, style = style, color = tint)
     }
 }
 

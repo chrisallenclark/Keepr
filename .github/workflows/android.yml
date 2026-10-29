@@ -48,7 +48,7 @@ jobs:
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: keepr-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -56,7 +56,7 @@ jobs:
 
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: build-reports
           path: |
@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload screenshots
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: emulator-screenshots-${{ matrix.device }}
           path: android/build/emulator-screenshots/
@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload instrumented test reports
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: emulator-test-reports-${{ matrix.device }}
           path: android/app/build/reports/androidTests/
@@ -147,7 +147,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Download Android screenshots
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: emulator-screenshots-*
           path: android/build/compare/android
@@ -183,7 +183,7 @@ jobs:
           echo "Comparison bundle blob: \`$SHA\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload comparisons
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ios-android-comparison
           path: android/build/compare/out/

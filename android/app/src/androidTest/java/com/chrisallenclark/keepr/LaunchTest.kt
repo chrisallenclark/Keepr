@@ -3,12 +3,13 @@ package com.chrisallenclark.keepr
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Runs on a real emulator in CI: the app launches and draws its first screen. */
+/** Runs on real emulators in CI: the app launches, and the tab bar works. */
 @RunWith(AndroidJUnit4::class)
 class LaunchTest {
 
@@ -16,8 +17,16 @@ class LaunchTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun launchesToFirstScreen() {
-        composeRule.onNodeWithText("Keepr").assertIsDisplayed()
-        composeRule.onNodeWithText("Android preview").assertIsDisplayed()
+    fun launchesToTodayWithTabBar() {
+        listOf("Today", "People", "Follow Up", "Search").forEach {
+            composeRule.onNodeWithText(it).assertIsDisplayed()
+        }
+        composeRule.onNodeWithText("Needs Attention").assertIsDisplayed()
+    }
+
+    @Test
+    fun switchingTabsShowsThatScreen() {
+        composeRule.onNodeWithText("Search").performClick()
+        composeRule.onNodeWithText("Search everyone").assertIsDisplayed()
     }
 }

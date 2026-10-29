@@ -6,7 +6,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -33,8 +32,13 @@ val InterDisplay = FontFamily(
 )
 
 /**
- * The iOS Dynamic Type styles at the default ("Large") size: point size, line
- * height and Apple's tracking, one-for-one with SwiftUI's `Font.TextStyle`.
+ * The iOS Dynamic Type styles at the default ("Large") size: point size and
+ * Apple's tracking, one-for-one with SwiftUI's `Font.TextStyle`.
+ *
+ * No line height is set. SwiftUI lays text out at the font's natural height
+ * (SF's ascender + descender, ~1.19× the size) rather than the leading Apple
+ * publishes for each style, and Inter's natural height is ~1.21×, so leaving
+ * it alone is what makes rows and chips come out the same height.
  * Weights are applied the SwiftUI way — `.font(.subheadline.weight(.semibold))`
  * is `typography.subheadline.semibold`.
  */
@@ -53,36 +57,29 @@ data class KeeprTypography(
     val caption2: TextStyle,
 )
 
-private val trimNone = LineHeightStyle(
-    alignment = LineHeightStyle.Alignment.Center,
-    trim = LineHeightStyle.Trim.None,
-)
-
-private fun iosStyle(size: Float, leading: Float, trackingPt: Float, weight: FontWeight = FontWeight.Normal) =
+private fun iosStyle(size: Float, trackingPt: Float, weight: FontWeight = FontWeight.Normal) =
     TextStyle(
         fontFamily = if (size >= 20f) InterDisplay else InterText,
         fontWeight = weight,
         fontSize = size.sp,
-        lineHeight = leading.sp,
         letterSpacing = tracking(trackingPt, size),
-        lineHeightStyle = trimNone,
     )
 
 /** Apple publishes tracking in points; Compose wants it relative to size. */
 private fun tracking(points: Float, size: Float): TextUnit = (points / size).em
 
 val DefaultKeeprTypography = KeeprTypography(
-    largeTitle = iosStyle(34f, 41f, 0.40f),
-    title = iosStyle(28f, 34f, 0.38f),
-    title2 = iosStyle(22f, 28f, -0.26f),
-    title3 = iosStyle(20f, 25f, -0.45f),
-    headline = iosStyle(17f, 22f, -0.43f, FontWeight.SemiBold),
-    body = iosStyle(17f, 22f, -0.43f),
-    callout = iosStyle(16f, 21f, -0.31f),
-    subheadline = iosStyle(15f, 20f, -0.23f),
-    footnote = iosStyle(13f, 18f, -0.08f),
-    caption = iosStyle(12f, 16f, 0f),
-    caption2 = iosStyle(11f, 13f, 0.06f),
+    largeTitle = iosStyle(34f, 0.40f),
+    title = iosStyle(28f, 0.38f),
+    title2 = iosStyle(22f, -0.26f),
+    title3 = iosStyle(20f, -0.45f),
+    headline = iosStyle(17f, -0.43f, FontWeight.SemiBold),
+    body = iosStyle(17f, -0.43f),
+    callout = iosStyle(16f, -0.31f),
+    subheadline = iosStyle(15f, -0.23f),
+    footnote = iosStyle(13f, -0.08f),
+    caption = iosStyle(12f, 0f),
+    caption2 = iosStyle(11f, 0.06f),
 )
 
 val TextStyle.medium: TextStyle get() = copy(fontWeight = FontWeight.Medium)
