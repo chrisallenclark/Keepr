@@ -42,15 +42,13 @@ fun TagChip(
     val colors = KeeprTheme.colors
     val style = KeeprTheme.typography.caption.let { if (isProminent) it.medium else it }
     val tint = if (isProminent) colors.label else colors.secondaryLabel
-    Row(
-        modifier = modifier
-            .background(colors.quaternaryLabel, RoundedCornerShape(Radius.chip))
-            .padding(horizontal = Spacing.small, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        if (symbolName != null) SfSymbol(symbolName, tint, style)
-        KText(name, style = style, color = tint)
+    val chip = modifier
+        .background(colors.quaternaryLabel, RoundedCornerShape(Radius.chip))
+        .padding(horizontal = Spacing.small, vertical = 3.dp)
+    if (symbolName != null) {
+        IconLabel(name, symbolName, style, tint, chip)
+    } else {
+        KText(name, chip, style = style, color = tint)
     }
 }
 

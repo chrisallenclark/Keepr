@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -18,6 +20,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.chrisallenclark.keepr.ui.theme.KeeprTheme
 import com.chrisallenclark.keepr.ui.theme.medium
 
@@ -62,11 +65,17 @@ fun Avatar(
         AvatarSize.Large -> typography.largeTitle
     }.medium
     Box(base.background(colors.quaternaryLabel), contentAlignment = Alignment.Center) {
-        KText(
+        // `.minimumScaleFactor(0.6)`: initials shrink rather than truncate.
+        BasicText(
             text = initials,
-            style = style,
-            color = colors.secondaryLabel,
+            style = style.copy(color = colors.secondaryLabel),
             maxLines = 1,
+            softWrap = false,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = style.fontSize * 0.6f,
+                maxFontSize = style.fontSize,
+                stepSize = 0.5.sp,
+            ),
             modifier = Modifier.padding(size.diameter * 0.2f),
         )
     }

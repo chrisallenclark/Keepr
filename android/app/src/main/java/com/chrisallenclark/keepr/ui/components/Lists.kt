@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -136,11 +137,14 @@ fun SectionHeader(
 /** A hairline between rows, starting at [start] and stopping 16pt from the end. */
 @Composable
 fun Separator(modifier: Modifier = Modifier, start: Dp = ListMetrics.rowHorizontal, end: Dp = ListMetrics.rowHorizontal) {
+    // One physical pixel, as UIKit draws separators (Dp.Hairline is zero
+    // height when used as a size).
+    val hairline = (1f / LocalDensity.current.density).dp
     Box(
         modifier
             .padding(start = start, end = end)
             .fillMaxWidth()
-            .height(Dp.Hairline)
+            .height(hairline)
             .background(KeeprTheme.colors.separator),
     )
 }

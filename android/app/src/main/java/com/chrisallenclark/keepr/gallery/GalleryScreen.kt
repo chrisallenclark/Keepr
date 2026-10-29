@@ -218,6 +218,7 @@ private fun ColorPage() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ControlsPage() {
     var personal by remember { mutableStateOf(false) }
@@ -237,7 +238,11 @@ private fun ControlsPage() {
             type,
             { type = it },
         )
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(
+            Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             ToolbarButton("gearshape", "Settings", {})
             ToolbarButton("square.and.pencil", "Compose", {})
             ToolbarButton("plus", "Add", {})
@@ -283,9 +288,9 @@ private fun ControlsPage() {
         Spacer(Modifier.height(Spacing.large))
         KeeprTabBar(
             items = listOf(
-                TabItem("Today", "sun.max", "sun.max.fill"),
-                TabItem("People", "person.2", "person.2.fill"),
-                TabItem("Follow Up", "bell", "bell.fill"),
+                TabItem("Today", "sun.max.fill"),
+                TabItem("People", "person.2.fill"),
+                TabItem("Follow Up", "bell.fill"),
                 TabItem("Search", "magnifyingglass"),
             ),
             selectedIndex = tab,

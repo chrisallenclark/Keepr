@@ -11,7 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,8 +34,9 @@ import com.chrisallenclark.keepr.ui.theme.KeeprTheme
 import com.chrisallenclark.keepr.ui.theme.Motion
 import com.chrisallenclark.keepr.ui.theme.semibold
 
+/** A tab. iOS 26 draws every tab's symbol in its `.fill` variant, selected or not. */
 @Immutable
-data class TabItem(val title: String, val symbolName: String, val selectedSymbolName: String = symbolName)
+data class TabItem(val title: String, val symbolName: String)
 
 /**
  * The iOS 26 floating tab bar: a glass capsule above the home indicator, with
@@ -43,6 +46,11 @@ data class TabItem(val title: String, val symbolName: String, val selectedSymbol
  * 21pt from the sides and bottom, a 92pt pill inset 4pt. The pill is wider than
  * a quarter of the bar, so pill centers are spread evenly between the two
  * ends rather than centered in equal slots — that's what iOS does too.
+ *
+ * iOS sits the bar 21pt above the screen's bottom edge, over the home
+ * indicator. Android's gesture handle is the same idea, so the bar keeps that
+ * margin when gesture navigation is on; with three-button navigation it sits
+ * just above the buttons instead.
  */
 @Composable
 fun KeeprTabBar(
@@ -53,13 +61,19 @@ fun KeeprTabBar(
 ) {
     val colors = KeeprTheme.colors
     val haptics = rememberHaptics()
+    val density = LocalDensity.current
+    val navigationInset = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
+    val bottom = if (navigationInset <= 32.dp) {
+        maxOf(Chrome.tabBarBottomMargin, navigationInset)
+    } else {
+        navigationInset + 8.dp
+    }
     BoxWithConstraints(
         modifier
-            .navigationBarsPadding()
             .padding(
                 start = Chrome.tabBarSideMargin,
                 end = Chrome.tabBarSideMargin,
-                bottom = Chrome.tabBarBottomMargin,
+                bottom = bottom,
             )
             .fillMaxWidth()
             .height(Chrome.tabBarHeight)
@@ -103,11 +117,7 @@ fun KeeprTabBar(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                SfSymbol(
-                    if (isSelected) item.selectedSymbolName else item.symbolName,
-                    tint,
-                    28.dp,
-                )
+                SfSymbol(item.symbolName, tint, 28.dp)
                 KText(
                     item.title,
                     style = KeeprTheme.typography.caption2.semibold.copy(fontSize = 10.sp, letterSpacing = 0.sp),

@@ -195,7 +195,6 @@ fun PeoplePreview(
             leading = { ToolbarButton("line.3.horizontal.decrease.circle", "Sort and Filter", {}) },
             trailing = { ToolbarButton("plus", "Add Person", {}) },
             pinned = {
-                Spacer(Modifier.height(11.dp))
                 SearchField(query, { query = it }, "Name, company, or anything you noted")
                 Spacer(Modifier.height(15.dp))
                 ContextSwitcher(isPersonal, onContextChange)
@@ -225,14 +224,14 @@ fun PeoplePreview(
                 )
                 Spacer(Modifier.height(14.dp))
                 sections.forEach { (letter, people) ->
-                    SectionHeader(letter, Modifier.padding(start = 16.dp, top = 12.dp, bottom = 6.dp))
+                    SectionHeader(letter, Modifier.padding(start = 16.dp, top = 24.dp, bottom = 4.dp))
                     people.forEachIndexed { index, person ->
                         if (index > 0) Separator(start = 16.dp + 44.dp + Spacing.medium)
                         SwipeActionsRow(
                             leading = listOf(SwipeAction("Favorite", "star", colors.yellow) {}),
                             rowBackground = colors.background,
                         ) {
-                            ListRow(onClick = onOpenPerson, verticalPadding = 11.dp) {
+                            ListRow(onClick = onOpenPerson, verticalPadding = 15.5.dp) {
                                 PersonRow(
                                     person.name, person.initials, Modifier.weight(1f),
                                     subtitle = person.subtitle, isFavorite = person.isFavorite, tags = person.tags,
@@ -330,7 +329,8 @@ fun ProfilePreview(onBack: () -> Unit) {
             trailing = { ToolbarButton("ellipsis.circle", "More", {}) },
         )
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.height(Spacing.large))
+            // iOS's inset-grouped list puts the header this far below the bar.
+            Spacer(Modifier.height(55.dp))
             PersonHeader(person.name, person.initials, subtitle = person.subtitle, tags = person.tags)
             Spacer(Modifier.height(Spacing.medium))
             QuickActionsRow(

@@ -159,10 +159,7 @@ fun PersonRow(
             }
             if (nextDue != null) {
                 val tint = if (nextIsOverdue) colors.orange else colors.secondaryLabel
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SfSymbol("bell", tint, typography.caption2)
-                    KText(nextDue, style = typography.caption2, color = tint, maxLines = 1)
-                }
+                IconLabel(nextDue, "bell", typography.caption2, tint, maxLines = 1)
             }
         }
     }
@@ -252,3 +249,27 @@ fun TabBarClearance() = Spacer(
         .navigationBarsPadding()
         .height(com.chrisallenclark.keepr.ui.theme.Chrome.tabBarClearance),
 )
+
+/**
+ * SwiftUI's `Label` in `.titleAndIcon` style. iOS 26 leaves a wide gap after
+ * the symbol — measured at about 1.5× the type size — which is a big part of
+ * why its chips and captions look airy.
+ */
+@Composable
+fun IconLabel(
+    title: String,
+    symbolName: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+) {
+    Row(
+        modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy((style.fontSize.value * 1.5f - 2f).dp),
+    ) {
+        SfSymbol(symbolName, color, style)
+        KText(title, style = style, color = color, maxLines = maxLines)
+    }
+}

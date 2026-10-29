@@ -36,7 +36,7 @@ fun EmptyState(
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        SfSymbol(symbolName, colors.secondaryLabel, 58.dp)
+        SfSymbol(symbolName, colors.secondaryLabel, 64.dp)
         Spacer(Modifier.height(14.dp))
         KText(title, style = typography.title2.bold, textAlign = TextAlign.Center)
         if (description != null) {

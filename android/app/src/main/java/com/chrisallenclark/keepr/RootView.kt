@@ -29,9 +29,9 @@ import com.chrisallenclark.keepr.ui.components.TabItem
 
 /** The four places the app can be. Settings lives behind a button on Today. */
 private val tabs = listOf(
-    TabItem("Today", "sun.max", "sun.max.fill"),
-    TabItem("People", "person.2", "person.2.fill"),
-    TabItem("Follow Up", "bell", "bell.fill"),
+    TabItem("Today", "sun.max.fill"),
+    TabItem("People", "person.2.fill"),
+    TabItem("Follow Up", "bell.fill"),
     TabItem("Search", "magnifyingglass"),
 )
 

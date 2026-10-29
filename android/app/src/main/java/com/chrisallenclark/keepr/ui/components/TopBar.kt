@@ -78,6 +78,7 @@ fun KeeprTopBar(
             Box(Modifier.align(Alignment.CenterEnd)) { trailing?.invoke() }
         }
         if (pinned != null) {
+            Spacer(Modifier.height(Chrome.navigationBarBottomGap))
             pinned()
         } else {
             Spacer(Modifier.height(Spacing.small))
@@ -109,7 +110,7 @@ fun KeeprLargeTitleBar(
             maxLines = 1,
             modifier = Modifier
                 .padding(horizontal = 16.dp)
-                .padding(top = 4.dp, bottom = 10.dp)
+                .padding(top = 11.dp, bottom = 10.dp)
                 .semantics { heading() },
         )
         pinned?.invoke(this)
