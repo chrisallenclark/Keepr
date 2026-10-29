@@ -1,0 +1,178 @@
+# SF Symbol (iOS)	Material Symbol (Rounded)	fill	notes
+#
+# Every SF Symbol the iOS app draws or offers in its symbol picker, and the
+# Material Symbol Android draws in its place. Apple's license forbids SF Symbols
+# on other platforms, so this is a translation, chosen for shape first.
+# "fill" = use the filled variant; "weight=N" = a heavier cut (default 400);
+# "@custom" = hand-drawn in res/drawable, no Material equivalent. Regenerate drawables with
+# scripts/generate_icons.py after editing.
+airplane	flight
+archivebox	archive
+arrow.triangle.branch	alt_route
+arrow.uturn.backward	undo
+bag	shopping_bag
+banknote	payments
+basket	shopping_basket
+bell	notifications
+bell.fill	notifications	fill	Tab bar: iOS fills tab symbols
+bell.slash	notifications_off
+birthday.cake	cake
+bolt.heart	ecg_heart
+book	book_2
+bookmark	bookmark
+brain	neurology
+briefcase	work
+bubble.left.and.bubble.right	forum
+building	apartment
+building.2	location_city
+building.columns	account_balance
+calendar	calendar_today
+camera	photo_camera
+car	directions_car
+carrot	nutrition
+cart	shopping_cart
+chart.bar	bar_chart
+chart.line.uptrend.xyaxis	monitoring
+chart.pie	pie_chart
+checkmark	check
+checkmark.bubble	mark_chat_read
+checkmark.circle	check_circle
+checkmark.circle.fill	check_circle	fill
+checkmark.seal	verified
+chevron.down	keyboard_arrow_down		weight=600
+chevron.right	chevron_right		weight=600
+chevron.right.circle	arrow_circle_right
+circle	radio_button_unchecked
+circle.dotted	motion_photos_on
+circle.grid.2x2	grid_view
+circle.hexagongrid	hive
+clock	schedule
+clock.arrow.circlepath	history
+creditcard	credit_card
+crown	crown
+cup.and.saucer	coffee
+dollarsign.circle	paid
+doc	draft
+doc.on.clipboard	content_paste
+doc.richtext	article
+doc.text	description
+dumbbell	fitness_center
+ellipsis.circle	pending
+envelope	mail
+envelope.fill	mail	fill
+exclamationmark	priority_high
+exclamationmark.circle	error
+exclamationmark.triangle	warning
+eye	visibility
+face.smiling	sentiment_satisfied
+figure.2.and.child.holdinghands	family_restroom
+figure.and.child.holdinghands	escalator_warning
+figure.basketball	sports_basketball
+figure.mind.and.body	self_improvement
+figure.pool.swim	pool
+figure.run	directions_run
+figure.strengthtraining.traditional	exercise
+figure.walk	directions_walk
+figure.wave	emoji_people
+figure.yoga	sports_gymnastics
+flag	flag
+flame	local_fire_department
+folder	folder
+fork.knife	restaurant
+gearshape	settings
+gift	redeem
+globe	language
+graduationcap	school
+hand.thumbsup	thumb_up
+hand.wave	waving_hand
+hands.sparkles	clean_hands
+heart	favorite
+heart.text.square	medical_information
+hourglass	hourglass
+house	home
+info.circle	info
+key	key
+laptopcomputer	laptop_mac
+leaf	eco
+lightbulb	lightbulb
+line.3.horizontal.decrease.circle	filter_list
+line.3.horizontal.decrease.circle.fill	filter_alt	fill
+link	link
+lock	lock
+magnifyingglass	search
+mappin.and.ellipse	location_on
+megaphone	campaign
+message	chat_bubble
+message.fill	chat_bubble	fill
+minus.circle	do_not_disturb_on
+moon.stars	bedtime
+music.note	music_note
+network	hub
+note.text	sticky_note_2
+paperclip	attach_file
+paperplane	send
+pencil	edit
+percent	percent
+person	person
+person.2	group
+person.2.fill	group	fill	Tab bar
+person.2.circle	supervised_user_circle
+person.2.slash	group_off
+person.3	groups
+person.badge.clock	pending_actions
+person.badge.plus	person_add
+person.crop.circle	account_circle
+person.crop.circle.badge.checkmark	how_to_reg
+person.crop.circle.badge.exclamationmark	person_alert
+person.crop.circle.badge.plus	person_add
+person.crop.circle.badge.questionmark	person_search
+person.text.rectangle	badge
+phone	call
+phone.fill	call	fill
+photo	image
+photo.on.rectangle	photo_library
+photo.on.rectangle.angled	photo_library
+pin	keep
+pin.fill	keep	fill
+pin.slash	keep_off
+plus	add
+plus.circle	add_circle
+plus.circle.fill	add_circle	fill
+questionmark.circle	help
+quote	format_quote
+quote.bubble	chat_info
+rectangle.righthalf.inset.filled	splitscreen_right	fill
+rosette	workspace_premium
+scalemass	scale
+seal	award_star
+shield	shield
+shippingbox	inventory_2
+signature	signature
+sportscourt	stadium
+square.and.arrow.up	ios_share
+square.and.pencil	edit_square
+sparkles	@custom
+square.grid.2x2	grid_view
+star	star
+star.fill	star	fill
+star.slash	@custom
+stopwatch	timer
+sun.max	sunny
+sun.max.fill	sunny	fill	Tab bar
+tag	sell
+takeoutbag.and.cup.and.straw	takeout_dining
+target	target
+text.badge.xmark	format_clear
+textformat	text_fields
+ticket	confirmation_number
+trash	delete
+trophy	trophy
+video	videocam
+wand.and.stars	wand_stars
+waveform	graphic_eq
+waveform.path.ecg	monitor_heart
+wineglass	wine_bar
+wrench.and.screwdriver	construction
+xmark	close
+xmark.circle	cancel
+xmark.circle.fill	cancel	fill

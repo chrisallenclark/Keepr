@@ -8,36 +8,118 @@ import androidx.compose.ui.graphics.Color
  * The colors the iOS app gets from the system, written down once.
  *
  * iOS supplies these as semantic colors (`systemGroupedBackground`,
- * `secondaryLabel`, …) that switch with the appearance. Android has no
- * equivalent with the same values, so they're spelled out here from Apple's
- * published values. The accent is Keepr's own, from `AccentColor.colorset`.
+ * `secondaryLabel`, …) that switch with the appearance. Android has nothing
+ * with the same values, so they're spelled out here from Apple's published
+ * values for iOS 17+. Names follow UIKit's so a SwiftUI view translates
+ * line by line: `.foregroundStyle(.secondary)` is [secondaryLabel],
+ * `Color(.secondarySystemGroupedBackground)` is [secondaryGroupedBackground].
  *
- * Phase 0 carries only what the placeholder screen draws; the full palette
- * arrives with the design system.
+ * The accent is Keepr's own, from `AccentColor.colorset`.
  */
 @Immutable
 data class KeeprColors(
+    val isDark: Boolean,
+
+    // Backgrounds
+    val background: Color,
+    val secondaryBackground: Color,
     val groupedBackground: Color,
     val secondaryGroupedBackground: Color,
+    val tertiaryGroupedBackground: Color,
+
+    // Text, and SwiftUI's hierarchical styles (.primary … .quaternary)
     val label: Color,
     val secondaryLabel: Color,
+    val tertiaryLabel: Color,
+    val quaternaryLabel: Color,
+
+    // Fills for controls and chips
+    val fill: Color,
+    val secondaryFill: Color,
+    val tertiaryFill: Color,
+    val quaternaryFill: Color,
+
+    val separator: Color,
+    val opaqueSeparator: Color,
+
+    /** The translucent `.bar` material: navigation, tab and tool bars. */
+    val bar: Color,
+    /** The thumb of a segmented control. */
+    val segmentThumb: Color,
+
     val accent: Color,
-)
+
+    // System tints used by the app
+    val red: Color,
+    val orange: Color,
+    val yellow: Color,
+    val green: Color,
+    val blue: Color,
+    val gray: Color,
+) {
+    /** SwiftUI's `.primary` … `.quaternary` foreground styles, by level. */
+    fun hierarchical(level: Int): Color = when (level) {
+        0 -> label
+        1 -> secondaryLabel
+        2 -> tertiaryLabel
+        else -> quaternaryLabel
+    }
+}
 
 val LightKeeprColors = KeeprColors(
+    isDark = false,
+    background = Color(0xFFFFFFFF),
+    secondaryBackground = Color(0xFFF2F2F7),
     groupedBackground = Color(0xFFF2F2F7),
     secondaryGroupedBackground = Color(0xFFFFFFFF),
+    tertiaryGroupedBackground = Color(0xFFF2F2F7),
     label = Color(0xFF000000),
     secondaryLabel = Color(0x993C3C43),
+    tertiaryLabel = Color(0x4D3C3C43),
+    quaternaryLabel = Color(0x2E3C3C43),
+    fill = Color(0x33787880),
+    secondaryFill = Color(0x29787880),
+    tertiaryFill = Color(0x1F767680),
+    quaternaryFill = Color(0x14747480),
+    separator = Color(0x4A3C3C43),
+    opaqueSeparator = Color(0xFFC6C6C8),
+    bar = Color(0xF0F9F9F9),
+    segmentThumb = Color(0xFFFFFFFF),
     accent = Color(0xFF216666),
+    red = Color(0xFFFF3B30),
+    orange = Color(0xFFFF9500),
+    yellow = Color(0xFFFFCC00),
+    green = Color(0xFF34C759),
+    blue = Color(0xFF007AFF),
+    gray = Color(0xFF8E8E93),
 )
 
 val DarkKeeprColors = KeeprColors(
+    isDark = true,
+    background = Color(0xFF000000),
+    secondaryBackground = Color(0xFF1C1C1E),
     groupedBackground = Color(0xFF000000),
     secondaryGroupedBackground = Color(0xFF1C1C1E),
+    tertiaryGroupedBackground = Color(0xFF2C2C2E),
     label = Color(0xFFFFFFFF),
     secondaryLabel = Color(0x99EBEBF5),
+    tertiaryLabel = Color(0x4DEBEBF5),
+    quaternaryLabel = Color(0x29EBEBF5),
+    fill = Color(0x5C787880),
+    secondaryFill = Color(0x52787880),
+    tertiaryFill = Color(0x3D767680),
+    quaternaryFill = Color(0x2E747480),
+    separator = Color(0x99545458),
+    opaqueSeparator = Color(0xFF38383A),
+    bar = Color(0xF01C1C1E),
+    segmentThumb = Color(0xFF636366),
     accent = Color(0xFF5AB3AF),
+    red = Color(0xFFFF453A),
+    orange = Color(0xFFFF9F0A),
+    yellow = Color(0xFFFFD60A),
+    green = Color(0xFF30D158),
+    blue = Color(0xFF0A84FF),
+    gray = Color(0xFF8E8E93),
 )
 
 val LocalKeeprColors = staticCompositionLocalOf { LightKeeprColors }

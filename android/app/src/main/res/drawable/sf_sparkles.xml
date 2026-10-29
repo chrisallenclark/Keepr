@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- custom: SF "sparkles" has no Material Symbols equivalent. Three four-point stars. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <path android:fillColor="#FF000000" android:pathData="M390,230 Q442.8,507.2 720,560 Q442.8,612.8 390,890 Q337.2,612.8 60,560 Q337.2,507.2 390,230 Z M720,80 Q747.2,222.8 890,250 Q747.2,277.2 720,420 Q692.8,277.2 550,250 Q692.8,222.8 720,80 Z M250,95 Q265.2,174.8 345,190 Q265.2,205.2 250,285 Q234.8,205.2 155,190 Q234.8,174.8 250,95 Z" />
+</vector>
