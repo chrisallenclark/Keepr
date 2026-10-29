@@ -28,7 +28,8 @@ REFERENCE = {
     "today-personal": "today-personal",
 }
 
-HEIGHT = 1400
+# Full-size enough to judge type and spacing, small enough to move around.
+HEIGHT = 1000
 CHUNK = 16000
 
 

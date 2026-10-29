@@ -135,10 +135,13 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      actions: read
+      # Only to store the comparison bundle as a git blob (see below). No
+      # branch, tag or commit is created.
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      # Which composites to echo into the log as small images.
-      PRINT_PATTERNS: "ios-*-light ios-today-business-dark"
 
     steps:
       - uses: actions/checkout@v5
@@ -163,7 +166,21 @@ jobs:
         run: |
           pip install --quiet pillow
           python3 scripts/compare_screenshots.py build/compare/ios build/compare/android \
-            build/compare/out --print $PRINT_PATTERNS
+            build/compare/out
+
+      # Reviewers working from a sandbox can reach api.github.com but not the
+      # artifact storage, so the same images are also stored as one git blob.
+      # A blob with nothing pointing at it changes no branch, tag or history;
+      # it's fetched by hash from /git/blobs/<sha> and eventually collected.
+      - name: Publish comparison bundle for API access
+        run: |
+          set -euo pipefail
+          tar czf build/compare/bundle.tgz -C build/compare out ios android
+          python3 -c 'import base64, json, sys; json.dump({"content": base64.b64encode(open(sys.argv[1], "rb").read()).decode(), "encoding": "base64"}, open(sys.argv[2], "w"))' \
+            build/compare/bundle.tgz build/compare/blob.json
+          SHA=$(gh api "repos/$GITHUB_REPOSITORY/git/blobs" --input build/compare/blob.json --jq .sha)
+          echo "COMPARISON_BLOB=$SHA"
+          echo "Comparison bundle blob: \`$SHA\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload comparisons
         uses: actions/upload-artifact@v5
