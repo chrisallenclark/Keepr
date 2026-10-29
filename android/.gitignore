@@ -1,0 +1,20 @@
+# Gradle and build output
+.gradle/
+build/
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Machine-specific
+local.properties
+.idea/
+*.iml
+
+# Signing — never commit keys or their passwords
+*.jks
+*.keystore
+keystore.properties
+
+# Firebase config is supplied by CI, not committed
+google-services.json

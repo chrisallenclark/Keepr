@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- iOS systemGroupedBackground, light. -->
+    <color name="window_background">#FFF2F2F7</color>
+    <!-- Sampled from the edge of the iOS app icon. -->
+    <color name="ic_launcher_background">#FFEFE4D4</color>
+</resources>

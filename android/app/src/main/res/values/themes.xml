@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        A bare platform theme: every visible surface is drawn by Compose, so no
+        Material or AppCompat theme is needed. The window background matches the
+        first frame Compose draws, so launch doesn't flash.
+    -->
+    <style name="Theme.Keepr" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>
