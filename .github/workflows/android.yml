@@ -20,6 +20,8 @@ concurrency:
 
 permissions:
   contents: read
+  # Read-only, to fetch the iOS screenshots the comparison is judged against.
+  actions: read
 
 defaults:
   run:
@@ -32,21 +34,21 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
       # Also verifies gradle-wrapper.jar against Gradle's published checksums.
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Build debug APK, run unit tests and lint
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: keepr-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -54,7 +56,7 @@ jobs:
 
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-reports
           path: |
@@ -63,25 +65,34 @@ jobs:
           if-no-files-found: ignore
 
   emulator:
-    name: Emulator test (API ${{ matrix.api-level }})
+    name: Emulator (${{ matrix.device }}, API ${{ matrix.api-level }})
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        # Android 8.0, the minimum supported, and a current release.
-        api-level: [26, 35]
+        include:
+          # The minimum supported Android on a small 360dp-wide phone.
+          - device: small
+            api-level: 26
+            target: default
+            profile: Nexus 5
+          # A current Android on a typical 412dp-wide phone.
+          - device: pixel6
+            api-level: 35
+            target: google_apis
+            profile: pixel_6
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Enable KVM
         working-directory: .
@@ -95,25 +106,68 @@ jobs:
         with:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
-          target: ${{ matrix.api-level == 26 && 'default' || 'google_apis' }}
-          profile: pixel_6
+          target: ${{ matrix.target }}
+          profile: ${{ matrix.profile }}
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: android
-          script: ./scripts/emulator-smoke.sh build/emulator-screenshots
+          script: ./scripts/emulator-smoke.sh build/emulator-screenshots ${{ matrix.device }}
 
       - name: Upload screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: emulator-screenshots-api${{ matrix.api-level }}
+          name: emulator-screenshots-${{ matrix.device }}
           path: android/build/emulator-screenshots/
           if-no-files-found: warn
 
       - name: Upload instrumented test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: emulator-test-reports-api${{ matrix.api-level }}
+          name: emulator-test-reports-${{ matrix.device }}
           path: android/app/build/reports/androidTests/
           if-no-files-found: ignore
+
+  compare:
+    name: Compare with iOS
+    needs: emulator
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Which composites to echo into the log as small images.
+      PRINT_PATTERNS: "ios-*-light ios-today-business-dark"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download Android screenshots
+        uses: actions/download-artifact@v5
+        with:
+          pattern: emulator-screenshots-*
+          path: android/build/compare/android
+          merge-multiple: true
+
+      - name: Download the latest iOS screenshots
+        run: |
+          set -euo pipefail
+          RUN=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ios.yml --status success \
+            --limit 20 --json databaseId --jq '.[].databaseId' | head -1)
+          echo "Using iOS run $RUN"
+          gh run download "$RUN" -R "$GITHUB_REPOSITORY" -n screenshots -D build/compare/ios
+          ls build/compare/ios
+
+      - name: Build side-by-side comparisons
+        run: |
+          pip install --quiet pillow
+          python3 scripts/compare_screenshots.py build/compare/ios build/compare/android \
+            build/compare/out --print $PRINT_PATTERNS
+
+      - name: Upload comparisons
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-android-comparison
+          path: android/build/compare/out/
+          if-no-files-found: warn
