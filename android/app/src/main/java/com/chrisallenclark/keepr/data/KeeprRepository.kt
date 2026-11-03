@@ -26,7 +26,8 @@ import kotlinx.coroutines.withContext
 class KeeprRepository(
     private val database: KeeprDatabase,
     val preferences: Preferences,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    /** Outlives any screen; saves and reminder scheduling run here. */
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
 ) {
     val context = ModelContext()
 

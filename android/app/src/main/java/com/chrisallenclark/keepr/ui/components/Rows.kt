@@ -132,6 +132,8 @@ fun PersonRow(
     nextDue: String? = null,
     nextIsOverdue: Boolean = false,
     photo: ByteArray? = null,
+    /** Why a search matched (snippet, field symbol); shown in place of the tags. */
+    explanation: Pair<String, String>? = null,
 ) {
     val colors = KeeprTheme.colors
     val typography = KeeprTheme.typography
@@ -151,7 +153,11 @@ fun PersonRow(
             if (subtitle != null) {
                 KText(subtitle, style = typography.footnote, color = colors.secondaryLabel, maxLines = 1)
             }
-            TagRow(tags.map { it.name to it.symbolName })
+            if (explanation != null) {
+                IconLabel(explanation.first, explanation.second, typography.caption, colors.secondaryLabel, maxLines = 2)
+            } else {
+                TagRow(tags.map { it.name to it.symbolName })
+            }
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
             if (lastInteraction != null) {
