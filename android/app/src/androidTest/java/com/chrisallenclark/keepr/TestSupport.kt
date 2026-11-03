@@ -22,7 +22,35 @@ fun resetApp() {
 fun launchApp(): ActivityScenario<MainActivity> = ActivityScenario.launch(MainActivity::class.java)
 
 fun ComposeTestRule.waitForText(text: String, timeoutMillis: Long = 10_000) {
-    waitUntil(timeoutMillis) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+    try {
+        waitUntil(timeoutMillis) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+    } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+        throw AssertionError("Timed out waiting for \"$text\". On screen:\n${screenText()}", timeout)
+    }
+}
+
+fun ComposeTestRule.waitForGone(text: String, timeoutMillis: Long = 10_000) {
+    try {
+        waitUntil(timeoutMillis) { onAllNodes(hasText(text)).fetchSemanticsNodes().isEmpty() }
+    } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+        throw AssertionError("\"$text\" never went away. On screen:\n${screenText()}", timeout)
+    }
+}
+
+/** Every piece of text in every window, for failure messages. */
+fun ComposeTestRule.screenText(): String =
+    onAllNodes(androidx.compose.ui.test.isRoot()).fetchSemanticsNodes().joinToString("\n---\n") { root ->
+        fun collect(node: androidx.compose.ui.semantics.SemanticsNode): List<String> =
+            (node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.map { it.text } ?: emptyList()) +
+                (node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription) ?: emptyList()).map { "[$it]" } +
+                node.children.flatMap(::collect)
+        collect(root).joinToString(" | ")
+    }
+
+/** Waits until every save so far is on disk, as a real app restart effectively does. */
+fun flushSaves() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    kotlinx.coroutines.runBlocking { AppContainer.get(context, isDemo = false).repository.flush() }
 }
 
 fun ComposeTestRule.first(text: String): SemanticsNodeInteraction = onAllNodesWithText(text, substring = false).onFirst()

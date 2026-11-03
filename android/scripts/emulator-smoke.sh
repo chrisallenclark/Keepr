@@ -12,7 +12,9 @@ DEVICE="${2:-emulator}"
 PACKAGE=com.chrisallenclark.keepr
 mkdir -p "$OUT"
 
-./gradlew --no-daemon connectedDebugAndroidTest
+# A failing UI test shouldn't hide the screenshots; fail the job at the end.
+TESTS_FAILED=0
+./gradlew --no-daemon connectedDebugAndroidTest || TESTS_FAILED=1
 
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 
@@ -26,7 +28,7 @@ phase() {
   output=$(adb shell am instrument -w -e keeprPhase "$name" \
     -e class "com.chrisallenclark.keepr.ProcessRestartTest#$method" "$RUNNER")
   echo "$output"
-  echo "$output" | grep -q "OK (1 test)" || { echo "::error::Process-restart phase '$name' failed"; exit 1; }
+  echo "$output" | grep -q "OK (1 test)" || { echo "::error::Process-restart phase '$name' failed"; TESTS_FAILED=1; }
 }
 adb shell pm clear "$PACKAGE" >/dev/null
 phase write writeBeforeKill
@@ -87,3 +89,8 @@ done
 adb shell cmd uimode night no || true
 
 ls -l "$OUT"
+
+if [ "$TESTS_FAILED" = 1 ]; then
+  echo "::error::On-device tests failed — see emulator-test-reports"
+  exit 1
+fi

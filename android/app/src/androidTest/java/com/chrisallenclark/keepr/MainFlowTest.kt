@@ -67,6 +67,7 @@ class MainFlowTest {
         rule.waitForText("Ada Lovelace")
 
         // Close the app completely and come back: the data is read from disk.
+        flushSaves()
         scenario.close()
         AppContainer.resetForTesting()
         launchApp()
@@ -92,7 +93,7 @@ class MainFlowTest {
         rule.first("Follow Up").performClick()
         rule.waitForText("Send the training block")
         rule.onNodeWithContentDescription("Mark done").performClick()
-        rule.waitUntil(5_000) { rule.onAllNodes(hasText("Send the training block")).fetchSemanticsNodes().isEmpty() }
+        rule.waitForGone("Send the training block")
     }
 
     @Test
@@ -126,7 +127,7 @@ class MainFlowTest {
 
         // Personal hides a business-only person; switching back shows them again.
         rule.onNodeWithText("Personal").performClick()
-        rule.waitUntil(5_000) { rule.onAllNodes(hasText("Bea Business")).fetchSemanticsNodes().isEmpty() }
+        rule.waitForGone("Bea Business")
         rule.onNodeWithText("Business").performClick()
         rule.waitForText("Bea Business")
     }
@@ -140,6 +141,6 @@ class MainFlowTest {
         rule.onNodeWithText("Delete Person").performClick()
         rule.waitForText("Delete Dana Whitfield?")
         rule.first("Delete").performClick()
-        rule.waitUntil(5_000) { rule.onAllNodes(hasText("Dana Whitfield")).fetchSemanticsNodes().isEmpty() }
+        rule.waitForGone("Dana Whitfield")
     }
 }
