@@ -103,10 +103,10 @@ class KeeprRepository(
     // MARK: - File contents beside the database
 
     /** Bytes handed to the writer and not yet released from memory, by identity. */
-    private val queuedBlobs: MutableSet<ByteArray> = java.util.Collections.newSetFromMap(java.util.IdentityHashMap())
+    private val queuedBlobs: MutableSet<ByteArray> = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<ByteArray, Boolean>())
     /** Bytes the writer has put on disk; the next save stops holding them in memory. */
     private val writtenBlobs: MutableSet<ByteArray> =
-        java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(java.util.IdentityHashMap()))
+        java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(java.util.IdentityHashMap<ByteArray, Boolean>()))
 
     /**
      * Files whose bytes are held in memory and not yet on disk. Bytes the

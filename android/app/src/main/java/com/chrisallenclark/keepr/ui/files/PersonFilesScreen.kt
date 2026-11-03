@@ -89,6 +89,7 @@ fun PersonFilesScreen(person: Person, onBack: () -> Unit) {
     var addMenuOpen by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<String?>(null) }
+    var openError by remember { mutableStateOf<String?>(null) }
     var viewing by remember { mutableStateOf<PersonFile?>(null) }
     var renaming by remember { mutableStateOf<PersonFile?>(null) }
     var deleting by remember { mutableStateOf<PersonFile?>(null) }
@@ -196,16 +197,16 @@ fun PersonFilesScreen(person: Person, onBack: () -> Unit) {
         scope.launch {
             val uri: Uri? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PersonFileSharing.export(context, file) }
             if (uri == null) {
-                importError = "That file is missing its contents."
+                openError = "That file is missing its contents."
             } else if (!PersonFileSharing.share(context, uri, file)) {
-                importError = "Nothing on this phone can share that file."
+                openError = "Nothing on this phone can share that file."
             }
         }
     }
 
     fun open(file: PersonFile) {
         if (!file.hasData) {
-            importError = "That file is missing its contents."
+            openError = "That file is missing its contents."
             return
         }
         viewing = file
@@ -326,6 +327,7 @@ fun PersonFilesScreen(person: Person, onBack: () -> Unit) {
         )
     }
     importError?.let { message -> InfoAlert("Couldn't add that", message, onDismiss = { importError = null }) }
+    openError?.let { message -> InfoAlert("Couldn't open that", message, onDismiss = { openError = null }) }
 }
 
 /** iOS `PersonFileRow`: its preview, what it's called, and when it's from. */

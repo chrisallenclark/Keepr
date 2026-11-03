@@ -111,7 +111,7 @@ class NotesFilesTest {
         rule.waitForText("Add Note")
         rule.onNodeWithContentDescription("Paste the summary, or type what was said.")
             .performTextInput("They want the annual plan and a March start.")
-        rule.onNodeWithContentDescription("Title").performTextReplacement("Pricing call")
+        rule.onNodeWithContentDescription("Title").performScrollTo().performTextReplacement("Pricing call")
         rule.onNodeWithText("Save").performClick()
         rule.waitForText("Pricing call")
         rule.waitForText("They want the annual plan", timeoutMillis = 5_000)
