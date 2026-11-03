@@ -7,15 +7,29 @@ look.
 
 Everything Android lives in this folder. Nothing here touches the iOS project.
 
-## Status: Phase 1 — design system
+## Status: Phase 2 — working app on local data
 
-The app opens to Keepr's four tabs drawn with the Android design system, using the iOS demo
-content so they can be compared with the iPhone screenshots. The screens are a **design
-preview**: nothing is saved yet, and buttons other than tabs, rows (open a profile), swipes and
-the context switch do nothing. The data layer and real features arrive in the next phases.
+The four tabs, profiles and editors run on real, saved data:
 
-Today's gear button opens the **Design Gallery**: typography, colors, controls, lists and
-swipe actions, every symbol, a sheet and a menu.
+* **Today** — needs attention, waiting on a reply, time to reach out, upcoming, going quiet, recent; swipe to complete, snooze, mark reached out or replied.
+* **People** — Business/Personal, search, type and group chips with live counts, five sorts, A–Z index, swipe to favorite, long-press to message/call/email, select mode with bulk changes.
+* **Follow Up** — overdue / today / this week / later / completed; complete, reopen, snooze, edit, delete.
+* **Search** — names, companies, types, memories, interactions, notes, files and follow-ups, grouped by why each person matched.
+* **Profiles** — add, edit and delete people; log interactions with facts to remember and a follow-up; add follow-ups, memories, groups and what they do; rhythm ("reach out every…"); connections and details.
+
+Data is stored with Room on the phone only and survives restarts. Screenshot runs use a
+separate in-memory database with the sample relationships, never the user's own.
+
+Not yet on Android (next phases): Quick Capture, Brain Dump, conversation notes and files,
+contact import and Catch Up, reminders, the group/type/link editors, onboarding and the rest of
+Settings.
+
+### Code layout
+
+| | |
+|---|---|
+| `core/` | Plain Kotlin, no Android: the nine records, all business logic, and the iOS test suite translated test for test (326 tests, plus date-detector tests). Builds and tests anywhere: `gradle -p core test`. |
+| `app/` | The Android app: Room database (`data/`), design system (`ui/components`, `ui/theme`), screens (`ui/screens`), on-device tests (`androidTest/`). |
 
 ### How the iOS look is reproduced
 
