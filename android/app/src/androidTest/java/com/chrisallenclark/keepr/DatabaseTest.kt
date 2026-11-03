@@ -40,6 +40,7 @@ class DatabaseTest {
     private val fileName = "keepr-test.db"
 
     private val opened = mutableListOf<KeeprDatabase>()
+    private val repositories = mutableListOf<KeeprRepository>()
 
     private fun open() = androidx.room.Room.databaseBuilder(context, KeeprDatabase::class.java, fileName).build()
         .also { opened += it }
@@ -48,20 +49,22 @@ class DatabaseTest {
 
     /** Close every connection before deleting the file, or the next test's open can fail on older Android. */
     @After fun tidy() {
+        // Loading seeds (and saves) in the background, so let those writes land first.
+        runBlocking { repositories.forEach { it.flush() } }
         opened.forEach { it.close() }
         context.deleteDatabase(fileName)
     }
 
     /** Saves with one repository, then reads everything back through a brand-new one. */
     private fun roundTrip(build: (KeeprRepository) -> Unit): KeeprRepository = runBlocking {
-        val first = withContext(Dispatchers.Main) { KeeprRepository(open(), MemoryPreferences()) }
+        val first = withContext(Dispatchers.Main) { KeeprRepository(open(), MemoryPreferences()).also { repositories += it } }
         withContext(Dispatchers.Main) {
             first.load()
             build(first)
             first.context.save()
         }
         first.flush()
-        val second = withContext(Dispatchers.Main) { KeeprRepository(open(), MemoryPreferences()) }
+        val second = withContext(Dispatchers.Main) { KeeprRepository(open(), MemoryPreferences()).also { repositories += it } }
         withContext(Dispatchers.Main) { second.load() }
         second
     }
