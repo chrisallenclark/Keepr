@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import com.chrisallenclark.keepr.data.KeeprDatabase
@@ -57,3 +58,23 @@ fun flushSaves() {
 }
 
 fun ComposeTestRule.first(text: String): SemanticsNodeInteraction = onAllNodesWithText(text, substring = false).onFirst()
+
+/**
+ * Taps a tab once the (re)launched window can take input. Right after an
+ * activity starts, a tap can arrive before its window has focus and fail to
+ * inject, so wait for the text and retry briefly.
+ */
+fun ComposeTestRule.tapTab(text: String, timeoutMillis: Long = 10_000) {
+    waitForText(text, timeoutMillis)
+    val deadline = System.currentTimeMillis() + timeoutMillis
+    while (true) {
+        waitForIdle()
+        try {
+            first(text).performClick()
+            return
+        } catch (error: AssertionError) {
+            if (System.currentTimeMillis() > deadline) throw error
+            Thread.sleep(250)
+        }
+    }
+}

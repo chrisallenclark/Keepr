@@ -38,7 +38,7 @@ class MainFlowTest {
     private fun launchApp() = com.chrisallenclark.keepr.launchApp().also { scenario = it }
 
     private fun addPerson(first: String, last: String, company: String? = null) {
-        rule.first("People").performClick()
+        rule.tapTab("People")
         rule.onNodeWithContentDescription("Add Person").performClick()
         rule.onNodeWithText("Add Manually").performClick()
         rule.waitForText("Add Person")
@@ -71,7 +71,7 @@ class MainFlowTest {
         scenario.close()
         AppContainer.resetForTesting()
         launchApp()
-        rule.first("People").performClick()
+        rule.tapTab("People")
         rule.waitForText("Ada Lovelace")
         rule.onNodeWithText("Analytical Engines", substring = true).assertIsDisplayed()
     }
@@ -90,7 +90,7 @@ class MainFlowTest {
         rule.waitForText("Send the training block")
 
         // It's on the Follow Up tab, and completing it moves it out of the open list.
-        rule.first("Follow Up").performClick()
+        rule.tapTab("Follow Up")
         rule.waitForText("Send the training block")
         rule.onNodeWithContentDescription("Mark done").performClick()
         rule.waitForGone("Send the training block")
@@ -112,7 +112,7 @@ class MainFlowTest {
         rule.waitForText("Daughter's wedding in June")
 
         // Search finds him by something only the note says.
-        rule.first("Search").performClick()
+        rule.tapTab("Search")
         rule.onNode(hasContentDescription("Names, companies, anything you noted")).performTextInput("wedding")
         rule.waitForText("Jake Martinez")
     }
