@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var container: AppContainer
     private lateinit var launchOptions: LaunchOptions
     private val appState: AppState by lazy {
-        AppState(container.repository, container.notificationService, container.repository.scope)
+        AppState(container.repository, container.notificationService, container.repository.scope, contacts = container.contactStore)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

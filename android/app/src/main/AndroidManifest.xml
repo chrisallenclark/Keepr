@@ -27,6 +27,11 @@
         </intent>
     </queries>
 
+    <!--
+        Contacts (import and Catch Up): read-only. Keepr never writes to the
+        address book. Asked for only when the person taps "Allow Contacts".
+    -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
