@@ -1,5 +1,7 @@
 package com.chrisallenclark.keepr.ui.screens
 
+import com.chrisallenclark.keepr.ui.navigation.Route
+import com.chrisallenclark.keepr.ui.navigation.SheetRoute
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -85,6 +87,7 @@ fun PersonProfileScreen(
     onUnavailable: (String) -> Unit,
 ) {
     val state = LocalAppState.current
+    val navigator = com.chrisallenclark.keepr.ui.navigation.LocalNavigator.current
     val haptics = rememberHaptics()
     val androidContext = LocalContext.current
     observeStore().value
@@ -248,7 +251,7 @@ fun PersonProfileScreen(
                     haptics.success()
                 }
             } + listOfNotNull(if (available.isNotEmpty()) MenuEntry.Divider else null) +
-                MenuEntry.Action("New $groupLabel…", "plus") { onUnavailable("Creating a ${groupLabel.lowercase()}") }
+                MenuEntry.Action("New $groupLabel…", "plus") { navigator.present(SheetRoute.NewGroup(person.id)) }
             GroupedSection(
                 header = groupPlural,
                 headerTrailing = {
@@ -294,7 +297,7 @@ fun PersonProfileScreen(
             val headline = MemoryEngine.headline(all)
             val counts = MemoryEngine.summaryCounts(all)
             val memoryMenu = listOf(
-                MenuEntry.Action("Brain Dump", "brain") { onUnavailable("Brain Dump") },
+                MenuEntry.Action("Brain Dump", "brain") { navigator.present(SheetRoute.BrainDump(person.id)) },
                 MenuEntry.Action("Add One Thing", "plus.circle") { isAddingMemory = true },
             )
             GroupedSection(
@@ -309,7 +312,7 @@ fun PersonProfileScreen(
                 },
             ) {
                 if (all.isEmpty() && !isAddingMemory) {
-                    row { ListRow(onClick = { onUnavailable("Brain Dump") }) { IconLabel("Brain dump what you know", "brain", typography.subheadline, colors.accent) } }
+                    row { ListRow(onClick = { navigator.present(SheetRoute.BrainDump(person.id)) }) { IconLabel("Brain dump what you know", "brain", typography.subheadline, colors.accent) } }
                     row { ListRow(onClick = { isAddingMemory = true }) { IconLabel("Add one thing", "plus.circle", typography.subheadline, colors.accent) } }
                 }
                 headline.forEach { memory ->
@@ -352,7 +355,7 @@ fun PersonProfileScreen(
                 }
                 if (all.isNotEmpty()) {
                     row {
-                        ListRow(onClick = { onUnavailable("The full memory library") }) {
+                        ListRow(onClick = { navigator.push(Route.MemoryLibrary(person.id)) }) {
                             IconLabel("See everything · ${MemoryEngine.totalLabel(all.size)}", "chevron.right.circle", typography.subheadline, colors.accent)
                         }
                     }
@@ -402,7 +405,7 @@ fun PersonProfileScreen(
             // Connections
             val connections = person.connections
             if (connections.isNotEmpty()) {
-                GroupedSection(header = "Connections", headerTrailing = { HeaderButton("Link") { onUnavailable("Linking people") } }) {
+                GroupedSection(header = "Connections", headerTrailing = { HeaderButton("Link") { navigator.present(SheetRoute.LinkEditor(person.id)) } }) {
                     connections.forEach { connection ->
                         row(compactTextStart) {
                             SwipeActionsRow(trailing = listOf(SwipeAction("Unlink", "minus.circle", colors.red) {
@@ -423,7 +426,7 @@ fun PersonProfileScreen(
                 }
             } else {
                 GroupedSection(header = "Connections", footer = "Their partner, their assistant, whoever introduced you.") {
-                    row { ListRow(onClick = { onUnavailable("Linking people") }) { IconLabel("Link to someone else", "link", typography.subheadline, colors.accent) } }
+                    row { ListRow(onClick = { navigator.present(SheetRoute.LinkEditor(person.id)) }) { IconLabel("Link to someone else", "link", typography.subheadline, colors.accent) } }
                 }
             }
             SectionSpacer()

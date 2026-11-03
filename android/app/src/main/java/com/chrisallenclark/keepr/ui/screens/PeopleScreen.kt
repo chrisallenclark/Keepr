@@ -67,6 +67,7 @@ import com.chrisallenclark.keepr.ui.theme.Spacing
 import com.chrisallenclark.keepr.ui.theme.medium
 import com.chrisallenclark.keepr.ui.theme.semibold
 import kotlinx.coroutines.launch
+import com.chrisallenclark.keepr.ui.navigation.SheetRoute
 import java.util.UUID
 
 /** Which bulk menu is open in select mode — Android menus don't nest, so submenus open in turn. */
@@ -86,6 +87,7 @@ fun PeopleScreen(
     onUnavailable: (String) -> Unit,
 ) {
     val state = LocalAppState.current
+    val navigator = com.chrisallenclark.keepr.ui.navigation.LocalNavigator.current
     val haptics = rememberHaptics()
     val androidContext = LocalContext.current
     observeStore().value
@@ -169,8 +171,8 @@ fun PeopleScreen(
                                 add(MenuEntry.Action("Clear Filters", "xmark.circle") { selectedTag = null; selectedPlaceID = null })
                             }
                             add(MenuEntry.Divider)
-                            add(MenuEntry.Action("Manage $groupPlural", "mappin.and.ellipse") { onUnavailable("Managing ${groupPlural.lowercase()}") })
-                            add(MenuEntry.Action("Manage Types", "tag") { onUnavailable("Managing relationship types") })
+                            add(MenuEntry.Action("Manage $groupPlural", "mappin.and.ellipse") { navigator.present(SheetRoute.Groups) })
+                            add(MenuEntry.Action("Manage Types", "tag") { navigator.present(SheetRoute.RelationshipTypes) })
                         },
                     )
                 }
@@ -185,8 +187,8 @@ fun PeopleScreen(
                             expanded = addMenuOpen,
                             onDismiss = { addMenuOpen = false },
                             entries = listOf(
-                                MenuEntry.Action("Import from Contacts", "person.crop.circle.badge.plus") { onUnavailable("Importing from contacts") },
-                                MenuEntry.Action("Catch Up", "person.crop.circle.badge.questionmark") { onUnavailable("Catch Up") },
+                                MenuEntry.Action("Import from Contacts", "person.crop.circle.badge.plus") { navigator.present(SheetRoute.ContactImport) },
+                                MenuEntry.Action("Catch Up", "person.crop.circle.badge.questionmark") { navigator.present(SheetRoute.Review) },
                                 MenuEntry.Action("Add Manually", "square.and.pencil", onClick = onAddPerson),
                             ),
                         )
@@ -211,7 +213,7 @@ fun PeopleScreen(
                         description = "Import from your contacts, or add someone by hand.",
                         modifier = Modifier.padding(bottom = 60.dp),
                     ) {
-                        KeeprButton("Import from Contacts", { onUnavailable("Importing from contacts") }, style = KeeprButtonStyle.Prominent)
+                        KeeprButton("Import from Contacts", { navigator.present(SheetRoute.ContactImport) }, style = KeeprButtonStyle.Prominent)
                         KeeprButton("Add Someone", onAddPerson)
                     }
                 }

@@ -11,6 +11,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,15 +29,18 @@ import com.chrisallenclark.keepr.ui.components.TabItem
 import com.chrisallenclark.keepr.ui.screens.ComingSoonSheet
 import com.chrisallenclark.keepr.ui.screens.EditPersonSheet
 import com.chrisallenclark.keepr.ui.screens.FollowUpsScreen
+import com.chrisallenclark.keepr.ui.navigation.LocalNavigator
+import com.chrisallenclark.keepr.ui.navigation.Navigator
+import com.chrisallenclark.keepr.ui.navigation.Route
+import com.chrisallenclark.keepr.ui.navigation.RouteContent
+import com.chrisallenclark.keepr.ui.navigation.SheetContent
+import com.chrisallenclark.keepr.ui.navigation.SheetRoute
 import com.chrisallenclark.keepr.ui.screens.LocalAppState
 import com.chrisallenclark.keepr.ui.screens.ModeBinding
 import com.chrisallenclark.keepr.ui.screens.PeopleScreen
-import com.chrisallenclark.keepr.ui.screens.PersonProfileScreen
 import com.chrisallenclark.keepr.ui.screens.SearchScreen
-import com.chrisallenclark.keepr.ui.screens.SettingsSheet
 import com.chrisallenclark.keepr.ui.screens.TodayScreen
 import com.chrisallenclark.keepr.ui.screens.observeStore
-import java.util.UUID
 
 /** The four places the app can be. Settings lives behind a button on Today. */
 private val tabs = listOf(
@@ -53,8 +57,6 @@ private fun tabIndex(screen: String?): Int = when (screen) {
     else -> 0
 }
 
-/** A profile pushed on a tab, with the lens it was opened through. */
-private data class ProfileRoute(val personId: UUID, val mode: ContextMode)
 
 /**
  * The tab root, as `RootView` is on iOS: each tab keeps its own navigation
@@ -77,28 +79,29 @@ fun RootView(launch: LaunchOptions) {
         prefs.setString(PreferenceKey.CONTEXT_MODE, it.rawValue)
     }
     var stacks by remember {
-        val initial = MutableList(tabs.size) { emptyList<ProfileRoute>() }
+        val initial = MutableList(tabs.size) { emptyList<Route>() }
         // Screenshot runs open the first person on People, as the iOS ones do.
         if (launch.screen == "profile") {
             com.chrisallenclark.keepr.core.domain.PeopleEngine.sort(
                 com.chrisallenclark.keepr.core.domain.PeopleEngine.filter(state.context.fetch<Person>(), mode),
                 com.chrisallenclark.keepr.core.domain.PeopleSort.NAME,
-            ).firstOrNull()?.let { initial[1] = listOf(ProfileRoute(it.id, mode)) }
+            ).firstOrNull()?.let { initial[1] = listOf(Route.Profile(it.id, mode)) }
         }
         mutableStateOf(initial.toList())
     }
-    var showsSettings by remember { mutableStateOf(false) }
     var showsGallery by remember { mutableStateOf(false) }
     var addingPerson by remember { mutableStateOf(false) }
     var comingSoon by remember { mutableStateOf<String?>(null) }
+    var sheet by remember { mutableStateOf<SheetRoute?>(null) }
 
-
-    fun push(person: Person, through: ContextMode = mode) {
-        stacks = stacks.toMutableList().also { it[selectedTab] = it[selectedTab] + ProfileRoute(person.id, through) }
+    fun push(route: Route) {
+        stacks = stacks.toMutableList().also { it[selectedTab] = it[selectedTab] + route }
     }
+    fun push(person: Person, through: ContextMode = mode) = push(Route.Profile(person.id, through))
     fun pop() {
         stacks = stacks.toMutableList().also { it[selectedTab] = it[selectedTab].dropLast(1) }
     }
+    val navigator = Navigator(mode, push = { push(it) }, pop = { pop() }, present = { sheet = it })
 
     val stack = stacks[selectedTab]
     BackHandler(enabled = stack.isNotEmpty()) { pop() }
@@ -109,6 +112,7 @@ fun RootView(launch: LaunchOptions) {
         return
     }
 
+    CompositionLocalProvider(LocalNavigator provides navigator) {
     Box(Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = selectedTab to stack,
@@ -129,18 +133,9 @@ fun RootView(launch: LaunchOptions) {
             label = "navigation",
         ) { (tab, routes) ->
             val top = routes.lastOrNull()
-            val person = top?.let { route -> state.context.fetch<Person>().firstOrNull { it.id == route.personId } }
-            if (top != null && person != null) {
-                PersonProfileScreen(
-                    person = person,
-                    mode = top.mode,
-                    onBack = ::pop,
-                    onOpenPerson = { push(it, top.mode) },
-                    onUnavailable = { comingSoon = it },
-                )
-            } else {
+            if (top == null || !RouteContent(top, onBack = ::pop, onOpenPerson = { person, through -> push(person, through) }, onUnavailable = { comingSoon = it })) {
                 when (tab) {
-                    0 -> TodayScreen(modeBinding, onOpenPerson = { push(it) }, onOpenSettings = { showsSettings = true }, onQuickCapture = { comingSoon = "Quick Capture" })
+                    0 -> TodayScreen(modeBinding, onOpenPerson = { push(it) }, onOpenSettings = { sheet = SheetRoute.Settings }, onQuickCapture = { sheet = SheetRoute.QuickCapture })
                     1 -> PeopleScreen(modeBinding, onOpenPerson = { push(it) }, onAddPerson = { addingPerson = true }, onUnavailable = { comingSoon = it })
                     2 -> FollowUpsScreen(modeBinding, onOpenPerson = { push(it) })
                     else -> SearchScreen(onOpenPerson = { person, through -> push(person, through) })
@@ -159,14 +154,17 @@ fun RootView(launch: LaunchOptions) {
         )
     }
 
-    if (showsSettings) {
-        SettingsSheet(
-            onDismiss = { showsSettings = false },
-            onOpenGallery = if (BuildConfig.DEBUG) ({ showsSettings = false; showsGallery = true }) else null,
+    sheet?.let { current ->
+        SheetContent(
+            current,
+            mode = mode,
+            onDismiss = { if (sheet == current) sheet = null },
+            onOpenGallery = if (BuildConfig.DEBUG) ({ sheet = null; showsGallery = true }) else null,
         )
     }
     if (addingPerson) {
         EditPersonSheet(null, mode, onDismiss = { addingPerson = false }, onSaved = { push(it) })
     }
     comingSoon?.let { ComingSoonSheet(it, onDismiss = { comingSoon = null }) }
+    }
 }
