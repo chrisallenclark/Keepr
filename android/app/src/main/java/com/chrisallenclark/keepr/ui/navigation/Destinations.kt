@@ -65,7 +65,7 @@ fun SheetContent(
     val context = LocalAppState.current.context
     when (sheet) {
         SheetRoute.QuickCapture -> QuickCaptureSheet(mode, onDismiss)
-        is SheetRoute.BrainDump -> person(sheet.personId)?.let { BrainDumpSheet(it, onDismiss) } ?: DismissNow(onDismiss)
+        is SheetRoute.BrainDump -> person(sheet.personId)?.let { BrainDumpSheet(it, onDismiss, initialText = sheet.initialText.orEmpty()) } ?: DismissNow(onDismiss)
         is SheetRoute.NoteComposer -> person(sheet.personId)?.let { owner ->
             val note = sheet.noteId?.let { id -> context.fetch<ConversationNote>().firstOrNull { it.id == id } }
             NoteComposerSheet(owner, note, onDismiss)

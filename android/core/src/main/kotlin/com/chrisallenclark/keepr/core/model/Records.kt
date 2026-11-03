@@ -531,8 +531,42 @@ class PersonFile(
     var title: String = title
     var kindRaw: String = kind.rawValue
     var fileExtension: String = fileExtension
-    /** The file itself. Optional because a sync may deliver the record before the bytes. */
-    var data: ByteArray? = data
+
+    private var memoryData: ByteArray? = data
+
+    /**
+     * The file itself. Optional because a sync may deliver the record before the bytes.
+     *
+     * Either held in memory (just imported) or read on demand through
+     * [dataSource] — Android keeps file contents beside the database rather
+     * than inside it, so a launch never loads every PDF on every profile.
+     * Reading through the source can touch disk: do it off the main thread.
+     */
+    var data: ByteArray?
+        get() = memoryData ?: dataSource?.invoke()
+        set(value) {
+            memoryData = value
+            dataSource = null
+        }
+
+    /**
+     * Where the bytes are read from when they aren't held in memory. Never
+     * cached: a previewed PDF is read again next time rather than kept
+     * resident for the rest of the session.
+     */
+    var dataSource: (() -> ByteArray?)? = null
+
+    /** The bytes only if they're held in memory — never reads through [dataSource]. */
+    val heldBytes: ByteArray? get() = memoryData
+
+    /** True when there are bytes to read, without reading them. */
+    val hasData: Boolean get() = memoryData != null || dataSource != null
+
+    /** Stops holding the bytes in memory; from now on they're read through [source]. */
+    fun releaseData(source: () -> ByteArray?) {
+        memoryData = null
+        dataSource = source
+    }
     var thumbnailData: ByteArray? = thumbnailData
     var byteCount: Int = byteCount
     var capturedAt: Instant = capturedAt

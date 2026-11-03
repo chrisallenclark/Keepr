@@ -19,6 +19,13 @@
     -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- End reminders. -->
+    <!-- Files (engineer B): lets "Take Photo" find the system camera app on Android 11+.
+         The camera is used through its intent, so no CAMERA permission is requested. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="false"
@@ -56,6 +63,34 @@
             </intent-filter>
         </receiver>
         <!-- End reminders. -->
+        <!-- ===== Files (engineer B) ===== -->
+        <!-- Lends the camera app a private file to write a new photo into, and lends a
+             shared or opened file to the app the person picked: read-only, one URI at a time. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/keepr_file_paths" />
+        </provider>
+        <!-- Asks Google Play services for the backported photo picker on Android 8-10,
+             so "Choose Photos" never needs a storage permission. -->
+        <service
+            xmlns:tools="http://schemas.android.com/tools"
+            android:name="com.google.android.gms.metadata.ModuleDependencies"
+            android:enabled="false"
+            android:exported="false"
+            tools:ignore="MissingClass">
+            <intent-filter>
+                <action android:name="com.google.android.gms.metadata.MODULE_DEPENDENCIES" />
+            </intent-filter>
+            <meta-data
+                android:name="photopicker_activity:0:required"
+                android:value="" />
+        </service>
+        <!-- ===== end Files ===== -->
     </application>
 
 </manifest>

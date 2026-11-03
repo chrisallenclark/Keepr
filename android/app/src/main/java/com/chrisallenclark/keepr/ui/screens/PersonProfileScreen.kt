@@ -3,6 +3,7 @@ package com.chrisallenclark.keepr.ui.screens
 import com.chrisallenclark.keepr.ui.navigation.Route
 import com.chrisallenclark.keepr.ui.navigation.SheetRoute
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -348,7 +349,12 @@ fun PersonProfileScreen(
                         ) {
                             counts.forEach { group ->
                                 Row(
-                                    Modifier.background(colors.quaternaryLabel, CircleShape).padding(horizontal = Spacing.small, vertical = 5.dp),
+                                    Modifier
+                                        .background(colors.quaternaryLabel, CircleShape)
+                                        .clickable(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null) {
+                                            navigator.push(Route.MemoryLibrary(person.id))
+                                        }
+                                        .padding(horizontal = Spacing.small, vertical = 5.dp),
                                     horizontalArrangement = Arrangement.spacedBy(Spacing.tight),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -369,44 +375,13 @@ fun PersonProfileScreen(
                 }
             }
 
-            // Notes (read here; composing arrives with the notes phase)
-            val notes = person.noteList
-            if (notes.isNotEmpty()) {
-                SectionSpacer()
-                Column {
-                    com.chrisallenclark.keepr.ui.components.SectionHeader("Notes", Modifier.padding(start = 33.dp, end = 33.dp, bottom = 9.dp))
-                    notes.take(2).forEach { note ->
-                        FloatingCard(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), isHighlighted = note.isPinned) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    if (note.isPinned) SfSymbol("pin.fill", colors.accent, typography.caption)
-                                    KText(note.title, style = typography.subheadline.semibold, modifier = Modifier.weight(1f))
-                                }
-                                KText("${state.calendar.abbreviatedDate(note.occurredAt)} · ${note.lengthLabel}", style = typography.caption2, color = colors.tertiaryLabel)
-                                KText(note.preview, style = typography.subheadline, color = colors.secondaryLabel, maxLines = 3)
-                            }
-                        }
-                    }
-                }
-            }
+            // Notes
+            SectionSpacer()
+            com.chrisallenclark.keepr.ui.notes.ProfileNotesSection(person)
+            SectionSpacer()
 
-            // Files (listed; adding arrives with the files phase)
-            val files = person.fileList
-            if (files.isNotEmpty()) {
-                SectionSpacer()
-                Column {
-                    com.chrisallenclark.keepr.ui.components.SectionHeader("Files", Modifier.padding(start = 33.dp, end = 33.dp, bottom = 9.dp))
-                    FloatingCard(Modifier.padding(horizontal = 16.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                            SfSymbol("paperclip", colors.secondaryLabel, typography.caption)
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                KText(if (files.size == 1) "1 file" else "${files.size} files", style = typography.subheadline.semibold)
-                                KText("Latest: ${files.first().title}", style = typography.caption2, color = colors.tertiaryLabel, maxLines = 1)
-                            }
-                        }
-                    }
-                }
-            }
+            // Files
+            com.chrisallenclark.keepr.ui.files.ProfileFilesSection(person)
             SectionSpacer()
 
             // Connections

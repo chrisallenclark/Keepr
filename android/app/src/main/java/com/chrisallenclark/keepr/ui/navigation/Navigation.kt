@@ -21,7 +21,8 @@ sealed interface Route {
 /** Sheets presented over everything, as `.sheet` does on iOS. */
 sealed interface SheetRoute {
     data object QuickCapture : SheetRoute
-    data class BrainDump(val personId: UUID) : SheetRoute
+    /** [initialText] seeds the dump, as a note's "Pull Facts" does on iOS (`BrainDumpView(initialText:)`). */
+    data class BrainDump(val personId: UUID, val initialText: String? = null) : SheetRoute
     /** A new note when [noteId] is null, otherwise editing that note. */
     data class NoteComposer(val personId: UUID, val noteId: UUID? = null) : SheetRoute
     data class LinkEditor(val personId: UUID) : SheetRoute
