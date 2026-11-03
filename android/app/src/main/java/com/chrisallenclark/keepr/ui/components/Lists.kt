@@ -1,7 +1,8 @@
 package com.chrisallenclark.keepr.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -154,24 +155,33 @@ fun Separator(modifier: Modifier = Modifier, start: Dp = ListMetrics.rowHorizont
  * behaves like a `.buttonStyle(.plain)` button (no ripple — iOS dims rows on
  * press, which [pressHighlight] reproduces).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListRow(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    /** A long press — where iOS shows a `.contextMenu`. */
+    onLongClick: (() -> Unit)? = null,
     verticalPadding: Dp = ListMetrics.rowVertical,
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     content: @Composable RowScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberHaptics()
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = ListMetrics.rowMinHeight)
             .then(
-                if (onClick != null) {
+                if (onClick != null || onLongClick != null) {
                     Modifier
                         .pressHighlight(interaction)
-                        .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                        .combinedClickable(
+                            interactionSource = interaction,
+                            indication = null,
+                            onClick = { onClick?.invoke() },
+                            onLongClick = onLongClick?.let { long -> { haptics.light(); long() } },
+                        )
                 } else {
                     Modifier
                 },

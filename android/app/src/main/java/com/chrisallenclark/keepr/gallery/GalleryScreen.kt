@@ -35,7 +35,7 @@ import com.chrisallenclark.keepr.ui.components.ContextSwitcher
 import com.chrisallenclark.keepr.ui.components.DisclosureChevron
 import com.chrisallenclark.keepr.ui.components.EmptyState
 import com.chrisallenclark.keepr.ui.components.FilterChipRow
-import com.chrisallenclark.keepr.ui.components.FilterFacet
+import com.chrisallenclark.keepr.core.domain.FilterFacet
 import com.chrisallenclark.keepr.ui.components.FloatingCard
 import com.chrisallenclark.keepr.ui.components.GroupedSection
 import com.chrisallenclark.keepr.ui.components.KText

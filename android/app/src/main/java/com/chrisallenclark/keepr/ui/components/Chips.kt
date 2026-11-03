@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.chrisallenclark.keepr.core.domain.FilterFacet
 import com.chrisallenclark.keepr.ui.icons.SfSymbol
 import com.chrisallenclark.keepr.ui.theme.KeeprTheme
 import com.chrisallenclark.keepr.ui.theme.Radius
@@ -71,14 +72,6 @@ fun TagRow(tags: List<Pair<String, String?>>, modifier: Modifier = Modifier, lim
         }
     }
 }
-
-@Immutable
-data class FilterFacet(
-    val id: String,
-    val name: String,
-    val symbolName: String,
-    val count: Int,
-)
 
 /**
  * A scrolling row of filter chips with live counts. iOS `FilterChipRow`.

@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.chrisallenclark.keepr.ui.components.ContextSwitcher
 import com.chrisallenclark.keepr.ui.components.EmptyState
 import com.chrisallenclark.keepr.ui.components.FilterChipRow
-import com.chrisallenclark.keepr.ui.components.FilterFacet
+import com.chrisallenclark.keepr.core.domain.FilterFacet
 import com.chrisallenclark.keepr.ui.components.FollowUpRow
 import com.chrisallenclark.keepr.ui.components.GroupedSection
 import com.chrisallenclark.keepr.ui.components.KText
