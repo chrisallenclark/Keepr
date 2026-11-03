@@ -125,7 +125,7 @@ private fun SettingsMain(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?, on
 
     var remindersEnabled by remember { mutableStateOf(state.remindersEnabled) }
     var notificationStatus by remember { mutableStateOf(NotificationAuthorizationStatus.NOT_DETERMINED) }
-    var contactAccess by remember { mutableStateOf(contactAccessLabel(context)) }
+    var contactAccess by remember { mutableStateOf(contactAccessLabel(state.contacts.authorizationStatus())) }
     var groupLabel by remember { mutableStateOf(prefs.string(PreferenceKey.GROUP_LABEL) ?: GroupVocabulary.default.singular) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var organizing by remember { mutableStateOf<OrganizingEditor?>(null) }
@@ -135,7 +135,7 @@ private fun SettingsMain(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?, on
     LaunchedEffect(Unit) {
         while (true) {
             notificationStatus = state.notifications.authorizationStatus()
-            contactAccess = contactAccessLabel(context)
+            contactAccess = contactAccessLabel(state.contacts.authorizationStatus())
             delay(1_000)
         }
     }
@@ -372,17 +372,13 @@ private fun SettingsLink(title: String, symbol: String, onClick: () -> Unit) {
 
 private const val FULL_ACCESS = "Full access"
 
-/**
- * iOS's contact-access wording. Android doesn't say whether it ever asked,
- * so a refusal it would still re-ask about reads "Off", and anything else
- * that isn't granted reads "Not asked".
- */
-private fun contactAccessLabel(context: Context): String {
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-        return FULL_ACCESS
-    }
-    val activity = context.findActivity()
-    return if (activity != null && activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS)) "Off" else "Not asked"
+/** iOS's contact-access wording, from the contact store's own status. */
+private fun contactAccessLabel(access: com.chrisallenclark.keepr.core.services.ContactAccess): String = when (access) {
+    com.chrisallenclark.keepr.core.services.ContactAccess.AUTHORIZED -> FULL_ACCESS
+    com.chrisallenclark.keepr.core.services.ContactAccess.LIMITED -> "Selected contacts"
+    com.chrisallenclark.keepr.core.services.ContactAccess.DENIED -> "Off"
+    com.chrisallenclark.keepr.core.services.ContactAccess.RESTRICTED -> "Unavailable"
+    com.chrisallenclark.keepr.core.services.ContactAccess.NOT_DETERMINED -> "Not asked"
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
