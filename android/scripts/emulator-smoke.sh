@@ -16,6 +16,25 @@ mkdir -p "$OUT"
 
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 
+# Saved data must survive the process being killed, not only the activity
+# closing: write in one instrumentation run, force-stop, read in another.
+adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+RUNNER=com.chrisallenclark.keepr.test/androidx.test.runner.AndroidJUnitRunner
+phase() {
+  local name="$1" method="$2"
+  local output
+  output=$(adb shell am instrument -w -e keeprPhase "$name" \
+    -e class "com.chrisallenclark.keepr.ProcessRestartTest#$method" "$RUNNER")
+  echo "$output"
+  echo "$output" | grep -q "OK (1 test)" || { echo "::error::Process-restart phase '$name' failed"; exit 1; }
+}
+adb shell pm clear "$PACKAGE" >/dev/null
+phase write writeBeforeKill
+adb shell am force-stop "$PACKAGE"
+phase read readAfterKill
+echo "Data survived a forced stop of the app process."
+adb shell pm clear "$PACKAGE" >/dev/null
+
 # A clean, consistent status bar — 9:41, full battery and signal — matching
 # the iOS screenshots (System UI demo mode, the Android twin of
 # `simctl status_bar override`).

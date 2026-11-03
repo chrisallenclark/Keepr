@@ -45,7 +45,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build debug APK, run unit tests and lint
-        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
+        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest :core:test lintDebug
+
+      # Keepr's business logic, translated from Swift with its iOS test suite.
+      - name: Test summary
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob, re
+          rows, total, failed = [], 0, 0
+          for path in sorted(glob.glob('core/build/test-results/test/*.xml') + glob.glob('app/build/test-results/testDebugUnitTest/*.xml')):
+              text = open(path).read()
+              m = re.search(r'testsuite name="([^"]+)" tests="(\d+)" skipped="\d+" failures="(\d+)" errors="(\d+)"', text)
+              if not m: continue
+              n, f = int(m.group(2)), int(m.group(3)) + int(m.group(4))
+              total += n; failed += f
+              rows.append(f"| {m.group(1).split('.')[-1]} | {n} | {f} |")
+          print(f"## Unit tests: {total} run, {failed} failed\n")
+          print("| Suite | Tests | Failed |\n|---|---|---|")
+          print("\n".join(rows))
+          PY
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
@@ -62,6 +81,8 @@ jobs:
           path: |
             android/app/build/reports/
             android/app/build/test-results/
+            android/core/build/reports/
+            android/core/build/test-results/
           if-no-files-found: ignore
 
   emulator:
