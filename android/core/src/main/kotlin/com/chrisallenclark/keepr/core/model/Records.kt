@@ -1,5 +1,10 @@
 package com.chrisallenclark.keepr.core.model
 
+import com.chrisallenclark.keepr.core.services.graphemes
+import com.chrisallenclark.keepr.core.services.isNewlineCharacter
+import com.chrisallenclark.keepr.core.services.isWhitespaceCharacter
+import com.chrisallenclark.keepr.core.services.splitCharacters
+import com.chrisallenclark.keepr.core.services.trimmingWhitespaces
 import java.time.Instant
 import java.util.UUID
 
@@ -470,21 +475,23 @@ class ConversationNote(
     /** The body on one line, cut at a word near 180 characters. */
     val preview: String
         get() {
+            // Swift counts and cuts Characters (grapheme clusters), not UTF-16 units.
             val flattened = body
-                .split('\n', '\r')
-                .map { it.trimmedSpaces() }
+                .splitCharacters(::isNewlineCharacter)
+                .map { it.trimmingWhitespaces() }
                 .filter { it.isNotEmpty() }
                 .joinToString(" · ")
-            if (flattened.length <= 180) return flattened
-            val cut = flattened.take(180)
-            val lastSpace = cut.lastIndexOf(' ')
-            if (lastSpace < 0) return "$cut…"
-            return cut.substring(0, lastSpace) + "…"
+            val characters = flattened.graphemes()
+            if (characters.size <= 180) return flattened
+            val cut = characters.take(180)
+            val lastSpace = cut.lastIndexOf(" ")
+            if (lastSpace < 0) return cut.joinToString("") + "…"
+            return cut.subList(0, lastSpace).joinToString("") + "…"
         }
 
     val lengthLabel: String
         get() {
-            val words = body.split(Regex("\\s+")).count { it.isNotEmpty() }
+            val words = body.splitCharacters(::isWhitespaceCharacter).size
             if (words == 0) return if (fileList.isEmpty()) "Empty" else imageLabel
             val counted = if (words == 1) "1 word" else "${"%,d".format(words)} words"
             return if (fileList.isEmpty()) counted else "$counted · $imageLabel"
