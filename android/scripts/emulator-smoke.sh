@@ -58,6 +58,18 @@ SCREENS=(
   search:business
   today:personal
   profile:business
+  # Phase 3 screens (Android only for now; no iOS reference shots exist).
+  capture:business
+  settings:business
+  review:business
+  import:business
+  groups:business
+  types:business
+  link:business
+  memories:business
+  notes:business
+  files:business
+  onboarding:business
   gallery-type:none
   gallery-color:none
   gallery-controls:none

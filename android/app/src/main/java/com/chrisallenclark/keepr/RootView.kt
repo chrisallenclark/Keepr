@@ -56,7 +56,7 @@ private val tabs = listOf(
 )
 
 private fun tabIndex(screen: String?): Int = when (screen) {
-    "people", "profile" -> 1
+    "people", "profile", "groups", "types", "import", "memories", "notes", "files", "link" -> 1
     "followUp" -> 2
     "search" -> 3
     else -> 0
@@ -86,21 +86,51 @@ fun RootView(launch: LaunchOptions) {
     var stacks by remember {
         val initial = MutableList(tabs.size) { emptyList<Route>() }
         // Screenshot runs open the first person on People, as the iOS ones do.
-        if (launch.screen == "profile") {
+        if (launch.screen in setOf("profile", "memories", "notes", "files", "link")) {
             com.chrisallenclark.keepr.core.domain.PeopleEngine.sort(
                 com.chrisallenclark.keepr.core.domain.PeopleEngine.filter(state.context.fetch<Person>(), mode),
                 com.chrisallenclark.keepr.core.domain.PeopleSort.NAME,
-            ).firstOrNull()?.let { initial[1] = listOf(Route.Profile(it.id, mode)) }
+            ).firstOrNull()?.let { first ->
+                initial[1] = listOfNotNull(
+                    Route.Profile(first.id, mode),
+                    when (launch.screen) {
+                        "memories" -> Route.MemoryLibrary(first.id)
+                        "notes" -> Route.Notes(first.id)
+                        "files" -> Route.Files(first.id)
+                        else -> null
+                    },
+                )
+            }
         }
         mutableStateOf(initial.toList())
     }
     var showsGallery by remember { mutableStateOf(false) }
     var addingPerson by remember { mutableStateOf(false) }
     var comingSoon by remember { mutableStateOf<String?>(null) }
-    var sheet by remember { mutableStateOf<SheetRoute?>(null) }
+    var sheet by remember {
+        // Screenshot runs can open straight onto a sheet.
+        val first = if (launch.screen == "link") {
+            com.chrisallenclark.keepr.core.domain.PeopleEngine.sort(
+                com.chrisallenclark.keepr.core.domain.PeopleEngine.filter(state.context.fetch<Person>(), mode),
+                com.chrisallenclark.keepr.core.domain.PeopleSort.NAME,
+            ).firstOrNull()
+        } else null
+        mutableStateOf<SheetRoute?>(
+            when (launch.screen) {
+                "settings" -> SheetRoute.Settings
+                "capture" -> SheetRoute.QuickCapture
+                "groups" -> SheetRoute.Groups
+                "types" -> SheetRoute.RelationshipTypes
+                "review" -> SheetRoute.Review
+                "import" -> SheetRoute.ContactImport
+                "link" -> first?.let { SheetRoute.LinkEditor(it.id) }
+                else -> null
+            },
+        )
+    }
     // iOS: a full-screen cover on first launch, decided from stored state;
     // screenshot runs skip it.
-    var showsOnboarding by remember { mutableStateOf(!launch.isDemo && !prefs.bool(PreferenceKey.HAS_ONBOARDED)) }
+    var showsOnboarding by remember { mutableStateOf(launch.screen == "onboarding" || (!launch.isDemo && !prefs.bool(PreferenceKey.HAS_ONBOARDED))) }
 
     fun push(route: Route) {
         stacks = stacks.toMutableList().also { it[selectedTab] = it[selectedTab] + route }
