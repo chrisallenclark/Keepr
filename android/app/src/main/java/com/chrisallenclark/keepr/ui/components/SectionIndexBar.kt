@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -27,6 +28,9 @@ import com.chrisallenclark.keepr.ui.theme.semibold
 /**
  * The A–Z strip down the side of People. Touch or drag to jump; one selection
  * haptic per letter crossed. iOS `SectionIndexBar`.
+ *
+ * Give it the list's full height (`Modifier.fillMaxHeight()`): the letters
+ * are spread evenly over it, so the strip is centered on the list's edge.
  */
 @Composable
 fun SectionIndexBar(
@@ -73,15 +77,20 @@ fun SectionIndexBar(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Each letter gets an equal slice of the height and sits centered in
+        // it (`.frame(maxWidth: .infinity, maxHeight: .infinity)` on iOS), so
+        // a short index spreads down the whole edge, as on iOS.
+        Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
             titles.forEach { title ->
-                KText(
-                    title,
-                    style = KeeprTheme.typography.caption2.semibold.copy(fontSize = 11.sp),
-                    color = KeeprTheme.colors.accent,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    KText(
+                        title,
+                        style = KeeprTheme.typography.caption2.semibold.copy(fontSize = 11.sp),
+                        color = KeeprTheme.colors.accent,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
             }
         }
     }

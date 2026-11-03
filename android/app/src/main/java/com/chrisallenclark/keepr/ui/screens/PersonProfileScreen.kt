@@ -54,6 +54,7 @@ import com.chrisallenclark.keepr.ui.components.KeeprButton
 import com.chrisallenclark.keepr.ui.components.KeeprMenu
 import com.chrisallenclark.keepr.ui.components.KeeprTopBar
 import com.chrisallenclark.keepr.ui.components.LabeledRow
+import com.chrisallenclark.keepr.ui.components.ListMetrics
 import com.chrisallenclark.keepr.ui.components.ListRow
 import com.chrisallenclark.keepr.ui.components.MenuEntry
 import com.chrisallenclark.keepr.ui.components.PersonHeader
@@ -164,16 +165,22 @@ fun PersonProfileScreen(
         )
 
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.height(Spacing.large))
+            // On iOS the header is the first row of an inset-grouped List: the
+            // list's top margin, the first section's spacing and the row's own
+            // `Spacing.large` inset put the avatar ~65pt under the bar, and
+            // the section's 16pt inset adds to the rows' own side padding.
+            Spacer(Modifier.height(profileHeaderTopInset))
             PersonHeader(
                 person.displayName, person.initials,
+                modifier = Modifier.padding(horizontal = ListMetrics.sectionInset),
                 fullName = person.fullName, subtitle = person.subtitle,
                 tags = person.headlineTags(mode).map { TagLabel(it.name, it.symbolName) },
                 photo = person.photoData,
             )
             Spacer(Modifier.height(Spacing.medium))
             QuickActionsRow(
-                ContactMethod.entries.filter { CommunicationLauncher.isAvailable(it, person) }.map { method ->
+                modifier = Modifier.padding(horizontal = ListMetrics.sectionInset),
+                actions = ContactMethod.entries.filter { CommunicationLauncher.isAvailable(it, person) }.map { method ->
                     QuickAction(method.title, method.symbolName) {
                         if (androidContext.open(method, person)) haptics.light()
                     }
@@ -222,7 +229,7 @@ fun PersonProfileScreen(
                 header = "What They Do",
                 footer = if (employer.isEmpty() && workNote.isEmpty() && !isEditingWorkNote) "Who they work for, what they run, what they're good at. The thing you'd want in front of you before the next conversation." else null,
             ) {
-                if (employer.isNotEmpty()) row(followUpTextStart + 8.dp) { ListRow { IconLabel(employer, "building.2", typography.subheadline, colors.label) } }
+                if (employer.isNotEmpty()) row(ListMetrics.rowHorizontal + 40.dp) { ListRow { ListLabel(employer, "building.2") } }
                 when {
                     isEditingWorkNote -> row {
                         ListRow(verticalPadding = 0.dp) {
@@ -530,6 +537,25 @@ private fun setCadence(person: Person, days: Int?, state: AppState) {
 @Composable
 private fun HeaderButton(title: String, onClick: () -> Unit) {
     KeeprButton(title, onClick, textStyle = KeeprTheme.typography.caption.semibold)
+}
+
+/** Space above the avatar, matching where iOS's List puts its first row. */
+private val profileHeaderTopInset = 56.dp
+
+/**
+ * `Label(title, systemImage:)` as a List row draws it: the icon tinted with
+ * the accent color and sized a step above the text, in a fixed-width column
+ * so the title lines up with the hairline under it.
+ */
+@Composable
+private fun ListLabel(title: String, symbolName: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) {
+            SfSymbol(symbolName, KeeprTheme.colors.accent, 22.dp)
+        }
+        Spacer(Modifier.width(16.dp))
+        KText(title, style = KeeprTheme.typography.subheadline)
+    }
 }
 
 /** iOS `MemoryRow`. */
