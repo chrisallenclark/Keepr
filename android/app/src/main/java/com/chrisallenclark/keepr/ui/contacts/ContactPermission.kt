@@ -24,22 +24,22 @@ import java.util.concurrent.atomic.AtomicReference
  */
 @Composable
 fun ContactPermissionHost(store: ContactStoreProviding) {
-    val android = store as? AndroidContactStore
+    val androidStore = store as? AndroidContactStore
     val pending = remember { AtomicReference<CompletableDeferred<Boolean>?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         pending.getAndSet(null)?.complete(granted)
     }
-    DisposableEffect(android, launcher) {
-        if (android == null) return@DisposableEffect onDispose { }
+    DisposableEffect(androidStore, launcher) {
+        if (androidStore == null) return@DisposableEffect onDispose { }
         val requester: suspend () -> Boolean = {
             val deferred = CompletableDeferred<Boolean>()
             pending.getAndSet(deferred)?.complete(false)
             launcher.launch(Manifest.permission.READ_CONTACTS)
             deferred.await()
         }
-        android.permissionRequester = requester
+        androidStore.permissionRequester = requester
         onDispose {
-            if (android.permissionRequester === requester) android.permissionRequester = null
+            if (androidStore.permissionRequester === requester) androidStore.permissionRequester = null
             pending.getAndSet(null)?.complete(false)
         }
     }

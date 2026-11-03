@@ -11,7 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,6 +25,7 @@ import com.chrisallenclark.keepr.core.domain.CadenceItem
 import com.chrisallenclark.keepr.core.domain.Outreach
 import com.chrisallenclark.keepr.core.domain.PeopleEngine
 import com.chrisallenclark.keepr.core.domain.RelativeDate
+import com.chrisallenclark.keepr.core.domain.ReviewQueue
 import com.chrisallenclark.keepr.core.domain.TodayEngine
 import com.chrisallenclark.keepr.core.model.ContextMode
 import com.chrisallenclark.keepr.core.model.FollowUp
@@ -44,6 +51,10 @@ import com.chrisallenclark.keepr.ui.theme.KeeprTheme
 import com.chrisallenclark.keepr.ui.theme.Spacing
 import com.chrisallenclark.keepr.ui.theme.medium
 import com.chrisallenclark.keepr.ui.components.Haptics
+import com.chrisallenclark.keepr.ui.contacts.ContactReviewSignal
+import com.chrisallenclark.keepr.ui.navigation.LocalNavigator
+import com.chrisallenclark.keepr.ui.navigation.SheetRoute
+import com.chrisallenclark.keepr.ui.theme.semibold
 
 /** Where a compact person row's text starts: past the 36pt avatar and a 12pt gap. */
 internal val compactTextStart = ListMetrics.rowHorizontal + 36.dp + Spacing.medium
@@ -67,6 +78,15 @@ fun TodayScreen(
     val digest = TodayEngine.digest(people, mode.mode, now, state.calendar)
     val waiting = Outreach.waiting(PeopleEngine.visible(people, mode.mode), now, state.calendar)
     val colors = KeeprTheme.colors
+    val navigator = LocalNavigator.current
+
+    // Catch Up: how many people are waiting to be placed. Counted, not listed —
+    // the queue itself lives one tap away. Re-counted when Catch Up closes or
+    // contacts are imported (iOS: `onDismiss: refreshNewContactCount`).
+    val reviewGeneration = ContactReviewSignal.generation.intValue
+    var newContactCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(reviewGeneration) { countNewContacts(state)?.let { newContactCount = it } }
+    val reviewSummary = ReviewQueue.summary(newContactCount, people.count(ReviewQueue::needsCategorizing))
 
     Column(Modifier.fillMaxSize().background(colors.groupedBackground)) {
         KeeprTopBar(
@@ -76,7 +96,7 @@ fun TodayScreen(
             pinned = { ContextSwitcher(mode.mode == ContextMode.PERSONAL, { mode.set(if (it) ContextMode.PERSONAL else ContextMode.BUSINESS) }) },
         )
 
-        if (digest.isEmpty && waiting.isEmpty()) {
+        if (digest.isEmpty && waiting.isEmpty() && reviewSummary == null) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 EmptyState(
                     title = "You're caught up.",
@@ -94,6 +114,8 @@ fun TodayScreen(
         Column(Modifier.verticalScroll(rememberScrollState())) {
             Spacer(Modifier.height(10.dp))
             val sections = mutableListOf<@Composable () -> Unit>()
+
+            if (reviewSummary != null) sections += { CatchUpSection(reviewSummary) { navigator.present(SheetRoute.Review) } }
 
             if (digest.needsAttention.isNotEmpty()) sections += { FollowUpSection("Needs Attention", digest.needsAttention, state, haptics, onOpenPerson) }
             if (waiting.isNotEmpty()) sections += {
@@ -147,6 +169,36 @@ fun TodayScreen(
                 section()
             }
             TabBarClearance()
+        }
+    }
+}
+
+/**
+ * Reads the address book to see what's new since Keepr last looked; null when
+ * contacts can't be read. Someone already imported never counts as new.
+ */
+private suspend fun countNewContacts(state: AppState): Int? {
+    if (!state.contacts.authorizationStatus().canRead) return null
+    val fetched = state.contacts.fetchContacts()
+    val known = state.context.fetch<Person>().mapNotNull { it.contactIdentifier }.toSet()
+    return state.contactTracker.newContacts(fetched).count { it.identifier !in known }
+}
+
+/** The Catch Up row: one line saying what's waiting, in words rather than a bare count. */
+@Composable
+private fun CatchUpSection(summary: String, onOpen: () -> Unit) {
+    val colors = KeeprTheme.colors
+    val typography = KeeprTheme.typography
+    GroupedSection {
+        row {
+            ListRow(onClick = onOpen) {
+                SfSymbol("person.crop.circle.badge.questionmark", colors.accent, typography.title3)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    KText("Catch Up", style = typography.subheadline.semibold)
+                    KText(summary, style = typography.caption, color = colors.secondaryLabel)
+                }
+                SfSymbol("chevron.right", colors.tertiaryLabel, typography.caption.semibold)
+            }
         }
     }
 }
