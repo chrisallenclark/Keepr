@@ -1,6 +1,8 @@
 package com.chrisallenclark.keepr
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
@@ -40,10 +42,11 @@ fun ComposeTestRule.waitForGone(text: String, timeoutMillis: Long = 10_000) {
 /** Every piece of text in every window, for failure messages. */
 fun ComposeTestRule.screenText(): String =
     onAllNodes(androidx.compose.ui.test.isRoot()).fetchSemanticsNodes().joinToString("\n---\n") { root ->
-        fun collect(node: androidx.compose.ui.semantics.SemanticsNode): List<String> =
-            (node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.map { it.text } ?: emptyList()) +
-                (node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription) ?: emptyList()).map { "[$it]" } +
-                node.children.flatMap(::collect)
+        fun collect(node: androidx.compose.ui.semantics.SemanticsNode): List<String> {
+            val texts: List<String> = node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
+            val labels: List<String> = node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().map { "[$it]" }
+            return texts + labels + node.children.flatMap { collect(it) }
+        }
         collect(root).joinToString(" | ")
     }
 
