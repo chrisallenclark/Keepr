@@ -315,15 +315,6 @@ object PeopleEngine {
 private fun <T> List<T>.sortedByLess(less: (T, T) -> Boolean): List<T> =
     sortedWith { a, b -> if (less(a, b)) -1 else if (less(b, a)) 1 else 0 }
 
-/** Swift's `String <`: Unicode scalar order of the NFC forms. */
-private fun swiftCompare(a: String, b: String): Int {
-    val x = Normalizer.normalize(a, Normalizer.Form.NFC).codePoints().toArray()
-    val y = Normalizer.normalize(b, Normalizer.Form.NFC).codePoints().toArray()
-    for (i in 0 until minOf(x.size, y.size)) {
-        if (x[i] != y[i]) return x[i].compareTo(y[i])
-    }
-    return x.size.compareTo(y.size)
-}
 
 /** `String.first` — the first extended grapheme cluster, or null when empty. */
 private fun firstGrapheme(text: String): String? {

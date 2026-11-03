@@ -133,12 +133,3 @@ object SearchEngine {
  */
 private fun String.localizedStandardContains(other: String): Boolean = foldedContains(other)
 
-/** Swift's `String <`: Unicode scalar order of the NFC forms. */
-private fun swiftCompare(a: String, b: String): Int {
-    val x = Normalizer.normalize(a, Normalizer.Form.NFC).codePoints().toArray()
-    val y = Normalizer.normalize(b, Normalizer.Form.NFC).codePoints().toArray()
-    for (i in 0 until minOf(x.size, y.size)) {
-        if (x[i] != y[i]) return x[i].compareTo(y[i])
-    }
-    return x.size.compareTo(y.size)
-}
