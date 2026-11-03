@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -112,6 +114,8 @@ fun PeopleScreen(
     var bulkMenu by remember { mutableStateOf<BulkMenu?>(null) }
     var contextMenuFor by remember { mutableStateOf<Person?>(null) }
     var confirmingBulkDelete by remember { mutableStateOf(false) }
+    // Two selected people on their way to the link editor (iOS `LinkPair`).
+    var linkPair by remember { mutableStateOf<Pair<Person, Person>?>(null) }
 
     val groupLabel = prefs.string(PreferenceKey.GROUP_LABEL) ?: GroupVocabulary.default.singular
     val groupPlural = GroupVocabulary.plural(groupLabel)
@@ -126,6 +130,9 @@ fun PeopleScreen(
     val placeFacets = PeopleEngine.placeFacets(PeopleEngine.filter(people, mode.mode, selectedTag, query), groups, mode.mode, selectedPlaceID)
     val hasActiveFilters = selectedTag != null || selectedPlaceID != null
     val selectedPeople = people.filter { it.id in selection }
+    // Two people selected is the one bulk case that isn't "apply X to all of
+    // them" — it's how to say these two are related to each other.
+    val selectedPair = selectedPeople.takeIf { it.size == 2 && !it[0].isLinked(it[1]) }?.let { it[0] to it[1] }
 
     fun beginSelecting(with: Person? = null) {
         isSelecting = true
@@ -309,10 +316,18 @@ fun PeopleScreen(
             }
 
             if (sections != null && !isSelecting && sections.size > 2) {
+                // iOS overlays the index on the list's trailing edge and spreads
+                // the letters over its whole visible height — from under the
+                // pinned bar down to the floating tab bar — rather than packing
+                // them at the top.
                 SectionIndexBar(
                     titles = sections.map { it.key },
                     onSelect = { key -> headerIndex[key]?.let { scope.launch { listState.animateScrollToItem(it) } } },
-                    modifier = Modifier.align(Alignment.CenterEnd).padding(bottom = 80.dp),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .navigationBarsPadding()
+                        .padding(bottom = Chrome.tabBarHeight),
                 )
             }
 
@@ -364,6 +379,10 @@ fun PeopleScreen(
                                     MenuEntry.Action(option.title) { applyToSelection { it.priority = option } }
                                 }
                                 else -> buildList {
+                                    if (selectedPair != null) {
+                                        add(MenuEntry.Action("Link These Two", "link") { linkPair = selectedPair })
+                                        add(MenuEntry.Divider)
+                                    }
                                     if (relevantTags.isNotEmpty()) {
                                         add(MenuEntry.Action("Add Relationship Type…", "tag") { bulkMenu = BulkMenu.ADD_TYPE })
                                         add(MenuEntry.Action("Remove Relationship Type…", "tag") { bulkMenu = BulkMenu.REMOVE_TYPE })
@@ -384,6 +403,15 @@ fun PeopleScreen(
                 }
             }
         }
+    }
+
+    linkPair?.let { (first, second) ->
+        com.chrisallenclark.keepr.ui.organize.PersonLinkEditorSheet(
+            person = first,
+            onDismiss = { linkPair = null },
+            other = second,
+            onSave = { endSelecting() },
+        )
     }
 
     if (confirmingBulkDelete) {

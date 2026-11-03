@@ -48,7 +48,9 @@ import java.util.UUID
 fun EditPersonSheet(person: Person?, mode: ContextMode, onDismiss: () -> Unit, onSaved: (Person) -> Unit = {}) {
     val state = LocalAppState.current
     val haptics = rememberHaptics()
+    observeStore().value
     val allTags = state.context.fetch<RelationshipTag>().sortedBy { it.sortOrder }
+    var isShowingTypeEditor by remember { mutableStateOf(false) }
 
     var givenName by rememberSaveable { mutableStateOf(person?.givenName ?: "") }
     var familyName by rememberSaveable { mutableStateOf(person?.familyName ?: "") }
@@ -146,6 +148,11 @@ fun EditPersonSheet(person: Person?, mode: ContextMode, onDismiss: () -> Unit, o
                         }
                     }
                 }
+                row {
+                    ListRow(onClick = { isShowingTypeEditor = true }) {
+                        IconLabel("New Type…", "plus.circle", KeeprTheme.typography.subheadline, KeeprTheme.colors.accent)
+                    }
+                }
             }
             SectionSpacer()
             GroupedSection(
@@ -173,6 +180,15 @@ fun EditPersonSheet(person: Person?, mode: ContextMode, onDismiss: () -> Unit, o
                 row { FormTextField(notes, { notes = it }, "Anything else", minLines = 3, maxLines = 10) }
             }
         }
+    }
+
+    // "Make your own": the type editor opens straight into a new type.
+    if (isShowingTypeEditor) {
+        com.chrisallenclark.keepr.ui.organize.RelationshipTypesSheet(
+            onDismiss = { isShowingTypeEditor = false },
+            startsCreating = true,
+            initialMode = mode,
+        )
     }
 }
 

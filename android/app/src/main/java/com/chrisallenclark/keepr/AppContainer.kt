@@ -28,7 +28,7 @@ class AppContainer private constructor(
             return if (isDemo) {
                 demo ?: synchronized(this) {
                     demo ?: AppContainer(
-                        KeeprRepository(KeeprDatabase.inMemory(app), MemoryPreferences()),
+                        KeeprRepository(KeeprDatabase.inMemory(app), demoPreferences()),
                         StubNotificationService(),
                         isDemo = true,
                     ).also { demo = it }
@@ -44,6 +44,20 @@ class AppContainer private constructor(
                     ).also { live = it }
                 }
             }
+        }
+
+        /**
+         * The iOS screenshot store is in memory, but the record of which
+         * built-in types were offered lives in the simulator's real
+         * UserDefaults, so its seeding is skipped and the sample data creates
+         * its types with the plain "tag" symbol. Demo runs mirror that, so the
+         * captured chips match the iOS references. Real stores are unaffected.
+         */
+        private fun demoPreferences() = MemoryPreferences().apply {
+            setStringList(
+                com.chrisallenclark.keepr.core.persistence.KeeprStore.SEEDED_KEYS_DEFAULT,
+                com.chrisallenclark.keepr.core.model.RelationshipTag.builtInCatalog.map { it.name },
+            )
         }
 
         /** Tests only: forget the process-wide instance, as if the app were relaunched. */
