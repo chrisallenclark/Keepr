@@ -53,7 +53,7 @@ fun TagChip(
     }
 }
 
-/** The row of tags under a name. Truncates rather than wrapping. iOS `TagRow`. */
+/** The row of tags under a name. Chips share the width evenly. iOS `TagRow`. */
 @Composable
 fun TagRow(tags: List<Pair<String, String?>>, modifier: Modifier = Modifier, limit: Int = 2) {
     if (tags.isEmpty()) return
@@ -62,7 +62,9 @@ fun TagRow(tags: List<Pair<String, String?>>, modifier: Modifier = Modifier, lim
         horizontalArrangement = Arrangement.spacedBy(Spacing.tight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        tags.take(limit).forEach { (name, symbol) -> TagChip(name, symbolName = symbol) }
+        // Share the width so a long first tag wraps (as on iOS) instead of
+        // squeezing the next one down to a sliver.
+        tags.take(limit).forEach { (name, symbol) -> TagChip(name, Modifier.weight(1f, fill = false), symbolName = symbol) }
         if (tags.size > limit) {
             KText(
                 "+${tags.size - limit}",
