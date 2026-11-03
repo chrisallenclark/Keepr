@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Keepr"
 include(":app")
+include(":core")
