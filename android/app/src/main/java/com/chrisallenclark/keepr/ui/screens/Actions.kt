@@ -5,6 +5,7 @@ import com.chrisallenclark.keepr.core.domain.RelativeDate
 import com.chrisallenclark.keepr.core.model.FollowUp
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.core.services.FollowUpScheduler
+import com.chrisallenclark.keepr.notifications.rescheduleRhythmReminders
 import com.chrisallenclark.keepr.ui.components.FollowUpRow
 import com.chrisallenclark.keepr.ui.components.Haptics
 import androidx.compose.runtime.Composable
@@ -53,6 +54,8 @@ fun AppState.markReachedOut(person: Person, haptics: Haptics) {
     Outreach.markReachedOut(person, at = now(), context = context)
     save()
     haptics.success()
+    // The rhythm just reset, so its reminder moves (iOS TodayView.markReachedOut).
+    rescheduleRhythmReminders()
 }
 
 fun AppState.markReplied(person: Person, haptics: Haptics) {
