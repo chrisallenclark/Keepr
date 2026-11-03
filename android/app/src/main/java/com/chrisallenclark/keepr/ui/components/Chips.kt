@@ -62,9 +62,14 @@ fun TagRow(tags: List<Pair<String, String?>>, modifier: Modifier = Modifier, lim
         horizontalArrangement = Arrangement.spacedBy(Spacing.tight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Share the width so a long first tag wraps (as on iOS) instead of
+        // The last chip keeps its natural width and the earlier ones share the
+        // rest, so a long first tag wraps at a word (as on iOS) instead of
         // squeezing the next one down to a sliver.
-        tags.take(limit).forEach { (name, symbol) -> TagChip(name, Modifier.weight(1f, fill = false), symbolName = symbol) }
+        val shown = tags.take(limit)
+        shown.forEachIndexed { index, (name, symbol) ->
+            val chipModifier = if (index < shown.lastIndex) Modifier.weight(1f, fill = false) else Modifier
+            TagChip(name, chipModifier, symbolName = symbol)
+        }
         if (tags.size > limit) {
             KText(
                 "+${tags.size - limit}",
