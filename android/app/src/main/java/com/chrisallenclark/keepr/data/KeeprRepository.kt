@@ -69,6 +69,12 @@ class KeeprRepository(
         lastWrite?.join()
     }
 
+    /** Finishes pending writes and closes the database (tests that reset the app). */
+    suspend fun close() {
+        flush()
+        database.close()
+    }
+
     private fun persist() {
         val current = context.toRows()
         val changes = snapshot.diff(current, System.currentTimeMillis())

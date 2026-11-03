@@ -39,10 +39,18 @@ class DatabaseTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val fileName = "keepr-test.db"
 
+    private val opened = mutableListOf<KeeprDatabase>()
+
     private fun open() = androidx.room.Room.databaseBuilder(context, KeeprDatabase::class.java, fileName).build()
+        .also { opened += it }
 
     @Before fun clean() { context.deleteDatabase(fileName) }
-    @After fun tidy() { context.deleteDatabase(fileName) }
+
+    /** Close every connection before deleting the file, or the next test's open can fail on older Android. */
+    @After fun tidy() {
+        opened.forEach { it.close() }
+        context.deleteDatabase(fileName)
+    }
 
     /** Saves with one repository, then reads everything back through a brand-new one. */
     private fun roundTrip(build: (KeeprRepository) -> Unit): KeeprRepository = runBlocking {

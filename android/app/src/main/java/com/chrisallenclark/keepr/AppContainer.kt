@@ -48,8 +48,13 @@ class AppContainer private constructor(
 
         /** Tests only: forget the process-wide instance, as if the app were relaunched. */
         fun resetForTesting() {
+            // Close before forgetting: a test deletes the file next, and an
+            // open connection to a deleted file breaks the next open on older
+            // Android versions.
+            val closing = listOfNotNull(live, demo)
             live = null
             demo = null
+            kotlinx.coroutines.runBlocking { closing.forEach { it.repository.close() } }
         }
     }
 
