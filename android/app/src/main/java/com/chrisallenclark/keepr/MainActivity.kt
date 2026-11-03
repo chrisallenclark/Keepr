@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
                 }
                 val loaded by container.repository.isLoaded.collectAsState()
                 LaunchedEffect(Unit) { container.load() }
-                val state = remember { AppState(container.repository, container.notificationService, container.repository.scope) }
+                val state = remember { AppState(container.repository, container.notificationService, container.repository.scope, contacts = container.contactStore) }
                 if (!loaded) {
                     // The window's own background shows until the store is read.
                     Box(Modifier.fillMaxSize().background(KeeprTheme.colors.groupedBackground))

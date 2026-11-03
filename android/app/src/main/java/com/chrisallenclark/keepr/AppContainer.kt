@@ -2,7 +2,10 @@ package com.chrisallenclark.keepr
 
 import android.content.Context
 import com.chrisallenclark.keepr.core.persistence.SampleData
+import com.chrisallenclark.keepr.contacts.AndroidContactStore
+import com.chrisallenclark.keepr.core.services.ContactStoreProviding
 import com.chrisallenclark.keepr.core.services.NotificationScheduling
+import com.chrisallenclark.keepr.core.services.StubContactStore
 import com.chrisallenclark.keepr.core.services.StubNotificationService
 import com.chrisallenclark.keepr.data.AndroidPreferences
 import com.chrisallenclark.keepr.data.KeeprDatabase
@@ -18,6 +21,8 @@ class AppContainer private constructor(
     val repository: KeeprRepository,
     val notificationService: NotificationScheduling,
     val isDemo: Boolean,
+    /** The phone's contacts: ContactsContract when live, a fixed stub in demo runs. */
+    val contactStore: ContactStoreProviding,
 ) {
     companion object {
         @Volatile private var live: AppContainer? = null
@@ -31,16 +36,19 @@ class AppContainer private constructor(
                         KeeprRepository(KeeprDatabase.inMemory(app), MemoryPreferences()),
                         StubNotificationService(),
                         isDemo = true,
+                        contactStore = StubContactStore(),
                     ).also { demo = it }
                 }
             } else {
                 live ?: synchronized(this) {
+                    val preferences = AndroidPreferences(app)
                     live ?: AppContainer(
-                        KeeprRepository(KeeprDatabase.open(app), AndroidPreferences(app)),
+                        KeeprRepository(KeeprDatabase.open(app), preferences),
                         // Reminders arrive with the notifications phase; until then
                         // scheduling is accepted and dropped, as in iOS previews.
                         StubNotificationService(),
                         isDemo = false,
+                        contactStore = AndroidContactStore(app, preferences),
                     ).also { live = it }
                 }
             }

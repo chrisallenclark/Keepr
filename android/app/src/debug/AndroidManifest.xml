@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Debug builds only, for ContactsTest: the device tests insert and delete
+        throwaway contacts. Instrumentation runs inside the app's own process
+        under the app's UID, so the permission has to be on the app under test
+        (a test-APK manifest entry is never consulted for the app's calls).
+        Release builds, which are what people install, never request it.
+    -->
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+
+</manifest>

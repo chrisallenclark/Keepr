@@ -7,7 +7,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.chrisallenclark.keepr.core.model.ContextMode
 import com.chrisallenclark.keepr.core.model.KeeprCalendar
 import com.chrisallenclark.keepr.core.model.ModelContext
+import com.chrisallenclark.keepr.core.services.ContactChangeTracker
+import com.chrisallenclark.keepr.core.services.ContactStoreProviding
 import com.chrisallenclark.keepr.core.services.NotificationScheduling
+import com.chrisallenclark.keepr.core.services.StubContactStore
 import com.chrisallenclark.keepr.data.KeeprRepository
 import kotlinx.coroutines.CoroutineScope
 import java.time.Instant
@@ -25,8 +28,13 @@ class AppState(
     val calendar: KeeprCalendar = KeeprCalendar.current(),
     /** Fixed in screenshot runs so relative dates read the same every capture. */
     val clock: () -> Instant = Instant::now,
+    /** The phone's contacts (`\.contactStore`): the live store, or a stub in demo runs. */
+    val contacts: ContactStoreProviding = StubContactStore(),
 ) {
     val context: ModelContext get() = repository.context
+
+    /** `ContactChangeTracker.shared`: which contacts Keepr has already seen. */
+    val contactTracker: ContactChangeTracker by lazy { ContactChangeTracker(repository.preferences) }
 
     val remindersEnabled: Boolean
         get() = repository.preferences.string(com.chrisallenclark.keepr.core.persistence.PreferenceKey.REMINDERS_ENABLED) != "false"
