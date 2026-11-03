@@ -89,7 +89,8 @@ jobs:
     name: Emulator (${{ matrix.device }}, API ${{ matrix.api-level }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The reminder checks add a few minutes, including a full emulator reboot.
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:

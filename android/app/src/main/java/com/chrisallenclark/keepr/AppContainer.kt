@@ -8,6 +8,7 @@ import com.chrisallenclark.keepr.data.AndroidPreferences
 import com.chrisallenclark.keepr.data.KeeprDatabase
 import com.chrisallenclark.keepr.data.KeeprRepository
 import com.chrisallenclark.keepr.data.MemoryPreferences
+import com.chrisallenclark.keepr.notifications.AndroidNotificationService
 
 /**
  * The app's services, built once per process — `KeeprApp` + `LiveServices` on
@@ -37,9 +38,9 @@ class AppContainer private constructor(
                 live ?: synchronized(this) {
                     live ?: AppContainer(
                         KeeprRepository(KeeprDatabase.open(app), AndroidPreferences(app)),
-                        // Reminders arrive with the notifications phase; until then
-                        // scheduling is accepted and dropped, as in iOS previews.
-                        StubNotificationService(),
+                        // Real reminders over AlarmManager. Demo runs keep the
+                        // stub, so screenshots never schedule anything.
+                        AndroidNotificationService(app),
                         isDemo = false,
                     ).also { live = it }
                 }

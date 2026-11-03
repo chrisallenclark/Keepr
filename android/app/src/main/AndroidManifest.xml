@@ -5,6 +5,21 @@
         Keepr is offline-first and private: no INTERNET permission is requested.
         Permissions are added only alongside the feature that needs them.
     -->
+
+    <!-- Reminders (notifications/): see android/docs/NOTIFICATIONS.md. -->
+    <!-- Android 13+: asked only when the user turns reminders on. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Re-arms pending reminders after a reboot; alarms don't survive one. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!--
+        Exact timing when the user allows it (granted automatically on 12 and
+        13, user-controlled from 14). Never requested; without it reminders
+        are inexact. USE_EXACT_ALARM is deliberately not used: Play reserves
+        it for alarm-clock and calendar apps.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- End reminders. -->
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -23,6 +38,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Reminders: posts a notification when its alarm goes off. -->
+        <receiver
+            android:name=".notifications.ReminderReceiver"
+            android:exported="false" />
+        <!-- Reminders: sets every pending alarm again when the system forgets them. -->
+        <receiver
+            android:name=".notifications.RescheduleReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <!-- End reminders. -->
     </application>
 
 </manifest>

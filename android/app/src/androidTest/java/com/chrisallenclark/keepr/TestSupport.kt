@@ -13,12 +13,30 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import com.chrisallenclark.keepr.data.KeeprDatabase
 
-/** Starts from nothing: no database, no preferences, no in-memory container. */
+/**
+ * Starts from nothing: no database, no preferences, no reminders, no
+ * in-memory container — except that onboarding counts as done, so tests land
+ * on Today. [OnboardingTest] clears that with [showOnboardingOnNextLaunch].
+ */
 fun resetApp() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     AppContainer.resetForTesting()
     context.deleteDatabase(KeeprDatabase.FILE_NAME)
-    context.getSharedPreferences("keepr", Context.MODE_PRIVATE).edit().clear().commit()
+    com.chrisallenclark.keepr.notifications.AndroidNotificationService(context).cancelAllNow()
+    context.getSharedPreferences(com.chrisallenclark.keepr.notifications.AndroidNotificationService.STORE_NAME, Context.MODE_PRIVATE)
+        .edit().clear().commit()
+    context.getSharedPreferences("keepr", Context.MODE_PRIVATE).edit()
+        .clear()
+        .putBoolean(com.chrisallenclark.keepr.core.persistence.PreferenceKey.HAS_ONBOARDED, true)
+        .commit()
+}
+
+/** Forgets that onboarding was finished, as on a fresh install. */
+fun showOnboardingOnNextLaunch() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    context.getSharedPreferences("keepr", Context.MODE_PRIVATE).edit()
+        .remove(com.chrisallenclark.keepr.core.persistence.PreferenceKey.HAS_ONBOARDED)
+        .commit()
 }
 
 /** Launches the app the way a person does (no screenshot extras, so the real store). */

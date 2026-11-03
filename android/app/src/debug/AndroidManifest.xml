@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Debug builds only. Lets scripts/emulator-smoke.sh schedule a real
+        reminder from adb. Only callers holding DUMP (the shell) can reach it.
+    -->
+    <application>
+        <receiver
+            android:name=".notifications.DebugReminderReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="com.chrisallenclark.keepr.debug.SCHEDULE" />
+                <action android:name="com.chrisallenclark.keepr.debug.CANCEL" />
+                <action android:name="com.chrisallenclark.keepr.debug.STATUS" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

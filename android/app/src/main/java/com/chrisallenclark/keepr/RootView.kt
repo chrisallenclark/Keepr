@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +26,9 @@ import com.chrisallenclark.keepr.core.model.ContextMode
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.core.persistence.PreferenceKey
 import com.chrisallenclark.keepr.gallery.GalleryScreen
+import com.chrisallenclark.keepr.notifications.AndroidNotificationService
+import com.chrisallenclark.keepr.notifications.rescheduleRhythmReminders
+import com.chrisallenclark.keepr.ui.onboarding.OnboardingScreen
 import com.chrisallenclark.keepr.ui.components.KeeprTabBar
 import com.chrisallenclark.keepr.ui.components.TabItem
 import com.chrisallenclark.keepr.ui.screens.ComingSoonSheet
@@ -93,6 +98,9 @@ fun RootView(launch: LaunchOptions) {
     var addingPerson by remember { mutableStateOf(false) }
     var comingSoon by remember { mutableStateOf<String?>(null) }
     var sheet by remember { mutableStateOf<SheetRoute?>(null) }
+    // iOS: a full-screen cover on first launch, decided from stored state;
+    // screenshot runs skip it.
+    var showsOnboarding by remember { mutableStateOf(!launch.isDemo && !prefs.bool(PreferenceKey.HAS_ONBOARDED)) }
 
     fun push(route: Route) {
         stacks = stacks.toMutableList().also { it[selectedTab] = it[selectedTab] + route }
@@ -105,6 +113,34 @@ fun RootView(launch: LaunchOptions) {
 
     val stack = stacks[selectedTab]
     BackHandler(enabled = stack.isNotEmpty()) { pop() }
+
+    // Today's `.task`: rhythm reminders are rebuilt every time Today appears.
+    val onTodayRoot = selectedTab == 0 && stack.isEmpty()
+    LaunchedEffect(onTodayRoot) {
+        if (onTodayRoot && !launch.isDemo) state.rescheduleRhythmReminders()
+    }
+
+    // A tapped reminder opens whoever it's about: a follow-up's person on the
+    // Follow Up tab, a rhythm nudge on Today. (iOS just opens the app.)
+    val openedReminder by AndroidNotificationService.openedReminder.collectAsState()
+    LaunchedEffect(openedReminder) {
+        val identifier = openedReminder ?: return@LaunchedEffect
+        AndroidNotificationService.openedReminder.value = null
+        if (showsOnboarding) return@LaunchedEffect
+        val person = state.context.fetch<com.chrisallenclark.keepr.core.model.FollowUp>()
+            .firstOrNull { !it.isDeleted && com.chrisallenclark.keepr.core.services.FollowUpScheduler.identifier(it) == identifier }
+            ?.person
+            ?.takeIf { !it.isDeleted }
+        sheet = null
+        if (person != null) {
+            val visible = com.chrisallenclark.keepr.core.domain.PeopleEngine.visible(listOf(person), mode).isNotEmpty()
+            selectedTab = 2
+            stacks = stacks.toMutableList().also { it[2] = listOf(Route.Profile(person.id, if (visible) mode else mode.other)) }
+        } else {
+            selectedTab = 0
+            stacks = stacks.toMutableList().also { it[0] = emptyList() }
+        }
+    }
 
     if (showsGallery) {
         BackHandler { showsGallery = false }
@@ -152,6 +188,15 @@ fun RootView(launch: LaunchOptions) {
             },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+        if (showsOnboarding) {
+            OnboardingScreen(
+                modeBinding,
+                onFinish = {
+                    prefs.setBool(PreferenceKey.HAS_ONBOARDED, true)
+                    showsOnboarding = false
+                },
+            )
+        }
     }
 
     sheet?.let { current ->
