@@ -13,6 +13,9 @@ import android.content.Intent
  * triggered on a client's phone.
  */
 data class LaunchOptions(val screen: String?, val context: String?) {
+    /** Any screen request means a screenshot run: sample data in a throwaway store. */
+    val isDemo: Boolean get() = screen != null
+
     companion object {
         val None = LaunchOptions(null, null)
 
