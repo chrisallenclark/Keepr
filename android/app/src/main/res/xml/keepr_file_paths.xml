@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The only folders Keepr lends to other apps, both inside its private cache:
+    the camera writes a new photo into camera/, and a file being shared or
+    opened elsewhere is copied into shared/ first. Nothing else is reachable.
+-->
+<paths>
+    <cache-path name="camera" path="camera/" />
+    <cache-path name="shared" path="shared/" />
+</paths>

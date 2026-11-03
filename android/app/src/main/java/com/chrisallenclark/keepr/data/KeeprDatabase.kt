@@ -26,12 +26,22 @@ import androidx.room.RoomDatabase
 abstract class KeeprDatabase : RoomDatabase() {
     abstract fun dao(): KeeprDao
 
+    /**
+     * Where profile files' bytes are kept (see [FileBlobStore]). Null keeps
+     * them inline in `person_files.data`, as a database opened directly
+     * (tests) does.
+     */
+    @Volatile
+    var fileBlobs: FileBlobStore? = null
+
     companion object {
         const val FILE_NAME = "keepr.db"
 
         /** The user's own data, on disk. */
         fun open(context: Context): KeeprDatabase =
-            Room.databaseBuilder(context, KeeprDatabase::class.java, FILE_NAME).build()
+            Room.databaseBuilder(context, KeeprDatabase::class.java, FILE_NAME).build().also {
+                it.fileBlobs = DiskFileBlobStore(java.io.File(context.filesDir, DiskFileBlobStore.DIRECTORY))
+            }
 
         /**
          * A throwaway database that lives only in memory — what screenshot
@@ -39,6 +49,8 @@ abstract class KeeprDatabase : RoomDatabase() {
          * the user's own.
          */
         fun inMemory(context: Context): KeeprDatabase =
-            Room.inMemoryDatabaseBuilder(context, KeeprDatabase::class.java).build()
+            Room.inMemoryDatabaseBuilder(context, KeeprDatabase::class.java).build().also {
+                it.fileBlobs = MemoryFileBlobStore()
+            }
     }
 }

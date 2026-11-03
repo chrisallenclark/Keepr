@@ -1,6 +1,7 @@
 package com.chrisallenclark.keepr.data
 
 import com.chrisallenclark.keepr.core.model.ModelContext
+import com.chrisallenclark.keepr.core.model.PersonFile
 import com.chrisallenclark.keepr.core.persistence.KeeprStore
 import com.chrisallenclark.keepr.core.persistence.Preferences
 import kotlinx.coroutines.CoroutineScope
@@ -59,6 +60,7 @@ class KeeprRepository(
         }
         rows.buildGraph(context)
         snapshot = RowSnapshot.of(rows)
+        attachFileBlobs()
         KeeprStore.seedIfNeeded(context, preferences) // saves if it inserted anything
         _isLoaded.value = true
         _version.value++
@@ -76,15 +78,79 @@ class KeeprRepository(
     }
 
     private fun persist() {
-        val current = context.toRows()
+        val blobs = database.fileBlobs
+        val blobWrites = if (blobs != null) pendingFileBlobs(blobs) else emptyList()
+        var current = context.toRows()
+        // With a blob store, the bytes never go into the row; see FileBlobStore.
+        if (blobs != null) current = current.copy(files = current.files.map { if (it.data == null) it else it.copy(data = null) })
         val changes = snapshot.diff(current, System.currentTimeMillis())
         snapshot = RowSnapshot.of(current)
         _version.value++
-        if (changes.isEmpty) return
+        if (changes.isEmpty && blobWrites.isEmpty()) return
         val previous = lastWrite
         lastWrite = scope.launch(writer) {
             previous?.join()
-            database.dao().apply(changes)
+            // Bytes first, so a row is never on disk without its file.
+            blobWrites.forEach { (id, bytes) ->
+                blobs?.write(id, bytes)
+                writtenBlobs.add(bytes)
+            }
+            if (!changes.isEmpty) database.dao().apply(changes)
+            if (blobs != null) changes.deleted.files.forEach(blobs::delete)
+        }
+    }
+
+    // MARK: - File contents beside the database
+
+    /** Bytes handed to the writer and not yet released from memory, by identity. */
+    private val queuedBlobs: MutableSet<ByteArray> = java.util.Collections.newSetFromMap(java.util.IdentityHashMap())
+    /** Bytes the writer has put on disk; the next save stops holding them in memory. */
+    private val writtenBlobs: MutableSet<ByteArray> =
+        java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(java.util.IdentityHashMap()))
+
+    /**
+     * Files whose bytes are held in memory and not yet on disk. Bytes the
+     * writer has finished with are released here — from then on they're read
+     * back from disk when someone opens the file.
+     */
+    private fun pendingFileBlobs(blobs: FileBlobStore): List<Pair<String, ByteArray>> {
+        val writes = mutableListOf<Pair<String, ByteArray>>()
+        for (file in context.fetch<PersonFile>()) {
+            val bytes = file.heldBytes ?: continue
+            val id = file.id.toString()
+            when {
+                writtenBlobs.remove(bytes) -> {
+                    queuedBlobs.remove(bytes)
+                    file.releaseData { blobs.read(id) }
+                }
+                bytes !in queuedBlobs -> {
+                    queuedBlobs.add(bytes)
+                    writes += id to bytes
+                }
+            }
+        }
+        return writes
+    }
+
+    /**
+     * After a load: files read their bytes from disk on demand. Rows written
+     * before the blob store existed still carry bytes inline; the next save
+     * moves them out. Files on disk whose record is gone are removed.
+     */
+    private fun attachFileBlobs() {
+        val blobs = database.fileBlobs ?: return
+        val files = context.fetch<PersonFile>()
+        files.forEach { file ->
+            if (file.heldBytes == null) {
+                val id = file.id.toString()
+                file.dataSource = { blobs.read(id) }
+            }
+        }
+        val live = files.mapTo(HashSet()) { it.id.toString() }
+        val previous = lastWrite
+        lastWrite = scope.launch(writer) {
+            previous?.join()
+            blobs.ids().filter { it !in live }.forEach(blobs::delete)
         }
     }
 }

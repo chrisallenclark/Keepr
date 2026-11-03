@@ -63,7 +63,7 @@ fun ConversationNote.toRow() = ConversationNoteRow(
 fun PersonFile.toRow() = PersonFileRow(
     id = id.toString(), personId = person?.id?.toString(), sourceInteractionId = sourceInteraction?.id?.toString(),
     conversationNoteId = conversationNote?.id?.toString(), title = title, kindRaw = kindRaw,
-    fileExtension = fileExtension, data = data, thumbnailData = thumbnailData, byteCount = byteCount,
+    fileExtension = fileExtension, data = heldBytes, thumbnailData = thumbnailData, byteCount = byteCount,
     capturedAt = capturedAt.ms(), createdAt = createdAt.ms(), note = note,
 )
 
