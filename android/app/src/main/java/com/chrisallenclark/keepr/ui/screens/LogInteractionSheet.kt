@@ -104,8 +104,8 @@ fun LogInteractionSheet(person: Person, onDismiss: () -> Unit) {
     }
 
     KeeprSheet(onDismiss = onDismiss) {
+        SheetHeader("Log Interaction", onCancel = onDismiss, confirmTitle = "Save", confirmEnabled = canSave, onConfirm = ::save)
         SheetBody(Modifier.verticalScroll(rememberScrollState())) {
-            SheetHeader("Log Interaction", onCancel = onDismiss, confirmTitle = "Save", confirmEnabled = canSave, onConfirm = ::save)
             Spacer(Modifier.height(8.dp))
             GroupedSection {
                 row {

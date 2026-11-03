@@ -48,8 +48,8 @@ fun SettingsSheet(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?) {
     val sampleLoaded = SampleData.isLoaded(state.context)
 
     KeeprSheet(onDismiss = onDismiss) {
+        SheetHeader("Settings", cancelTitle = "Done", onCancel = onDismiss)
         SheetBody(Modifier.verticalScroll(rememberScrollState())) {
-            SheetHeader("Settings", cancelTitle = "Done", onCancel = onDismiss)
             Spacer(Modifier.height(8.dp))
             GroupedSection(
                 header = "Development",

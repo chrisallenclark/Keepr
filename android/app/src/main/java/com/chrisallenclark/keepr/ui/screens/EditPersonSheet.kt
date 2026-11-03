@@ -102,14 +102,14 @@ fun EditPersonSheet(person: Person?, mode: ContextMode, onDismiss: () -> Unit, o
     }
 
     KeeprSheet(onDismiss = onDismiss) {
+        SheetHeader(
+            if (person != null) "Edit Person" else "Add Person",
+            onCancel = onDismiss,
+            confirmTitle = "Save",
+            confirmEnabled = canSave,
+            onConfirm = ::save,
+        )
         SheetBody(Modifier.verticalScroll(rememberScrollState())) {
-            SheetHeader(
-                if (person != null) "Edit Person" else "Add Person",
-                onCancel = onDismiss,
-                confirmTitle = "Save",
-                confirmEnabled = canSave,
-                onConfirm = ::save,
-            )
             Spacer(Modifier.height(8.dp))
             GroupedSection {
                 row { FormTextField(givenName, { givenName = it }, "First name", capitalization = KeyboardCapitalization.Words, focusRequester = nameFocus) }

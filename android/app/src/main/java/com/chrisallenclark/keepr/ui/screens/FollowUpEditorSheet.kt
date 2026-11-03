@@ -75,14 +75,14 @@ fun FollowUpEditorSheet(person: Person, followUp: FollowUp?, onDismiss: () -> Un
     }
 
     KeeprSheet(onDismiss = onDismiss) {
+        SheetHeader(
+            if (followUp == null) "New Follow-Up" else "Edit Follow-Up",
+            onCancel = onDismiss,
+            confirmTitle = "Save",
+            confirmEnabled = title.trimmedSpaces().isNotEmpty(),
+            onConfirm = ::save,
+        )
         SheetBody(Modifier.verticalScroll(rememberScrollState())) {
-            SheetHeader(
-                if (followUp == null) "New Follow-Up" else "Edit Follow-Up",
-                onCancel = onDismiss,
-                confirmTitle = "Save",
-                confirmEnabled = title.trimmedSpaces().isNotEmpty(),
-                onConfirm = ::save,
-            )
             Spacer(Modifier.height(8.dp))
             GroupedSection {
                 row { FormTextField(title, { title = it }, "What do you need to do?", maxLines = 3, focusRequester = titleFocus) }
