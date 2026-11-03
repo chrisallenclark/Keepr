@@ -61,7 +61,7 @@ class OnboardingTest {
         val skip = listOf("Not Now", "Skip for now", "Get Started").first {
             rule.onAllNodes(hasText(it)).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onAllNodesWithText(skip).onLast().performClick()
+        rule.onAllNodesWithText(skip).onLast().tap()
     }
 
     @Test
@@ -71,9 +71,9 @@ class OnboardingTest {
         rule.tapTab("Continue")
         rule.waitForText("One switch")
         // Today's own switch sits underneath the cover; the onboarding one is drawn last.
-        rule.onAllNodesWithText("Personal").onLast().performClick()
+        rule.onAllNodesWithText("Personal").onLast().tap()
         rule.waitForText("You can switch any time.")
-        rule.onAllNodesWithText("Continue").onLast().performClick()
+        rule.onAllNodesWithText("Continue").onLast().tap()
         skipContacts()
 
         rule.waitForGone("Bring in your people")
@@ -96,7 +96,7 @@ class OnboardingTest {
         launch()
         rule.tapTab("Continue")
         rule.waitForText("One switch")
-        rule.onAllNodesWithText("Continue").onLast().performClick()
+        rule.onAllNodesWithText("Continue").onLast().tap()
         skipContacts()
         rule.waitForGone("Bring in your people")
         scenario?.close()

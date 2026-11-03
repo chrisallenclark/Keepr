@@ -168,8 +168,8 @@ class ContactsTest {
 
     private fun openImporter() {
         rule.tapTab("People")
-        rule.onNodeWithContentDescription("Add Person").performClick()
-        rule.onNodeWithText("Import from Contacts").performClick()
+        rule.onNodeWithContentDescription("Add Person").tap()
+        rule.onNodeWithText("Import from Contacts").tap()
         searchImporter()
     }
 
@@ -228,16 +228,16 @@ class ContactsTest {
 
         // People is empty, so its empty state offers the importer directly.
         rule.tapTab("People")
-        rule.first("Import from Contacts").performClick()
+        rule.first("Import from Contacts").tap()
         searchImporter()
         rule.waitForText("Ines Quillfeather")
         // Suggestions are read off the cards: Ines runs a business, Otto has family on his.
         rule.waitForText("Founder at Quill Studio")
         rule.waitForText("Listed as mother on the contact card")
 
-        rule.onNode(inImportSheet("Ines Quillfeather")).performClick()
-        rule.onNode(inImportSheet("Pax Quillfeather")).performClick()
-        rule.onNodeWithText("Add 2").performClick()
+        rule.onNode(inImportSheet("Ines Quillfeather")).tap()
+        rule.onNode(inImportSheet("Pax Quillfeather")).tap()
+        rule.onNodeWithText("Add 2").tap()
         rule.waitForGone("Add from Contacts")
         rule.waitForText("Ines Quillfeather")
         rule.waitForText("Pax Quillfeather")
@@ -257,10 +257,10 @@ class ContactsTest {
         openImporter()
         rule.waitForText("Otto Quillfeather")
         rule.waitUntil(10_000) { rule.onAllNodes(hasText("Added")).fetchSemanticsNodes().size == 2 }
-        rule.onNode(inImportSheet("Ines Quillfeather")).performClick()
-        rule.onNodeWithText("Add 0").performClick() // disabled: nothing happens
-        rule.onNode(inImportSheet("Otto Quillfeather")).performClick()
-        rule.onNodeWithText("Add 1").performClick()
+        rule.onNode(inImportSheet("Ines Quillfeather")).tap()
+        rule.onNodeWithText("Add 0").tap() // disabled: nothing happens
+        rule.onNode(inImportSheet("Otto Quillfeather")).tap()
+        rule.onNodeWithText("Add 1").tap()
         rule.waitForGone("Add from Contacts")
 
         val after = people()
@@ -279,21 +279,21 @@ class ContactsTest {
         launch()
         rule.waitForText("You're caught up.")
         rule.tapTab("People")
-        rule.onNodeWithContentDescription("Add Person").performClick()
-        rule.onNodeWithText("Add Manually").performClick()
+        rule.onNodeWithContentDescription("Add Person").tap()
+        rule.onNodeWithText("Add Manually").tap()
         rule.waitForText("Add Person")
         rule.onNodeWithContentDescription("First name").performTextInput("Pax")
         rule.onNodeWithContentDescription("Last name").performTextInput("Quillfeather")
         rule.onNodeWithContentDescription("Phone").performTextInput("(561) 555-0103")
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("Pax Quillfeather")
-        rule.onNodeWithContentDescription("Back").performClick()
+        rule.onNodeWithContentDescription("Back").tap()
 
         openImporter()
         rule.waitUntil(10_000) { rule.onAllNodes(inImportSheet("Pax Quillfeather")).fetchSemanticsNodes().isNotEmpty() }
         assertTrue(rule.onAllNodes(hasText("Added")).fetchSemanticsNodes().isEmpty())
-        rule.onNode(inImportSheet("Pax Quillfeather")).performClick()
-        rule.onNodeWithText("Add 1").performClick()
+        rule.onNode(inImportSheet("Pax Quillfeather")).tap()
+        rule.onNodeWithText("Add 1").tap()
         rule.waitForGone("Add from Contacts")
 
         val paxes = people().filter { it.fullName == "Pax Quillfeather" }
@@ -316,7 +316,7 @@ class ContactsTest {
         rule.tapTab("People")
         rule.tapTab("Today")
         rule.waitForText("2 new contacts since you last looked")
-        rule.onNodeWithText("Catch Up").performClick()
+        rule.onNodeWithText("Catch Up").tap()
         rule.waitForText("New in Contacts")
         rule.waitForText("Nadia Quillfeather")
         rule.waitForText("Remy Quillfeather")
@@ -330,12 +330,12 @@ class ContactsTest {
         assertEquals(listOf("Professional Contact"), nadia.tagList.map { it.name })
 
         // Place Remy by hand, with how they met.
-        rule.onNodeWithText("Remy Quillfeather").performClick()
+        rule.onNodeWithText("Remy Quillfeather").tap()
         rule.waitForText("New Contact")
-        rule.onNodeWithText("Current Client").performScrollTo().performClick()
+        rule.onNodeWithText("Current Client").performScrollTo().tap()
         rule.onNodeWithContentDescription("Met at the gym, introduced by Michael…").performScrollTo()
             .performTextInput("Met at the open house")
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("Everyone's placed")
 
         val remy = people().first { it.fullName == "Remy Quillfeather" }
@@ -345,7 +345,7 @@ class ContactsTest {
         assertNotNull(remy.reviewedAt)
 
         // Closing Catch Up re-counts, and Today has nothing left to raise.
-        rule.onNodeWithText("Done").performClick()
+        rule.onNodeWithText("Done").tap()
         rule.waitForGone("Everyone's placed")
         rule.waitForGone("2 new contacts since you last looked")
         rule.waitForGone("Catch Up")

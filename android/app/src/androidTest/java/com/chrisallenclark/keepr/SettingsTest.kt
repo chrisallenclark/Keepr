@@ -47,7 +47,7 @@ class SettingsTest {
         scenario = launchApp()
         rule.waitForText("You're caught up.")
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Settings").performClick()
+        rule.onNodeWithContentDescription("Settings").tap()
         rule.waitForText("Follow-up reminders")
     }
 
@@ -63,15 +63,15 @@ class SettingsTest {
     @Test
     fun limitationsPagePushesAndComesBack() {
         openSettings()
-        rule.onNodeWithText("What Keepr can't do").performScrollTo().performClick()
+        rule.onNodeWithText("What Keepr can't do").performScrollTo().tap()
         rule.waitForText("Google Play only allows that")
         rule.waitForGone("Follow-up reminders")
 
-        rule.onNodeWithContentDescription("Back").performClick()
+        rule.onNodeWithContentDescription("Back").tap()
         rule.waitForText("Follow-up reminders")
 
         // The system back gesture pops the page too, without closing Settings.
-        rule.onNodeWithText("What Keepr can't do").performScrollTo().performClick()
+        rule.onNodeWithText("What Keepr can't do").performScrollTo().tap()
         rule.waitForText("Google Play only allows that")
         rule.waitForIdle()
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
@@ -81,9 +81,9 @@ class SettingsTest {
     @Test
     fun wordingChoiceRenamesGroups() {
         openSettings()
-        rule.onNodeWithText("Call them").performScrollTo().performClick()
+        rule.onNodeWithText("Call them").performScrollTo().tap()
         rule.waitForText("Places")
-        rule.onNodeWithText("Places").performClick()
+        rule.onNodeWithText("Places").tap()
         rule.waitForText("Life Time and your training company are places")
         assertEquals("Place", prefs().getString(PreferenceKey.GROUP_LABEL, null))
     }
@@ -100,9 +100,9 @@ class SettingsTest {
             container.repository.flush()
         }
         openSettings()
-        rule.onNodeWithText("Delete All Data").performScrollTo().performClick()
+        rule.onNodeWithText("Delete All Data").performScrollTo().tap()
         rule.waitForText("Delete all Keepr data?")
-        rule.onNodeWithText("Delete Everything").performClick()
+        rule.onNodeWithText("Delete Everything").tap()
         rule.waitForGone("Delete all Keepr data?")
         rule.waitForIdle()
         assertTrue(container.repository.context.fetch<Person>().isEmpty())

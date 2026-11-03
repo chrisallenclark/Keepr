@@ -54,7 +54,7 @@ class ProcessRestartTest {
         // The overdue follow-up written before the process died is on Today…
         rule.waitForText("Book the headshots")
         // …and the person is on People.
-        rule.first("People").performClick()
+        rule.first("People").tap()
         rule.waitForText("Priya Raman")
     }
 }

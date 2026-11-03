@@ -9,6 +9,9 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import com.chrisallenclark.keepr.data.KeeprDatabase
@@ -88,11 +91,38 @@ fun ComposeTestRule.tapTab(text: String, timeoutMillis: Long = 10_000) {
     while (true) {
         waitForIdle()
         try {
-            first(text).performClick()
+            first(text).tap()
             return
         } catch (error: AssertionError) {
             if (System.currentTimeMillis() > deadline) throw error
             Thread.sleep(250)
         }
+    }
+}
+
+/**
+ * Taps through the node's accessibility click action instead of an injected
+ * touch. A touch lands wherever the node's center is on screen, so a row
+ * scrolled under the floating tab bar sends the tap to the tab bar, and a
+ * touch sent while a window is still gaining focus can be dropped. The
+ * action reaches the node's own onClick either way. Nodes without a click
+ * action still get a real touch.
+ */
+fun SemanticsNodeInteraction.tap(): SemanticsNodeInteraction {
+    val node = fetchSemanticsNode()
+    return if (node.config.contains(androidx.compose.ui.semantics.SemanticsActions.OnClick)) {
+        performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+    } else {
+        performClick()
+    }
+}
+
+/** A long press through the accessibility action, for the same reasons as [tap]. */
+fun SemanticsNodeInteraction.longTap(): SemanticsNodeInteraction {
+    val node = fetchSemanticsNode()
+    return if (node.config.contains(androidx.compose.ui.semantics.SemanticsActions.OnLongClick)) {
+        performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnLongClick)
+    } else {
+        performTouchInput { longClick() }
     }
 }

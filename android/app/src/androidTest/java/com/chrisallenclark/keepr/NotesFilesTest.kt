@@ -78,24 +78,24 @@ class NotesFilesTest {
 
     private fun addPerson(first: String, last: String) {
         rule.tapTab("People")
-        rule.onNodeWithContentDescription("Add Person").performClick()
-        rule.onNodeWithText("Add Manually").performClick()
+        rule.onNodeWithContentDescription("Add Person").tap()
+        rule.onNodeWithText("Add Manually").tap()
         rule.waitForText("Add Person")
         rule.onNodeWithContentDescription("First name").performTextInput(first)
         rule.onNodeWithContentDescription("Last name").performTextInput(last)
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("$first $last")
     }
 
     private fun openProfile(name: String) {
         rule.tapTab("People")
         rule.waitForText(name)
-        rule.first(name).performClick()
+        rule.first(name).tap()
         rule.waitForText("What You Know")
     }
 
     private fun longPress(text: String) {
-        rule.onNodeWithText(text, substring = true).performScrollTo().performTouchInput { longClick() }
+        rule.onNodeWithText(text, substring = true).performScrollTo().longTap()
     }
 
     // MARK: - Notes
@@ -107,13 +107,15 @@ class NotesFilesTest {
         addPerson("Nora", "Quinn")
 
         // Write one.
-        rule.onNodeWithText("Paste a summary or meeting notes").performScrollTo().performClick()
+        rule.onNodeWithText("Paste a summary or meeting notes").performScrollTo().tap()
         rule.waitForText("Add Note")
         rule.onNodeWithContentDescription("Paste the summary, or type what was said.")
             .performTextInput("They want the annual plan and a March start.")
         rule.onNodeWithContentDescription("Title").performScrollTo().performTextReplacement("Pricing call")
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("Pricing call")
+        // Cards start collapsed, as on iOS; a tap shows the write-up.
+        rule.onNodeWithText("Pricing call").tap()
         rule.waitForText("They want the annual plan", timeoutMillis = 5_000)
 
         // It's read back from disk.
@@ -123,23 +125,26 @@ class NotesFilesTest {
 
         // Edit it from the card's menu.
         longPress("Pricing call")
-        rule.onNodeWithText("Edit").performClick()
+        rule.onNodeWithText("Edit").tap()
         rule.waitForText("Edit Note")
         rule.onNodeWithContentDescription("Paste the summary, or type what was said.")
             .performTextReplacement("Annual plan, starting in April.")
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
+        rule.waitForGone("Edit Note")
+        rule.onNodeWithText("Pricing call").tap()
         rule.waitForText("Annual plan, starting in April.")
         rule.waitForGone("They want the annual plan and a March start.")
 
         restart()
         openProfile("Nora Quinn")
+        rule.onNodeWithText("Pricing call").performScrollTo().tap()
         rule.waitForText("Annual plan, starting in April.")
 
         // Delete it, confirming first.
         longPress("Pricing call")
-        rule.onNodeWithText("Delete").performClick()
+        rule.onNodeWithText("Delete").tap()
         rule.waitForText("Delete this note?")
-        rule.first("Delete").performClick()
+        rule.first("Delete").tap()
         rule.waitForGone("Pricing call")
         rule.onNodeWithText("Paste a summary or meeting notes").performScrollTo()
 
@@ -157,37 +162,37 @@ class NotesFilesTest {
         rule.waitForText("You're caught up.")
         addPerson("Theo", "Banks")
 
-        rule.onNodeWithText("Add one thing").performScrollTo().performClick()
+        rule.onNodeWithText("Add one thing").performScrollTo().tap()
         rule.onNodeWithContentDescription("Something worth remembering").performTextInput("Keeps a sailboat at the marina")
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("Keeps a sailboat at the marina")
 
-        rule.onNodeWithText("See everything", substring = true).performScrollTo().performClick()
+        rule.onNodeWithText("See everything", substring = true).performScrollTo().tap()
         rule.waitForText("Search what you know")
         rule.waitForText("Keeps a sailboat at the marina")
 
         // Edit
         longPress("Keeps a sailboat")
-        rule.onNodeWithText("Edit").performClick()
+        rule.onNodeWithText("Edit").tap()
         rule.onNodeWithContentDescription("Something worth remembering").performTextReplacement("Keeps two sailboats at the marina")
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("Keeps two sailboats at the marina")
 
         // Move to another shelf
         longPress("Keeps two sailboats")
-        rule.onNodeWithText("Move to…").performClick()
+        rule.onNodeWithText("Move to…").tap()
         rule.waitForText("Health")
-        rule.onNodeWithText("Health").performClick()
+        rule.onNodeWithText("Health").tap()
         rule.waitForText("Health")
 
         // Archive, then put it back
         longPress("Keeps two sailboats")
-        rule.onNodeWithText("Archive").performClick()
+        rule.onNodeWithText("Archive").tap()
         rule.waitForText("Archived")
         rule.waitForGone("Keeps two sailboats at the marina")
-        rule.onNodeWithText("Show").performClick()
+        rule.onNodeWithText("Show").tap()
         longPress("Keeps two sailboats")
-        rule.onNodeWithText("Restore").performClick()
+        rule.onNodeWithText("Restore").tap()
         rule.waitForGone("Archived")
         rule.waitForText("Keeps two sailboats at the marina")
 
@@ -195,12 +200,12 @@ class NotesFilesTest {
         restart()
         openProfile("Theo Banks")
         rule.waitForText("Keeps two sailboats at the marina")
-        rule.onNodeWithText("See everything", substring = true).performScrollTo().performClick()
+        rule.onNodeWithText("See everything", substring = true).performScrollTo().tap()
         rule.waitForText("Search what you know")
 
         // Delete
         longPress("Keeps two sailboats")
-        rule.onNodeWithText("Delete").performClick()
+        rule.onNodeWithText("Delete").tap()
         rule.waitForText("Nothing recorded yet")
     }
 
@@ -240,16 +245,16 @@ class NotesFilesTest {
 
         // The profile's card opens to the Files screen, which lists both.
         rule.waitForText("2 files")
-        rule.onNodeWithText("2 files").performScrollTo().performClick()
-        rule.onNodeWithText("Open Files").performScrollTo().performClick()
+        rule.onNodeWithText("2 files").performScrollTo().tap()
+        rule.onNodeWithText("Open Files").performScrollTo().tap()
         rule.waitForText("Files are stored on this device only", timeoutMillis = 5_000)
         rule.waitForText("Treatment plan")
         rule.waitForText("Photo ·")
 
         // The PDF previews, page by page.
-        rule.onNodeWithText("Treatment plan").performClick()
+        rule.onNodeWithText("Treatment plan").tap()
         waitForDescription("Page 1 of 2")
-        rule.onNodeWithText("Done").performClick()
+        rule.onNodeWithText("Done").tap()
 
         // After a restart the bytes come back from app-private storage, not the database row.
         restart()
@@ -264,12 +269,12 @@ class NotesFilesTest {
         assertArrayEquals(pdfBytes, file.data)
         assertTrue(File(File(context.filesDir, DiskFileBlobStore.DIRECTORY), file.id.toString()).isFile)
 
-        rule.first("Iris Park").performClick()
+        rule.first("Iris Park").tap()
         rule.waitForText("2 files")
-        rule.onNodeWithText("2 files").performScrollTo().performClick()
-        rule.onNodeWithText("Open Files").performScrollTo().performClick()
+        rule.onNodeWithText("2 files").performScrollTo().tap()
+        rule.onNodeWithText("Open Files").performScrollTo().tap()
         rule.waitForText("Treatment plan")
-        rule.onNodeWithText("Treatment plan").performClick()
+        rule.onNodeWithText("Treatment plan").tap()
         waitForDescription("Page 1 of 2")
     }
 

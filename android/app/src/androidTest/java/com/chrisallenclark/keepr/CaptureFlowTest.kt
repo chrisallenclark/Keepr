@@ -44,12 +44,12 @@ class CaptureFlowTest {
     /** Adds someone from People and leaves their profile open. */
     private fun addPerson(first: String, last: String) {
         rule.tapTab("People")
-        rule.onNodeWithContentDescription("Add Person").performClick()
-        rule.onNodeWithText("Add Manually").performClick()
+        rule.onNodeWithContentDescription("Add Person").tap()
+        rule.onNodeWithText("Add Manually").tap()
         rule.waitForText("Add Person")
         rule.onNodeWithContentDescription("First name").performTextInput(first)
         rule.onNodeWithContentDescription("Last name").performTextInput(last)
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("$first $last")
     }
 
@@ -57,7 +57,7 @@ class CaptureFlowTest {
         rule.tapTab("Today")
         rule.waitForText("Good ")
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Quick Capture").performClick()
+        rule.onNodeWithContentDescription("Quick Capture").tap()
         rule.waitForText("Stays on your device.")
     }
 
@@ -71,14 +71,14 @@ class CaptureFlowTest {
     fun quickCaptureForAnExistingPersonFilesAFollowUpAndMemories() {
         launch()
         addPerson("Jake", "Martinez")
-        rule.onNodeWithContentDescription("Back").performClick()
+        rule.onNodeWithContentDescription("Back").tap()
 
         openQuickCapture()
         rule.onNodeWithContentDescription("What happened?").performTextInput(
             "Talked to Jake at Life Time. He owns a roofing company, wants to lose 20 pounds " +
                 "and said to text him next week about training.",
         )
-        rule.onNodeWithText("Next").performClick()
+        rule.onNodeWithText("Next").tap()
 
         // The review preselects Jake and shows what was found.
         rule.waitForText("Review")
@@ -86,7 +86,7 @@ class CaptureFlowTest {
         rule.waitForText("Owns a roofing company")
         rule.waitForText("Text him next week about training")
         assertAbsent("Choose someone")
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForGone("Turn off anything that isn't worth keeping.")
 
         // The follow-up is on the Follow Up tab…
@@ -96,7 +96,7 @@ class CaptureFlowTest {
         // …and the facts are on his profile.
         rule.tapTab("People")
         rule.waitForText("Jake Martinez")
-        rule.first("Jake Martinez").performClick()
+        rule.first("Jake Martinez").tap()
         rule.waitForText("Owns a roofing company")
         rule.waitForText("Wants to lose 20 pounds")
     }
@@ -106,16 +106,16 @@ class CaptureFlowTest {
         launch()
         addPerson("Priya", "Shah")
 
-        rule.onNodeWithText("Brain dump what you know").performScrollTo().performClick()
+        rule.onNodeWithText("Brain dump what you know").performScrollTo().tap()
         rule.waitForText("Sort It Out")
         rule.onNodeWithContentDescription("Everything you know about them.").performTextInput(
             "Two kids, Mia and Leo\nTraining for a marathon in April",
         )
-        rule.onNodeWithText("Sort It Out").performClick()
+        rule.onNodeWithText("Sort It Out").tap()
 
         rule.waitForText("Keep What Matters")
         rule.waitForText("2 found")
-        rule.onNodeWithText("Save 2").performClick()
+        rule.onNodeWithText("Save 2").tap()
         rule.waitForGone("Keep What Matters")
 
         rule.waitForText("Two kids, Mia and Leo")
@@ -128,24 +128,24 @@ class CaptureFlowTest {
         addPerson("Sam", "Rivera")
 
         // Brain dump, then Cancel.
-        rule.onNodeWithText("Brain dump what you know").performScrollTo().performClick()
+        rule.onNodeWithText("Brain dump what you know").performScrollTo().tap()
         rule.waitForText("Sort It Out")
         rule.onNodeWithContentDescription("Everything you know about them.").performTextInput("Allergic to peanuts")
-        rule.onNodeWithText("Cancel").performClick()
+        rule.onNodeWithText("Cancel").tap()
         rule.waitForGone("Sort It Out")
         assertAbsent("Allergic to peanuts")
-        rule.onNodeWithContentDescription("Back").performClick()
+        rule.onNodeWithContentDescription("Back").tap()
 
         // Quick capture as far as the review, back, then Cancel.
         openQuickCapture()
         rule.onNodeWithContentDescription("What happened?").performTextInput(
             "Talked to Sam about the contract. He has a dog named Rex and said to call him tomorrow.",
         )
-        rule.onNodeWithText("Next").performClick()
+        rule.onNodeWithText("Next").tap()
         rule.waitForText("Review")
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("Back").tap()
         rule.waitForText("Stays on your device.")
-        rule.onNodeWithText("Cancel").performClick()
+        rule.onNodeWithText("Cancel").tap()
         rule.waitForGone("Stays on your device.")
 
         // Nothing landed anywhere.
@@ -153,7 +153,7 @@ class CaptureFlowTest {
         rule.waitForText("Nothing to follow up on")
         rule.tapTab("People")
         rule.waitForText("Sam Rivera")
-        rule.first("Sam Rivera").performClick()
+        rule.first("Sam Rivera").tap()
         rule.waitForText("Brain dump what you know")
         assertAbsent("Rex")
         assertAbsent("Talked to Sam")

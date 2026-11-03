@@ -208,6 +208,10 @@ else
   else
     echo "Alarms registered for the app:"
     adb shell dumpsys alarm | tr -d '\r' | grep -iF "$PACKAGE" | head -20 || true
+    echo "Installed: $(adb shell pm list packages "$PACKAGE" | tr -d '\r')"
+    echo "Package stopped state: $(adb shell dumpsys package "$PACKAGE" | tr -d '\r' | grep -o 'stopped=[a-z]*' | head -1)"
+    echo "Boot broadcasts and Keepr log lines since the reboot:"
+    adb logcat -d -b main -b system | tr -d '\r' | grep -iE "BOOT_COMPLETED|keepr|RescheduleReceiver" | tail -40 || true
     fail "(c) did not fire within 240s of the reboot"
   fi
 fi

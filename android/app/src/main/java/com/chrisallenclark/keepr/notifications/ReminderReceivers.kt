@@ -13,6 +13,7 @@ class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != AndroidNotificationService.ACTION_FIRE) return
         val identifier = intent.getStringExtra(AndroidNotificationService.EXTRA_IDENTIFIER) ?: return
+        android.util.Log.i("KeeprReminders", "Alarm fired for a reminder")
         AndroidNotificationService(context).deliver(identifier)
     }
 }
@@ -24,6 +25,7 @@ class ReminderReceiver : BroadcastReceiver() {
  */
 class RescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        android.util.Log.i("KeeprReminders", "Re-arming reminders after ${intent.action}")
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,

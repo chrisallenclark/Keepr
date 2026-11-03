@@ -39,13 +39,13 @@ class MainFlowTest {
 
     private fun addPerson(first: String, last: String, company: String? = null) {
         rule.tapTab("People")
-        rule.onNodeWithContentDescription("Add Person").performClick()
-        rule.onNodeWithText("Add Manually").performClick()
+        rule.onNodeWithContentDescription("Add Person").tap()
+        rule.onNodeWithText("Add Manually").tap()
         rule.waitForText("Add Person")
         rule.onNodeWithContentDescription("First name").performTextInput(first)
         rule.onNodeWithContentDescription("Last name").performTextInput(last)
         if (company != null) rule.onNodeWithContentDescription("Company").performTextInput(company)
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("$first $last")
     }
 
@@ -63,7 +63,7 @@ class MainFlowTest {
         addPerson("Ada", "Lovelace", company = "Analytical Engines")
 
         // Back on People, the new person is listed.
-        rule.onNodeWithContentDescription("Back").performClick()
+        rule.onNodeWithContentDescription("Back").tap()
         rule.waitForText("Ada Lovelace")
 
         // Close the app completely and come back: the data is read from disk.
@@ -83,16 +83,16 @@ class MainFlowTest {
         addPerson("Sarah", "Miller")
 
         // Plan a follow-up from the profile.
-        rule.onNodeWithText("Add a follow-up").performClick()
+        rule.onNodeWithText("Add a follow-up").tap()
         rule.onNodeWithContentDescription("What do you need to do?").performTextInput("Send the training block")
-        rule.onNodeWithText("Tomorrow").performClick()
-        rule.onNodeWithText("Save").performClick()
+        rule.onNodeWithText("Tomorrow").tap()
+        rule.onNodeWithText("Save").tap()
         rule.waitForText("Send the training block")
 
         // It's on the Follow Up tab, and completing it moves it out of the open list.
         rule.tapTab("Follow Up")
         rule.waitForText("Send the training block")
-        rule.onNodeWithContentDescription("Mark done").performClick()
+        rule.onNodeWithContentDescription("Mark done").tap()
         rule.waitForGone("Send the training block")
     }
 
@@ -102,12 +102,12 @@ class MainFlowTest {
         rule.waitForText("You're caught up.")
         addPerson("Jake", "Martinez", company = "Martinez Roofing")
 
-        rule.onNodeWithText("Log").performClick()
+        rule.onNodeWithText("Log").tap()
         rule.waitForText("Log Interaction")
         rule.onNodeWithContentDescription("Talked about…").performTextInput("Wants to start training before the wedding")
         rule.onNodeWithContentDescription("Something to remember").performTextInput("Daughter's wedding in June")
-        rule.onNodeWithText("Add").performClick()
-        rule.first("Save").performClick()
+        rule.onNodeWithText("Add").tap()
+        rule.first("Save").tap()
         rule.waitForText("Wants to start training before the wedding")
         rule.waitForText("Daughter's wedding in June")
 
@@ -122,13 +122,13 @@ class MainFlowTest {
         launchApp()
         rule.waitForText("You're caught up.")
         addPerson("Bea", "Business")
-        rule.onNodeWithContentDescription("Back").performClick()
+        rule.onNodeWithContentDescription("Back").tap()
         rule.waitForText("Bea Business")
 
         // Personal hides a business-only person; switching back shows them again.
-        rule.onNodeWithText("Personal").performClick()
+        rule.onNodeWithText("Personal").tap()
         rule.waitForGone("Bea Business")
-        rule.onNodeWithText("Business").performClick()
+        rule.onNodeWithText("Business").tap()
         rule.waitForText("Bea Business")
     }
 
@@ -137,10 +137,10 @@ class MainFlowTest {
         launchApp()
         rule.waitForText("You're caught up.")
         addPerson("Dana", "Whitfield")
-        rule.onNodeWithContentDescription("More").performClick()
-        rule.onNodeWithText("Delete Person").performClick()
+        rule.onNodeWithContentDescription("More").tap()
+        rule.onNodeWithText("Delete Person").tap()
         rule.waitForText("Delete Dana Whitfield?")
-        rule.first("Delete").performClick()
+        rule.first("Delete").tap()
         rule.waitForGone("Dana Whitfield")
     }
 }
