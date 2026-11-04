@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +41,12 @@ fun KeeprSheet(
     val colors = KeeprTheme.colors
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        // A full-height sheet stops below the status bar with a sliver of the
+        // screen behind showing, as an iOS page sheet does; without this the
+        // clock draws over the sheet's buttons.
+        modifier = Modifier
+            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
+            .padding(top = 10.dp),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = Radius.sheet, topEnd = Radius.sheet),
         containerColor = colors.groupedBackground,

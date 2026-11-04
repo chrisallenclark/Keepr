@@ -196,8 +196,9 @@ object LinkRules {
      */
     fun explanation(person: Person, selected: Person?, role: LinkRole): String {
         if (role.name.isEmpty()) return " "
-        val them = selected?.displayName ?: "They"
-        return "$them shows up as ${role.name} on ${person.displayName}'s profile, " +
+        // iOS reads "They shows up…" before anyone is picked; say it properly.
+        val them = selected?.displayName?.let { "$it shows" } ?: "They show"
+        return "$them up as ${role.name} on ${person.displayName}'s profile, " +
             "and ${person.displayName} shows up as ${role.inverse} on theirs."
     }
 
