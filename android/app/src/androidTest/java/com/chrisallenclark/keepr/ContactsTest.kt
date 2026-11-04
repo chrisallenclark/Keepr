@@ -139,6 +139,16 @@ class ContactsTest {
         )
         insertContact("Otto", "Quillfeather", phone = "(561) 555-0102", mother = "Greta Quillfeather")
         insertContact("Pax", "Quillfeather", phone = "(561) 555-0103")
+        // The provider aggregates raw contacts a moment after the insert; the
+        // importer reads once when it opens, so wait until all three are readable.
+        val store = AndroidContactStore(app, MemoryPreferences())
+        val deadline = System.currentTimeMillis() + 15_000
+        val family = setOf("Ines Quillfeather", "Otto Quillfeather", "Pax Quillfeather")
+        while (System.currentTimeMillis() < deadline) {
+            val names = runBlocking { store.fetchContacts() }.map { it.fullName }.toSet()
+            if (names.containsAll(family)) break
+            Thread.sleep(200)
+        }
     }
 
     /** Reads contacts until [name] shows up (aggregation can trail the insert slightly). */
