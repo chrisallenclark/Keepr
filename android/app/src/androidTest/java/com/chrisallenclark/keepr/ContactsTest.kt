@@ -171,11 +171,14 @@ class ContactsTest {
     /**
      * The import list is lazy, so on a small screen a contact further down
      * isn't built until it's scrolled to. The sheet's list is the last
-     * scrollable list on screen (the sheet's window comes after the screen's).
+     * The sheet's window comes after the screen's, so its list is the last match.
      */
     private fun scrollImporterTo(name: String) {
-        rule.onAllNodes(androidx.compose.ui.test.hasScrollToNodeAction()).onLast()
-            .performScrollToNode(hasText(name))
+        // The contact list is the lazy list (it can scroll to an index) holding the fixtures.
+        rule.onAllNodes(
+            androidx.compose.ui.test.hasScrollToIndexAction() and
+                hasAnyDescendant(hasText("Quillfeather", substring = true)),
+        ).onLast().performScrollToNode(hasText(name))
     }
 
     private fun pickInImporter(name: String) {
@@ -312,7 +315,7 @@ class ContactsTest {
         rule.onNodeWithContentDescription("Back").tap()
 
         openImporter()
-        rule.waitUntil(10_000) { rule.onAllNodes(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10_000) { rule.onAllNodes(androidx.compose.ui.test.hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() }
         scrollImporterTo("Pax Quillfeather")
         assertTrue(rule.onAllNodes(hasText("Added")).fetchSemanticsNodes().isEmpty())
         pickInImporter("Pax Quillfeather")
