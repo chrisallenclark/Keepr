@@ -274,7 +274,11 @@ class ContactsTest {
         // Again: the two already in Keepr show as added and can't be picked.
         openImporter()
         rule.waitForText("Otto Quillfeather")
-        rule.waitUntil(10_000) { rule.onAllNodes(hasText("Added")).fetchSemanticsNodes().size == 2 }
+        // Each of the two is marked; on a small screen they aren't on screen at once.
+        for (name in listOf("Ines Quillfeather", "Pax Quillfeather")) {
+            scrollImporterTo(name)
+            rule.waitUntil(10_000) { rule.onAllNodes(hasText("Added")).fetchSemanticsNodes().isNotEmpty() }
+        }
         pickInImporter("Ines Quillfeather")
         rule.onNodeWithText("Add 0").tap() // disabled: nothing happens
         pickInImporter("Otto Quillfeather")

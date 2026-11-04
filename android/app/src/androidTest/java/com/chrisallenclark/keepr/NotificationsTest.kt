@@ -75,6 +75,15 @@ class NotificationsTest {
         throw AssertionError("Reminder \"$tag\" was never posted. Pending: ${service.pendingIdentifiers()}")
     }
 
+    private fun waitForRemoved(tag: String, timeoutMillis: Long = 5_000) {
+        val deadline = SystemClock.uptimeMillis() + timeoutMillis
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (posted(tag).isEmpty()) return
+            Thread.sleep(100)
+        }
+        throw AssertionError("Reminder \"$tag\" was still showing ${timeoutMillis}ms after it was cancelled")
+    }
+
     @Test
     fun grantedPermissionReadsAsAuthorized() {
         assertEquals(NotificationAuthorizationStatus.AUTHORIZED, runBlocking { service.authorizationStatus() })
@@ -119,7 +128,8 @@ class NotificationsTest {
         service.scheduleNow(reminder("followup-TEST-DELIVERED"))
         waitForPosted("followup-TEST-DELIVERED")
         runBlocking { service.cancel("followup-TEST-DELIVERED") }
-        assertTrue(posted("followup-TEST-DELIVERED").isEmpty())
+        // NotificationManager removes a posted notification asynchronously.
+        waitForRemoved("followup-TEST-DELIVERED")
     }
 
     @Test
