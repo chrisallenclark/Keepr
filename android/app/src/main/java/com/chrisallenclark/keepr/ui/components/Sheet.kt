@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,7 +47,7 @@ fun KeeprSheet(
         // screen behind showing, as an iOS page sheet does; without this the
         // clock draws over the sheet's buttons.
         modifier = Modifier
-            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
+            .windowInsetsPadding(WindowInsets.statusBars)
             .padding(top = 10.dp),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = Radius.sheet, topEnd = Radius.sheet),
