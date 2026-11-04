@@ -89,8 +89,10 @@ fun SettingsSheet(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?) {
     var page by rememberSaveable { mutableStateOf(SettingsPage.MAIN) }
     KeeprSheet(onDismiss = onDismiss) {
         // The sheet is its own window, so back has to be handled inside it
-        // (outside, the sheet would close instead).
-        BackHandler(enabled = page != SettingsPage.MAIN) { page = SettingsPage.MAIN }
+        // (outside, the sheet would close instead). Composed only while there
+        // is a step to go back to, so its callback is registered after the
+        // sheet's own dismiss callback and always takes priority.
+        if (page != SettingsPage.MAIN) BackHandler { page = SettingsPage.MAIN }
         AnimatedContent(
             targetState = page,
             transitionSpec = {

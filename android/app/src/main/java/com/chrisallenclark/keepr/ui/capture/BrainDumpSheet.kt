@@ -138,8 +138,10 @@ fun BrainDumpSheet(person: Person, onDismiss: () -> Unit, initialText: String = 
 
     KeeprSheet(onDismiss = onDismiss) {
         // The sheet is its own window, so back has to be handled inside it
-        // (outside, the sheet would close instead).
-        BackHandler(enabled = hasSorted) { hasSorted = false }
+        // (outside, the sheet would close instead). Composed only while there
+        // is a step to go back to, so its callback is registered after the
+        // sheet's own dismiss callback and always takes priority.
+        if (hasSorted) BackHandler { hasSorted = false }
         if (!hasSorted) {
             SheetHeader(
                 "Brain Dump",

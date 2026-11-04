@@ -116,8 +116,10 @@ fun QuickCaptureSheet(mode: ContextMode, onDismiss: () -> Unit) {
 
     KeeprSheet(onDismiss = onDismiss) {
         // The sheet is its own window, so back has to be handled inside it
-        // (outside, the sheet would close instead).
-        BackHandler(enabled = step == CaptureStep.REVIEW) { step = CaptureStep.CAPTURE }
+        // (outside, the sheet would close instead). Composed only while there
+        // is a step to go back to, so its callback is registered after the
+        // sheet's own dismiss callback and always takes priority.
+        if (step == CaptureStep.REVIEW) BackHandler { step = CaptureStep.CAPTURE }
         when (step) {
             CaptureStep.CAPTURE -> {
                 SheetHeader(
