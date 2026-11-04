@@ -110,6 +110,9 @@ fun ComposeTestRule.tapTab(text: String, timeoutMillis: Long = 10_000) {
  */
 fun SemanticsNodeInteraction.tap(): SemanticsNodeInteraction {
     val node = fetchSemanticsNode()
+    // A disabled control ignores a real touch; the accessibility action
+    // doesn't check, so mirror the touch and do nothing.
+    if (node.config.contains(SemanticsProperties.Disabled)) return this
     return if (node.config.contains(androidx.compose.ui.semantics.SemanticsActions.OnClick)) {
         performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
     } else {
