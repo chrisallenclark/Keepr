@@ -1,5 +1,6 @@
 package com.chrisallenclark.keepr.ui.contacts
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -300,7 +301,8 @@ private fun ContactList(
 ) {
     val colors = KeeprTheme.colors
     val typography = KeeprTheme.typography
-    LazyColumn(modifier.fillMaxWidth()) {
+    // Tagged so device tests can scroll this list rather than a chip row.
+    LazyColumn(modifier.fillMaxWidth().testTag("contactList")) {
         if (access == ContactAccess.LIMITED) {
             item(key = "limited") {
                 GroupedSection {
