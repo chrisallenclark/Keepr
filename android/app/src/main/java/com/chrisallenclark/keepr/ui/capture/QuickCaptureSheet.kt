@@ -1,5 +1,6 @@
 package com.chrisallenclark.keepr.ui.capture
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -114,6 +115,9 @@ fun QuickCaptureSheet(mode: ContextMode, onDismiss: () -> Unit) {
     }
 
     KeeprSheet(onDismiss = onDismiss) {
+        // The sheet is its own window, so back has to be handled inside it
+        // (outside, the sheet would close instead).
+        BackHandler(enabled = step == CaptureStep.REVIEW) { step = CaptureStep.CAPTURE }
         when (step) {
             CaptureStep.CAPTURE -> {
                 SheetHeader(

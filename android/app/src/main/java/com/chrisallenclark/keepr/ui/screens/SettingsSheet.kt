@@ -87,9 +87,10 @@ private enum class OrganizingEditor { RELATIONSHIP_TYPES, GROUPS }
 @Composable
 fun SettingsSheet(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?) {
     var page by rememberSaveable { mutableStateOf(SettingsPage.MAIN) }
-    BackHandler(enabled = page != SettingsPage.MAIN) { page = SettingsPage.MAIN }
-
     KeeprSheet(onDismiss = onDismiss) {
+        // The sheet is its own window, so back has to be handled inside it
+        // (outside, the sheet would close instead).
+        BackHandler(enabled = page != SettingsPage.MAIN) { page = SettingsPage.MAIN }
         AnimatedContent(
             targetState = page,
             transitionSpec = {

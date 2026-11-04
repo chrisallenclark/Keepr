@@ -1,5 +1,6 @@
 package com.chrisallenclark.keepr.ui.capture
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -136,6 +137,9 @@ fun BrainDumpSheet(person: Person, onDismiss: () -> Unit, initialText: String = 
     }
 
     KeeprSheet(onDismiss = onDismiss) {
+        // The sheet is its own window, so back has to be handled inside it
+        // (outside, the sheet would close instead).
+        BackHandler(enabled = hasSorted) { hasSorted = false }
         if (!hasSorted) {
             SheetHeader(
                 "Brain Dump",

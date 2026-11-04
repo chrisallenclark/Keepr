@@ -250,6 +250,7 @@ class ContactsTest {
         rule.waitForText("Ines Quillfeather")
         // Suggestions are read off the cards: Ines runs a business, Otto has family on his.
         rule.waitForText("Founder at Quill Studio")
+        scrollImporterTo("Otto Quillfeather")
         rule.waitForText("Listed as mother on the contact card")
 
         pickInImporter("Ines Quillfeather")
