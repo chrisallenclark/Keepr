@@ -283,7 +283,8 @@ class ContactsTest {
 
         // Again: the two already in Keepr show as added and can't be picked.
         openImporter()
-        rule.waitForText("Otto Quillfeather")
+        rule.waitUntil(10_000) { rule.onAllNodes(androidx.compose.ui.test.hasTestTag("contactList")).fetchSemanticsNodes().isNotEmpty() }
+        scrollImporterTo("Otto Quillfeather")
         // Each of the two is marked; on a small screen they aren't on screen at once.
         for (name in listOf("Ines Quillfeather", "Pax Quillfeather")) {
             scrollImporterTo(name)
