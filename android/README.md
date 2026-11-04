@@ -7,28 +7,30 @@ look.
 
 Everything Android lives in this folder. Nothing here touches the iOS project.
 
-## Status: Phase 2 — working app on local data
+## Status: Phase 3 — iOS feature parity
 
-The four tabs, profiles and editors run on real, saved data:
+Everything the iPhone app does, on local data:
 
-* **Today** — needs attention, waiting on a reply, time to reach out, upcoming, going quiet, recent; swipe to complete, snooze, mark reached out or replied.
-* **People** — Business/Personal, search, type and group chips with live counts, five sorts, A–Z index, swipe to favorite, long-press to message/call/email, select mode with bulk changes.
-* **Follow Up** — overdue / today / this week / later / completed; complete, reopen, snooze, edit, delete.
-* **Search** — names, companies, types, memories, interactions, notes, files and follow-ups, grouped by why each person matched.
-* **Profiles** — add, edit and delete people; log interactions with facts to remember and a follow-up; add follow-ups, memories, groups and what they do; rhythm ("reach out every…"); connections and details.
+* **Today** — needs attention, waiting on a reply, time to reach out, upcoming, going quiet, recent, and the Catch Up row for new or unsorted contacts.
+* **People** — Business/Personal, search, type and group chips with live counts, five sorts, A–Z index, swipe to favorite, long-press actions, select mode with bulk changes and "Link These Two".
+* **Follow Up** and **Search** — as in Phase 2.
+* **Quick Capture** — write what happened; Keepr works out who it's about, what to remember and what to follow up on, and you review before saving.
+* **Brain Dump** — paste or type everything you know about someone; keep the facts that matter, sorted into categories.
+* **Profiles** — notes (write, edit, pin, pull facts, delete), files (photos from the camera or library, PDFs and any document; preview, rename, share, delete), the full memory library, groups, connections, rhythm, details.
+* **Contacts** — import from the phone's address book with suggestions and no duplicates; Catch Up to accept or categorize new contacts.
+* **Organizing** — create and edit groups (with your own word for them), relationship types and symbols, and links between people.
+* **Reminders** — local notifications for follow-ups and rhythms; they survive the app closing and a reboot. See `docs/NOTIFICATIONS.md` for Android's limits.
+* **Onboarding and Settings** — the iOS first-run pages and every Settings section.
 
-Data is stored with Room on the phone only and survives restarts. Screenshot runs use a
-separate in-memory database with the sample relationships, never the user's own.
-
-Not yet on Android (next phases): Quick Capture, Brain Dump, conversation notes and files,
-contact import and Catch Up, reminders, the group/type/link editors, onboarding and the rest of
-Settings.
+Data is stored with Room on the phone only (file contents in app-private storage) and survives
+restarts. Screenshot runs use a separate in-memory database with the sample relationships,
+never the user's own.
 
 ### Code layout
 
 | | |
 |---|---|
-| `core/` | Plain Kotlin, no Android: the nine records, all business logic, and the iOS test suite translated test for test (326 tests, plus date-detector tests). Builds and tests anywhere: `gradle -p core test`. |
+| `core/` | Plain Kotlin, no Android: the nine records, all business logic, and the iOS test suite translated test for test (326 tests) plus Android-side tests for capture, notes/files, contacts and organizing (403 in all). Builds and tests anywhere: `gradle -p core test`. |
 | `app/` | The Android app: Room database (`data/`), design system (`ui/components`, `ui/theme`), screens (`ui/screens`), on-device tests (`androidTest/`). |
 
 ### How the iOS look is reproduced
