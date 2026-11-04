@@ -45,10 +45,20 @@ class SettingsTest {
 
     private fun openSettings() {
         scenario = launchApp()
-        rule.waitForText("You're caught up.")
+        // Today's greeting, whatever else Today shows (a test may have added someone).
+        rule.waitForText("Good ")
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Settings").tap()
-        rule.waitForText("Follow-up reminders")
+        // A tap in the first moments after launch can be lost while the window
+        // settles; try again rather than fail on the first one.
+        repeat(3) { attempt ->
+            rule.onNodeWithContentDescription("Settings").tap()
+            try {
+                rule.waitForText("Follow-up reminders", timeoutMillis = 5_000)
+                return
+            } catch (missed: AssertionError) {
+                if (attempt == 2) throw missed
+            }
+        }
     }
 
     private fun prefs() = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("keepr", Context.MODE_PRIVATE)

@@ -49,9 +49,14 @@ class OnboardingTest {
 
     private fun prefs() = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("keepr", Context.MODE_PRIVATE)
 
+    /**
+     * The system back gesture, delivered through the activity's back
+     * dispatcher (what the gesture and the Back key both end up calling). An
+     * injected key event can be dropped on newer emulators while focus settles.
+     */
     private fun pressBack() {
         rule.waitForIdle()
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         rule.waitForIdle()
     }
 

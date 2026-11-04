@@ -202,6 +202,14 @@ adb shell input keyevent KEYCODE_HOME
 # pending list without the app being opened. If boot outlasts the fire time,
 # the re-arm delivers it as a missed reminder; either way it must post.
 ID_BOOT="smoke-boot-$RUN_ID"
+# Step (b) force-stopped the app. Opening it clears Android's "stopped" flag,
+# but Android writes that to disk a little later; a reboot within seconds of a
+# force-stop can bring the flag back, and a stopped app gets no BOOT_COMPLETED
+# (seen on API 26). Someone using their phone normally is never in that state,
+# so open the app and give the package manager time to save before rebooting.
+open_then_leave
+sleep 20
+echo "Package stopped state before reboot: $(adb shell dumpsys package "$PACKAGE" | tr -d '\r' | grep -o 'stopped=[a-z]*' | head -1)"
 echo "Scheduled: $(reminder_cmd SCHEDULE "$ID_BOOT" 90)"
 sleep 2
 adb reboot

@@ -17,6 +17,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -166,6 +168,21 @@ class ContactsTest {
     private fun inImportSheet(text: String): SemanticsMatcher =
         hasText(text) and hasAnyAncestor(hasAnyDescendant(hasContentDescription("Search contacts")))
 
+    /**
+     * The import list is lazy, so on a small screen a contact further down
+     * isn't built until it's scrolled to. The sheet's list is the last
+     * scrollable list on screen (the sheet's window comes after the screen's).
+     */
+    private fun scrollImporterTo(name: String) {
+        rule.onAllNodes(androidx.compose.ui.test.hasScrollToNodeAction()).onLast()
+            .performScrollToNode(hasText(name))
+    }
+
+    private fun pickInImporter(name: String) {
+        scrollImporterTo(name)
+        rule.onNode(inImportSheet(name)).tap()
+    }
+
     private fun openImporter() {
         rule.tapTab("People")
         rule.onNodeWithContentDescription("Add Person").tap()
@@ -235,8 +252,8 @@ class ContactsTest {
         rule.waitForText("Founder at Quill Studio")
         rule.waitForText("Listed as mother on the contact card")
 
-        rule.onNode(inImportSheet("Ines Quillfeather")).tap()
-        rule.onNode(inImportSheet("Pax Quillfeather")).tap()
+        pickInImporter("Ines Quillfeather")
+        pickInImporter("Pax Quillfeather")
         rule.onNodeWithText("Add 2").tap()
         rule.waitForGone("Add from Contacts")
         rule.waitForText("Ines Quillfeather")
@@ -257,9 +274,9 @@ class ContactsTest {
         openImporter()
         rule.waitForText("Otto Quillfeather")
         rule.waitUntil(10_000) { rule.onAllNodes(hasText("Added")).fetchSemanticsNodes().size == 2 }
-        rule.onNode(inImportSheet("Ines Quillfeather")).tap()
+        pickInImporter("Ines Quillfeather")
         rule.onNodeWithText("Add 0").tap() // disabled: nothing happens
-        rule.onNode(inImportSheet("Otto Quillfeather")).tap()
+        pickInImporter("Otto Quillfeather")
         rule.onNodeWithText("Add 1").tap()
         rule.waitForGone("Add from Contacts")
 
@@ -290,9 +307,10 @@ class ContactsTest {
         rule.onNodeWithContentDescription("Back").tap()
 
         openImporter()
-        rule.waitUntil(10_000) { rule.onAllNodes(inImportSheet("Pax Quillfeather")).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10_000) { rule.onAllNodes(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNodes().isNotEmpty() }
+        scrollImporterTo("Pax Quillfeather")
         assertTrue(rule.onAllNodes(hasText("Added")).fetchSemanticsNodes().isEmpty())
-        rule.onNode(inImportSheet("Pax Quillfeather")).tap()
+        pickInImporter("Pax Quillfeather")
         rule.onNodeWithText("Add 1").tap()
         rule.waitForGone("Add from Contacts")
 
