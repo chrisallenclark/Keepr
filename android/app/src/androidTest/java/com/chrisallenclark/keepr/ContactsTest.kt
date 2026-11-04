@@ -260,8 +260,12 @@ class ContactsTest {
         rule.waitForText("Ines Quillfeather")
         // Suggestions are read off the cards: Ines runs a business, Otto has family on his.
         rule.waitForText("Founder at Quill Studio")
-        scrollImporterTo("Otto Quillfeather")
-        rule.waitForText("Listed as mother on the contact card")
+        // Scroll Otto into view (again, if the list re-sorted as it loaded) until
+        // his family suggestion shows.
+        rule.waitUntil(20_000) {
+            runCatching { scrollImporterTo("Otto Quillfeather") }
+            rule.onAllNodes(hasText("Listed as mother on the contact card")).fetchSemanticsNodes().isNotEmpty()
+        }
 
         pickInImporter("Ines Quillfeather")
         pickInImporter("Pax Quillfeather")
