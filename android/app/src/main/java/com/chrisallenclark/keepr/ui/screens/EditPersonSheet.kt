@@ -188,6 +188,7 @@ fun EditPersonSheet(person: Person?, mode: ContextMode, onDismiss: () -> Unit, o
             onDismiss = { isShowingTypeEditor = false },
             startsCreating = true,
             initialMode = mode,
+            setsAppMode = false,
         )
     }
 }

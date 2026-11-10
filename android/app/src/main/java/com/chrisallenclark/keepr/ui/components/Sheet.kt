@@ -82,31 +82,19 @@ fun SheetHeader(
     confirmEnabled: Boolean = true,
     onConfirm: (() -> Unit)? = null,
 ) {
-    Box(
+    NavigationBarRow(
+        title,
         modifier
             .fillMaxWidth()
             .height(Chrome.navigationBarHeight + Spacing.small)
             .padding(horizontal = 16.dp),
-    ) {
-        if (onCancel != null) {
-            ToolbarTextButton(cancelTitle, onCancel, Modifier.align(Alignment.CenterStart))
-        }
-        KText(
-            title,
-            style = KeeprTheme.typography.headline,
-            maxLines = 1,
-            modifier = Modifier.align(Alignment.Center),
-        )
-        if (confirmTitle != null && onConfirm != null) {
-            ToolbarTextButton(
-                confirmTitle,
-                onConfirm,
-                Modifier.align(Alignment.CenterEnd),
-                isProminent = true,
-                enabled = confirmEnabled,
-            )
-        }
-    }
+        leading = if (onCancel != null) {
+            { ToolbarTextButton(cancelTitle, onCancel) }
+        } else null,
+        trailing = if (confirmTitle != null && onConfirm != null) {
+            { ToolbarTextButton(confirmTitle, onConfirm, isProminent = true, enabled = confirmEnabled) }
+        } else null,
+    )
 }
 
 /** Convenience: a sheet whose body is a vertically stacked column. */

@@ -110,10 +110,15 @@ fun FormTextField(
 fun LabeledRow(title: String, value: String, modifier: Modifier = Modifier, detail: String? = null, onClick: (() -> Unit)? = null) {
     val colors = KeeprTheme.colors
     ListRow(modifier, onClick = onClick) {
-        KText(title, Modifier.weight(1f, fill = false))
+        // Both halves fill, so the value hugs the trailing edge whatever the
+        // title's length. (A title that only wrapped its text left the rest of
+        // the row empty after the value, which floated mid-row.)
+        KText(title, Modifier.weight(1f))
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
             KText(value, color = colors.secondaryLabel, textAlign = TextAlign.End)
-            if (detail != null) KText(detail, style = KeeprTheme.typography.caption2, color = colors.tertiaryLabel)
+            if (detail != null) {
+                KText(detail, style = KeeprTheme.typography.caption2, color = colors.tertiaryLabel, textAlign = TextAlign.End)
+            }
         }
     }
 }

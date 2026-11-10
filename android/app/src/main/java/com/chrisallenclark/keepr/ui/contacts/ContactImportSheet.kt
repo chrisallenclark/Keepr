@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +31,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.chrisallenclark.keepr.core.domain.CategorySuggestion
 import com.chrisallenclark.keepr.core.domain.ContactMarkerParser
@@ -41,9 +39,7 @@ import com.chrisallenclark.keepr.core.domain.MarkerVocabulary
 import com.chrisallenclark.keepr.core.model.ContextMode
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.core.model.PersonGroup
-import com.chrisallenclark.keepr.core.model.RelationshipContext
 import com.chrisallenclark.keepr.core.model.RelationshipTag
-import com.chrisallenclark.keepr.core.model.nonBlank
 import com.chrisallenclark.keepr.core.persistence.ContactImport
 import com.chrisallenclark.keepr.core.persistence.PreferenceKey
 import com.chrisallenclark.keepr.core.services.ContactAccess
@@ -51,7 +47,6 @@ import com.chrisallenclark.keepr.core.services.ContactSummary
 import com.chrisallenclark.keepr.ui.components.Avatar
 import com.chrisallenclark.keepr.ui.components.AvatarSize
 import com.chrisallenclark.keepr.ui.components.EmptyState
-import com.chrisallenclark.keepr.ui.components.FormTextField
 import com.chrisallenclark.keepr.ui.components.FormToggle
 import com.chrisallenclark.keepr.ui.components.GroupedSection
 import com.chrisallenclark.keepr.ui.components.KText
@@ -64,13 +59,12 @@ import com.chrisallenclark.keepr.ui.components.ListRow
 import com.chrisallenclark.keepr.ui.components.MenuEntry
 import com.chrisallenclark.keepr.ui.components.SearchField
 import com.chrisallenclark.keepr.ui.components.SectionSpacer
-import com.chrisallenclark.keepr.ui.components.SegmentedControl
-import com.chrisallenclark.keepr.ui.components.SheetBody
 import com.chrisallenclark.keepr.ui.components.SheetHeader
 import com.chrisallenclark.keepr.ui.components.ToolbarButton
 import com.chrisallenclark.keepr.ui.components.ToolbarTextButton
 import com.chrisallenclark.keepr.ui.components.rememberHaptics
 import com.chrisallenclark.keepr.ui.icons.SfSymbol
+import com.chrisallenclark.keepr.ui.organize.GroupEditorSheet
 import com.chrisallenclark.keepr.ui.screens.LocalAppState
 import com.chrisallenclark.keepr.ui.screens.observeStore
 import com.chrisallenclark.keepr.ui.theme.KeeprTheme
@@ -135,17 +129,29 @@ fun ContactImportSheet(mode: ContextMode, onDismiss: () -> Unit) {
         discovered = ContactMarkerParser.candidates(contacts, vocabulary)
     }
 
+    // One read at a time: the permission prompt's answer and the resume that
+    // follows it can both ask to load.
+    val isFetching = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
+
     suspend fun load() {
         access = store.authorizationStatus()
         if (access.canRead && contacts.isEmpty()) {
-            isLoading = true
-            contacts = store.fetchContacts()
-            rebuildSuggestions()
+            if (!isFetching.compareAndSet(false, true)) return
+            try {
+                isLoading = true
+                contacts = store.fetchContacts()
+                rebuildSuggestions()
+            } finally {
+                isFetching.set(false)
+            }
         }
         isLoading = false
     }
 
     LaunchedEffect(Unit) { load() }
+    // Access turned on in system Settings while this was open: read the
+    // contacts as soon as the person comes back.
+    OnAppResume { scope.launch { load() } }
 
     val results = ContactImport.results(contacts, query)
     val withSuggestions = ContactImport.importableWithSuggestions(results, suggestions, linked)
@@ -273,12 +279,14 @@ fun ContactImportSheet(mode: ContextMode, onDismiss: () -> Unit) {
     newGroupToken?.let { token ->
         // Prefilled with the shorthand as both the name and the alias, so "LT"
         // keeps working even after it's renamed to "Life Time".
-        ShorthandGroupSheet(
-            token = token,
-            mode = mode,
-            groupLabel = groupLabel,
+        GroupEditorSheet(
+            group = null,
+            addingTo = null,
             onDismiss = { newGroupToken = null },
+            mode = mode,
             onSaved = { rebuildSuggestions() },
+            initialName = token,
+            initialAliases = token,
         )
     }
 }
@@ -432,93 +440,6 @@ private fun ContactRow(
             isLinked -> KText("Added", style = typography.caption, color = colors.tertiaryLabel)
             isSelected -> SfSymbol("checkmark.circle.fill", colors.accent, 22.dp, contentDescription = "Selected")
             else -> SfSymbol("circle", colors.quaternaryLabel, 22.dp, contentDescription = "Not selected")
-        }
-    }
-}
-
-/**
- * A group made from shorthand found on the cards — `GroupEditor` opened with
- * `prefilledName` and `prefilledAlias`. Only what a new group needs: a symbol
- * can be chosen later from the group's own editor.
- */
-@Composable
-private fun ShorthandGroupSheet(
-    token: String,
-    mode: ContextMode,
-    groupLabel: String,
-    onDismiss: () -> Unit,
-    onSaved: () -> Unit,
-) {
-    val state = LocalAppState.current
-    val haptics = rememberHaptics()
-    var name by remember { mutableStateOf(token) }
-    var detail by remember { mutableStateOf("") }
-    var aliases by remember { mutableStateOf(token) }
-    var relationshipContext by remember { mutableStateOf(RelationshipContext.of(mode)) }
-    val trimmedName = name.trim()
-
-    fun save() {
-        val existing = state.context.fetch<PersonGroup>()
-        state.context.insert(
-            PersonGroup(
-                name = trimmedName,
-                symbolName = "person.3",
-                detail = detail.nonBlank(),
-                aliases = aliases.nonBlank(),
-                context = relationshipContext,
-                sortOrder = (existing.maxOfOrNull { it.sortOrder } ?: 0) + 10,
-            ),
-        )
-        state.save()
-        haptics.success()
-        onSaved()
-        onDismiss()
-    }
-
-    KeeprSheet(onDismiss = onDismiss) {
-        SheetHeader(
-            "New $groupLabel",
-            onCancel = onDismiss,
-            confirmTitle = "Save",
-            confirmEnabled = trimmedName.isNotEmpty(),
-            onConfirm = ::save,
-        )
-        SheetBody(Modifier.verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.height(8.dp))
-            GroupedSection(footer = "A detail tells two similar ones apart — \"Delray\" under \"Life Time\".") {
-                row { FormTextField(name, { name = it }, "Name", capitalization = KeyboardCapitalization.Words) }
-                row { FormTextField(detail, { detail = it }, "Detail (optional)", style = KeeprTheme.typography.subheadline) }
-            }
-            SectionSpacer()
-            GroupedSection(
-                header = "Also Known As",
-                footer = "Comma-separated. This is how importing reads your shorthand: a contact saved as \"Stanley LT Client\" lands here automatically once LT is listed. Initials are understood already — \"Life Time\" answers to \"LT\" without being told.",
-            ) {
-                row {
-                    FormTextField(
-                        aliases,
-                        { aliases = it },
-                        "LT, LTF, Life Time Delray",
-                        style = KeeprTheme.typography.subheadline,
-                        capitalization = KeyboardCapitalization.Characters,
-                    )
-                }
-            }
-            SectionSpacer()
-            GroupedSection(
-                header = "Context",
-                footer = "Both keeps it visible in Business and Personal. A gym is usually both — you train clients there and you have friends there.",
-            ) {
-                row {
-                    ListRow {
-                        SegmentedControl(
-                            RelationshipContext.entries.map { it.title },
-                            RelationshipContext.entries.indexOf(relationshipContext),
-                            { relationshipContext = RelationshipContext.entries[it] },
-                        )
-                    }
-                }
-            }
         }
     }
 }

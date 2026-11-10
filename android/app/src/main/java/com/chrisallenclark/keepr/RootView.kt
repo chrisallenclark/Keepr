@@ -139,7 +139,7 @@ fun RootView(launch: LaunchOptions) {
     fun pop() {
         stacks = stacks.toMutableList().also { it[selectedTab] = it[selectedTab].dropLast(1) }
     }
-    val navigator = Navigator(mode, push = { push(it) }, pop = { pop() }, present = { sheet = it })
+    val navigator = Navigator(mode, push = { push(it) }, pop = { pop() }, present = { sheet = it }, setMode = modeBinding.set)
 
     val stack = stacks[selectedTab]
     BackHandler(enabled = stack.isNotEmpty()) { pop() }

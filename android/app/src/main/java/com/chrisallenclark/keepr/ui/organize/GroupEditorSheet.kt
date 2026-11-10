@@ -57,7 +57,9 @@ import com.chrisallenclark.keepr.ui.theme.Spacing
  *
  * Suggestions come first when creating, because one tap on "Gym" explains
  * what a group is for better than any paragraph. When [addingTo] is set, a
- * newly created group gets that person as its first member.
+ * newly created group gets that person as its first member. [initialName]
+ * and [initialAliases] prefill a new group, as Add from Contacts does with
+ * shorthand it found on the cards.
  */
 @Composable
 fun GroupEditorSheet(
@@ -66,6 +68,10 @@ fun GroupEditorSheet(
     onDismiss: () -> Unit,
     mode: ContextMode = LocalNavigator.current.mode,
     onSaved: (PersonGroup) -> Unit = {},
+    /** iOS `prefilledName`: a new group's starting name, e.g. shorthand found on contact cards. */
+    initialName: String? = null,
+    /** iOS `prefilledAlias`: a new group's starting "Also Known As". */
+    initialAliases: String? = null,
 ) {
     val state = LocalAppState.current
     val haptics = rememberHaptics()
@@ -76,9 +82,9 @@ fun GroupEditorSheet(
     val groupLabel = state.repository.preferences.string(PreferenceKey.GROUP_LABEL) ?: GroupVocabulary.default.singular
     val isEditing = group != null
 
-    var name by rememberSaveable { mutableStateOf(group?.name ?: "") }
+    var name by rememberSaveable { mutableStateOf(group?.name ?: initialName ?: "") }
     var detail by rememberSaveable { mutableStateOf(group?.detail ?: "") }
-    var aliases by rememberSaveable { mutableStateOf(group?.aliases ?: "") }
+    var aliases by rememberSaveable { mutableStateOf(group?.aliases ?: initialAliases ?: "") }
     var symbolName by rememberSaveable { mutableStateOf(group?.symbolName ?: "person.3") }
     var relationshipContext by rememberSaveable { mutableStateOf(group?.context ?: RelationshipContext.of(mode)) }
     var showsSymbolPicker by remember { mutableStateOf(false) }

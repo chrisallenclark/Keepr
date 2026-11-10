@@ -42,6 +42,11 @@ class Navigator(
     val push: (Route) -> Unit,
     val pop: () -> Unit,
     val present: (SheetRoute) -> Unit,
+    /**
+     * Switches the app-wide Business/Personal lens and remembers it, as a
+     * sheet bound to the app's `mode` (`GroupsView(mode: $mode)`) does on iOS.
+     */
+    val setMode: (ContextMode) -> Unit = {},
 ) {
     fun openPerson(personId: UUID, through: ContextMode = mode) = push(Route.Profile(personId, through))
 }
