@@ -55,15 +55,19 @@ fun KeeprButton(
     val pressed by interaction.collectIsPressedAsState()
     val pressAlpha by animateFloatAsState(if (pressed) 0.55f else 1f, tween(if (pressed) 50 else 200), label = "pressAlpha")
 
-    val (background, foreground) = when (style) {
-        KeeprButtonStyle.Plain -> Color.Transparent to tint
-        KeeprButtonStyle.Bordered -> tint.copy(alpha = 0.15f) to tint
-        KeeprButtonStyle.Prominent -> tint to Color.White
+    // Disabled, iOS 26 drops the tint: a gray capsule (or gray text) rather
+    // than a faded accent one.
+    val (background, foreground) = when {
+        !enabled && style == KeeprButtonStyle.Plain -> Color.Transparent to colors.tertiaryLabel
+        !enabled -> colors.tertiaryFill to colors.tertiaryLabel
+        style == KeeprButtonStyle.Plain -> Color.Transparent to tint
+        style == KeeprButtonStyle.Bordered -> tint.copy(alpha = 0.15f) to tint
+        else -> tint to Color.White
     }
     val padded = style != KeeprButtonStyle.Plain
     Row(
         modifier
-            .alpha(if (enabled) pressAlpha else 0.4f)
+            .alpha(if (enabled) pressAlpha else 1f)
             .then(if (padded) Modifier.heightIn(min = 44.dp).background(background, CircleShape) else Modifier)
             .clickable(
                 enabled = enabled,

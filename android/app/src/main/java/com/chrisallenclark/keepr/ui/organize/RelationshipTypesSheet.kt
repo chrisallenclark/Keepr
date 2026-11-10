@@ -70,7 +70,14 @@ fun RelationshipTypesSheet(
     onDismiss: () -> Unit,
     startsCreating: Boolean = false,
     initialMode: ContextMode = LocalNavigator.current.mode,
+    /**
+     * Whether switching Business/Personal here switches the whole app, as
+     * `RelationshipTypeEditor(mode: $mode)` does from People and Settings.
+     * Edit Person and Categorize pass `.constant(mode)` on iOS, so false.
+     */
+    setsAppMode: Boolean = true,
 ) {
+    val navigator = LocalNavigator.current
     val state = LocalAppState.current
     val haptics = rememberHaptics()
     val focus = LocalFocusManager.current
@@ -79,6 +86,10 @@ fun RelationshipTypesSheet(
     val typography = KeeprTheme.typography
 
     var mode by remember { mutableStateOf(initialMode) }
+    fun switchMode(to: ContextMode) {
+        mode = to
+        if (setsAppMode) navigator.setMode(to)
+    }
     val kind = TagKind.of(mode)
     val allTags = state.context.fetch<RelationshipTag>().sortedBy { it.sortOrder }
     val tags = RelationshipTypeRules.types(kind, allTags)
@@ -119,7 +130,7 @@ fun RelationshipTypesSheet(
         haptics.success()
         // Follow the new type into its list, so it isn't created into a
         // screen the user isn't looking at.
-        if (draftKind != kind) mode = if (draftKind == TagKind.BUSINESS) ContextMode.BUSINESS else ContextMode.PERSONAL
+        if (draftKind != kind) switchMode(if (draftKind == TagKind.BUSINESS) ContextMode.BUSINESS else ContextMode.PERSONAL)
         focus.clearFocus()
         isCreating = false
     }
@@ -140,7 +151,7 @@ fun RelationshipTypesSheet(
                 ToolbarTextButton("Done", onDismiss, isProminent = true)
             },
         )
-        ContextSwitcher(mode == ContextMode.PERSONAL, { mode = if (it) ContextMode.PERSONAL else ContextMode.BUSINESS })
+        ContextSwitcher(mode == ContextMode.PERSONAL, { switchMode(if (it) ContextMode.PERSONAL else ContextMode.BUSINESS) })
         SheetBody(Modifier.verticalScroll(rememberScrollState())) {
             Spacer(Modifier.height(8.dp))
             if (isCreating) {

@@ -41,6 +41,7 @@ import com.chrisallenclark.keepr.core.services.CommunicationLauncher
 import com.chrisallenclark.keepr.core.services.ContactMethod
 import com.chrisallenclark.keepr.ui.components.ContextSwitcher
 import com.chrisallenclark.keepr.ui.components.EmptyState
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.FilterChipRow
 import com.chrisallenclark.keepr.ui.components.IconLabel
 import com.chrisallenclark.keepr.ui.components.KText
@@ -210,15 +211,14 @@ fun PeopleScreen(
         )
 
         if (filtered.isEmpty() && !hasActiveFilters) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                 if (query.isNotBlank()) {
-                    EmptyState("No Results for “$query”", "magnifyingglass", description = "Check the spelling or try a new search.", modifier = Modifier.padding(bottom = 60.dp))
+                    EmptyState("No Results for “$query”", "magnifyingglass", description = "Check the spelling or try a new search.")
                 } else {
                     EmptyState(
                         "No ${mode.mode.title.lowercase()} relationships",
                         mode.mode.symbolName,
                         description = "Import from your contacts, or add someone by hand.",
-                        modifier = Modifier.padding(bottom = 60.dp),
                     ) {
                         KeeprButton("Import from Contacts", { navigator.present(SheetRoute.ContactImport) }, style = KeeprButtonStyle.Prominent)
                         KeeprButton("Add Someone", onAddPerson)

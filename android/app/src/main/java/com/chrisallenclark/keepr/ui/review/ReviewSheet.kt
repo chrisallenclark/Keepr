@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +55,7 @@ import com.chrisallenclark.keepr.ui.contacts.InsetSectionFooter
 import com.chrisallenclark.keepr.ui.contacts.InsetSectionHeader
 import com.chrisallenclark.keepr.ui.contacts.ListBottomClearance
 import com.chrisallenclark.keepr.ui.contacts.LoadingState
+import com.chrisallenclark.keepr.ui.contacts.OnAppResume
 import com.chrisallenclark.keepr.ui.contacts.SheetToolbar
 import com.chrisallenclark.keepr.ui.contacts.avatarTextStart
 import com.chrisallenclark.keepr.ui.contacts.openAppSettings
@@ -65,6 +67,7 @@ import com.chrisallenclark.keepr.ui.theme.KeeprTheme
 import com.chrisallenclark.keepr.ui.theme.Spacing
 import com.chrisallenclark.keepr.ui.theme.medium
 import com.chrisallenclark.keepr.ui.theme.semibold
+import kotlinx.coroutines.launch
 
 /**
  * Catch Up: people who haven't been placed yet. Translated from
@@ -82,6 +85,7 @@ fun ReviewSheet(onDismiss: () -> Unit) {
     val mode = LocalNavigator.current.mode
     val haptics = rememberHaptics()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     observeStore().value
 
     val people = state.context.fetch<Person>()
@@ -93,13 +97,23 @@ fun ReviewSheet(onDismiss: () -> Unit) {
     var editing by remember { mutableStateOf<ReviewItem?>(null) }
     var optionsOpen by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        if (store.authorizationStatus().canRead) {
+    var canRead by remember { mutableStateOf(store.authorizationStatus().canRead) }
+    var hasFetched by remember { mutableStateOf(false) }
+
+    suspend fun refresh() {
+        canRead = store.authorizationStatus().canRead
+        if (canRead && !hasFetched) {
+            hasFetched = true
             val fetched = store.fetchContacts()
             newContacts = state.contactTracker.newContacts(fetched)
         }
         isLoading = false
     }
+
+    LaunchedEffect(Unit) { refresh() }
+    // Contact access turned on in system Settings ("Open Settings" below)
+    // counts the moment the person comes back.
+    OnAppResume { scope.launch { refresh() } }
     // The review consumes items; Today's banner has to stop claiming them.
     DisposableEffect(Unit) { onDispose { ContactReviewSignal.changed() } }
 
@@ -176,7 +190,6 @@ fun ReviewSheet(onDismiss: () -> Unit) {
                     LoadingState("Checking your contacts", Modifier.padding(bottom = 60.dp))
                 }
                 items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    val canRead = store.authorizationStatus().canRead
                     EmptyState(
                         "Everyone's placed",
                         "checkmark.circle",

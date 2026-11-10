@@ -16,6 +16,7 @@ import android.provider.ContactsContract.RawContacts
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollToNode
@@ -30,6 +31,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -387,5 +389,49 @@ class ContactsTest {
         rule.waitForGone("Everyone's placed")
         rule.waitForGone("2 new contacts since you last looked")
         rule.waitForGone("Catch Up")
+    }
+
+    @Test
+    fun shorthandOnTheCardsBecomesAFullGroup() {
+        // "QZT" on two cards is shorthand Keepr doesn't know yet.
+        insertContact("Stanley", "Brook QZT", phone = "(561) 555-0111")
+        insertContact("Mira", "Holt QZT", phone = "(561) 555-0112")
+        fetchUntil(AndroidContactStore(app, MemoryPreferences()), "Mira Holt QZT")
+        launch()
+        rule.waitForText("You're caught up.")
+        rule.tapTab("People")
+        rule.first("Import from Contacts").tap()
+        rule.waitForText("Add from Contacts")
+        val chip = hasContentDescription("Make QZT a group", substring = true)
+        rule.waitUntil(15_000) { rule.onAllNodes(chip).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNode(chip).tap()
+
+        // The whole group editor, prefilled: the shorthand is the name and the alias.
+        rule.waitForText("New Group")
+        rule.waitUntil(10_000) { rule.onAllNodes(hasContentDescription("Symbol")).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription("Name").assert(hasText("QZT"))
+        rule.onNodeWithContentDescription("LT, LTF, Life Time Delray").assert(hasText("QZT"))
+        rule.onNodeWithContentDescription("Name").performTextReplacement("Quartz Gym")
+        rule.onNodeWithContentDescription("Detail (optional)").performTextInput("Delray")
+        rule.onAllNodes(hasText("Both")).onLast().performScrollTo().tap()
+        rule.onNodeWithText("Save").tap()
+        rule.waitForGone("New Group")
+
+        var groups: List<com.chrisallenclark.keepr.core.model.PersonGroup> = emptyList()
+        rule.runOnIdle {
+            groups = AppContainer.get(app, isDemo = false).repository.context
+                .fetch<com.chrisallenclark.keepr.core.model.PersonGroup>()
+        }
+        assertEquals(1, groups.size)
+        val group = groups.single()
+        assertEquals("Quartz Gym", group.name)
+        assertEquals("Delray", group.detail)
+        assertEquals("QZT", group.aliases)
+        assertEquals(RelationshipContext.BOTH, group.context)
+
+        // The importer re-reads every card: the chip is gone and both contacts
+        // are suggested for the new group.
+        rule.waitUntil(10_000) { rule.onAllNodes(chip).fetchSemanticsNodes().isEmpty() }
+        rule.waitForText("Quartz Gym")
     }
 }

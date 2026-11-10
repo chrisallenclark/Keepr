@@ -110,22 +110,15 @@ internal fun SheetToolbar(
     leading: @Composable () -> Unit,
     trailing: @Composable () -> Unit,
 ) {
-    Row(
+    com.chrisallenclark.keepr.ui.components.NavigationBarRow(
+        title,
         Modifier
             .fillMaxWidth()
             .height(Chrome.navigationBarHeight + Spacing.small)
             .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-    ) {
-        leading()
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            KText(title, style = KeeprTheme.typography.headline, maxLines = 1)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.CenterVertically) {
-            trailing()
-        }
-    }
+        leading = leading,
+        trailing = trailing,
+    )
 }
 
 /** Room under the last row, clear of the gesture bar. */

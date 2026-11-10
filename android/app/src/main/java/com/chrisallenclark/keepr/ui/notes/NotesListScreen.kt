@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.chrisallenclark.keepr.core.domain.NoteEditor
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.ui.components.EmptyState
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.KeeprButton
 import com.chrisallenclark.keepr.ui.components.KeeprButtonStyle
 import com.chrisallenclark.keepr.ui.components.KeeprTopBar
@@ -68,13 +69,12 @@ fun NotesListScreen(person: Person, onBack: () -> Unit) {
         )
 
         if (notes.isEmpty()) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                 if (query.isBlank()) {
                     EmptyState(
                         "No notes yet",
                         "doc.text",
                         description = "Paste a consultation summary or meeting notes and they'll live here.",
-                        modifier = Modifier.padding(bottom = 60.dp),
                     ) {
                         KeeprButton("Add Note", ::add, style = KeeprButtonStyle.Prominent)
                     }
@@ -83,7 +83,6 @@ fun NotesListScreen(person: Person, onBack: () -> Unit) {
                         "No Results for “$query”",
                         "magnifyingglass",
                         description = "Check the spelling or try a new search.",
-                        modifier = Modifier.padding(bottom = 60.dp),
                     )
                 }
             }

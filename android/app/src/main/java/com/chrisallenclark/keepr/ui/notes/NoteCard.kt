@@ -153,6 +153,10 @@ fun NoteCard(
                     DisclosureChevron(isExpanded, Modifier.padding(top = 2.dp))
                 }
 
+                if (!isExpanded && note.preview.isNotEmpty()) {
+                    // Closed: two lines, enough to recognise without reading.
+                    KText(note.preview, style = typography.caption, color = colors.secondaryLabel, maxLines = 2)
+                }
                 if (isExpanded) {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.medium)) {
                         Separator(start = 0.dp, end = 0.dp)

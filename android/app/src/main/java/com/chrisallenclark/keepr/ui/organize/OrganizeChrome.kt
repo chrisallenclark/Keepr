@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.chrisallenclark.keepr.core.domain.SymbolCatalog
 import com.chrisallenclark.keepr.ui.components.KText
 import com.chrisallenclark.keepr.ui.components.ListRow
+import com.chrisallenclark.keepr.ui.components.NavigationBarRow
 import com.chrisallenclark.keepr.ui.icons.SfSymbol
 import com.chrisallenclark.keepr.ui.theme.Chrome
 import com.chrisallenclark.keepr.ui.theme.KeeprTheme
@@ -37,27 +38,15 @@ internal fun OrganizeHeader(
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    Box(
+    NavigationBarRow(
+        title,
         Modifier
             .fillMaxWidth()
             .height(Chrome.navigationBarHeight + Spacing.small)
             .padding(horizontal = 16.dp),
-    ) {
-        Box(Modifier.align(Alignment.CenterStart)) { leading?.invoke() }
-        KText(
-            title,
-            style = KeeprTheme.typography.headline,
-            maxLines = 1,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = Chrome.toolbarButton + 8.dp),
-        )
-        Row(
-            Modifier.align(Alignment.CenterEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) { trailing?.invoke() }
-    }
+        leading = leading,
+        trailing = trailing,
+    )
 }
 
 /**

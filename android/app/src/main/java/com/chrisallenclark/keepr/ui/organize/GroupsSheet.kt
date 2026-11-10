@@ -74,7 +74,12 @@ fun GroupsSheet(onDismiss: () -> Unit) {
     val groupPlural = GroupVocabulary.plural(groupLabel)
     val article = GroupVocabulary.article(groupLabel)
 
+    // iOS binds this sheet to the app's `mode`: switching here switches People too.
     var mode by remember { mutableStateOf(navigator.mode) }
+    fun switchMode(to: ContextMode) {
+        mode = to
+        navigator.setMode(to)
+    }
     var openedID by remember { mutableStateOf<UUID?>(null) }
     var isCreating by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PersonGroup?>(null) }
@@ -105,7 +110,7 @@ fun GroupsSheet(onDismiss: () -> Unit) {
                         ToolbarTextButton("Done", onDismiss, isProminent = true)
                     },
                 )
-                ContextSwitcher(mode == ContextMode.PERSONAL, { mode = if (it) ContextMode.PERSONAL else ContextMode.BUSINESS })
+                ContextSwitcher(mode == ContextMode.PERSONAL, { switchMode(if (it) ContextMode.PERSONAL else ContextMode.BUSINESS) })
                 if (groups.isEmpty()) {
                     Box(Modifier.fillMaxWidth().heightIn(min = 420.dp), contentAlignment = Alignment.Center) {
                         if (allGroups.isEmpty()) {

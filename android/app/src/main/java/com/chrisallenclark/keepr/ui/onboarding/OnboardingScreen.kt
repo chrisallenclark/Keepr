@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.chrisallenclark.keepr.core.model.ContextMode
 import com.chrisallenclark.keepr.core.model.Person
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.IconLabel
 import com.chrisallenclark.keepr.ui.components.KText
 import com.chrisallenclark.keepr.ui.components.KeeprButton
@@ -122,72 +123,72 @@ fun OnboardingScreen(mode: ModeBinding, onFinish: () -> Unit, modifier: Modifier
             .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.weight(1f))
-
-        AnimatedContent(
-            targetState = step,
-            transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(200)) },
-            label = "onboardingStep",
-            modifier = Modifier
-                .widthIn(max = 420.dp)
-                .padding(horizontal = Spacing.section),
-        ) { page ->
-            when (page) {
-                Step.WELCOME -> Page(
-                    symbol = "person.2.circle",
-                    symbolSize = 67.dp,
-                    title = "Keepr",
-                    isLargeTitle = true,
-                    message = "Your business relationships and your personal ones, finally kept apart — and remembered properly.",
-                )
-                Step.CONTEXT -> Page(
-                    symbol = "rectangle.righthalf.inset.filled",
-                    symbolSize = 58.dp,
-                    title = "One switch",
-                    message = "Every screen shows one side of your life at a time. Someone who's both a friend and a client is still one person — they just show up in both.",
-                ) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(top = Spacing.small),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(Spacing.small),
+        // Centered in the room above the footer, and scrollable when a small
+        // phone at a large text size can't fit the page and the buttons.
+        EmptyStateArea(Modifier.weight(1f).fillMaxWidth(), bottomClearance = 0.dp) {
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(200)) },
+                label = "onboardingStep",
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .padding(horizontal = Spacing.section),
+            ) { page ->
+                when (page) {
+                    Step.WELCOME -> Page(
+                        symbol = "person.2.circle",
+                        symbolSize = 67.dp,
+                        title = "Keepr",
+                        isLargeTitle = true,
+                        message = "Your business relationships and your personal ones, finally kept apart — and remembered properly.",
+                    )
+                    Step.CONTEXT -> Page(
+                        symbol = "rectangle.righthalf.inset.filled",
+                        symbolSize = 58.dp,
+                        title = "One switch",
+                        message = "Every screen shows one side of your life at a time. Someone who's both a friend and a client is still one person — they just show up in both.",
                     ) {
-                        SegmentedControl(
-                            options = ContextMode.entries.map { it.title },
-                            selectedIndex = ContextMode.entries.indexOf(mode.mode),
-                            onSelect = { index ->
-                                haptics.selection()
-                                mode.set(ContextMode.entries[index])
-                            },
-                        )
-                        KText("You can switch any time.", style = KeeprTheme.typography.caption, color = colors.tertiaryLabel)
+                        Column(
+                            Modifier.fillMaxWidth().padding(top = Spacing.small),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(Spacing.small),
+                        ) {
+                            SegmentedControl(
+                                options = ContextMode.entries.map { it.title },
+                                selectedIndex = ContextMode.entries.indexOf(mode.mode),
+                                onSelect = { index ->
+                                    haptics.selection()
+                                    mode.set(ContextMode.entries[index])
+                                },
+                            )
+                            KText("You can switch any time.", style = KeeprTheme.typography.caption, color = colors.tertiaryLabel)
+                        }
                     }
-                }
-                Step.CONTACTS -> Page(
-                    symbol = "person.crop.circle.badge.plus",
-                    symbolSize = 58.dp,
-                    title = "Bring in your people",
-                    message = "Keepr can link relationships to your contacts so you can call, text or email in one tap. Your contacts stay on your phone — nothing is uploaded and nothing is written back.",
-                ) {
-                    if (importedCount > 0) {
-                        IconLabel(
-                            "$importedCount added",
-                            "checkmark.circle.fill",
-                            style = KeeprTheme.typography.subheadline,
-                            color = colors.green,
-                        )
-                    } else if (access == Access.DENIED) {
-                        KText(
-                            "No problem — you can add people by hand, and turn contacts on later in Settings.",
-                            style = KeeprTheme.typography.footnote,
-                            color = colors.secondaryLabel,
-                            textAlign = TextAlign.Center,
-                        )
+                    Step.CONTACTS -> Page(
+                        symbol = "person.crop.circle.badge.plus",
+                        symbolSize = 58.dp,
+                        title = "Bring in your people",
+                        message = "Keepr can link relationships to your contacts so you can call, text or email in one tap. Your contacts stay on your phone — nothing is uploaded and nothing is written back.",
+                    ) {
+                        if (importedCount > 0) {
+                            IconLabel(
+                                "$importedCount added",
+                                "checkmark.circle.fill",
+                                style = KeeprTheme.typography.subheadline,
+                                color = colors.green,
+                            )
+                        } else if (access == Access.DENIED) {
+                            KText(
+                                "No problem — you can add people by hand, and turn contacts on later in Settings.",
+                                style = KeeprTheme.typography.footnote,
+                                color = colors.secondaryLabel,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }
         }
-
-        Spacer(Modifier.weight(1f))
 
         // Footer
         Column(

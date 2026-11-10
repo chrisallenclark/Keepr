@@ -150,7 +150,9 @@ fun BrainDumpSheet(person: Person, onDismiss: () -> Unit, initialText: String = 
                 confirmEnabled = trimmed.isNotEmpty() && !isSorting,
                 onConfirm = ::sort,
             )
-            SheetBody {
+            // Scrolls, so a long dump (or a small phone with the keyboard up)
+            // never pushes the text or the footnote out of reach.
+            SheetBody(Modifier.verticalScroll(rememberScrollState())) {
                 WritingPad(
                     text,
                     { text = it },

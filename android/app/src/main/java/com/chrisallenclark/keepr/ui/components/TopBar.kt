@@ -16,19 +16,27 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.chrisallenclark.keepr.ui.icons.SfSymbol
 import com.chrisallenclark.keepr.ui.theme.Chrome
 import com.chrisallenclark.keepr.ui.theme.KeeprTheme
@@ -58,25 +66,15 @@ fun KeeprTopBar(
             .background(background)
             .statusBarsPadding(),
     ) {
-        Box(
+        NavigationBarRow(
+            title,
             Modifier
                 .fillMaxWidth()
                 .height(Chrome.navigationBarHeight)
                 .padding(horizontal = 16.dp),
-        ) {
-            Box(Modifier.align(Alignment.CenterStart)) { leading?.invoke() }
-            KText(
-                title,
-                style = KeeprTheme.typography.headline,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = Chrome.toolbarButton + 8.dp)
-                    .semantics { heading() },
-            )
-            Box(Modifier.align(Alignment.CenterEnd)) { trailing?.invoke() }
-        }
+            leading = leading,
+            trailing = trailing,
+        )
         if (pinned != null) {
             Spacer(Modifier.height(Chrome.navigationBarBottomGap))
             pinned()
@@ -85,6 +83,77 @@ fun KeeprTopBar(
         }
     }
 }
+
+/**
+ * A navigation bar's row: [leading] items, the inline title, [trailing] items.
+ *
+ * As UIKit lays out an inline title: centered on the bar when it fits there;
+ * otherwise centered in the room left between the buttons; and only when even
+ * that is too narrow does it shrink (to 80%, `minimumScaleFactor`) and then
+ * truncate. A fixed padding on each side would truncate "Relationship Types"
+ * on a 360dp phone while space sat unused beside a single button.
+ */
+@Composable
+fun NavigationBarRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    titleStyle: TextStyle = KeeprTheme.typography.headline,
+) {
+    val color = KeeprTheme.colors.label
+    Layout(
+        modifier = modifier,
+        content = {
+            Box(Modifier.layoutId(NavigationSlot.Leading), contentAlignment = Alignment.CenterStart) { leading?.invoke() }
+            BasicText(
+                text = title,
+                style = titleStyle.copy(color = color, textAlign = TextAlign.Center),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = titleStyle.fontSize * 0.8f,
+                    maxFontSize = titleStyle.fontSize,
+                    stepSize = 0.5.sp,
+                ),
+                modifier = Modifier
+                    .layoutId(NavigationSlot.Title)
+                    .semantics { heading() },
+            )
+            Row(
+                Modifier.layoutId(NavigationSlot.Trailing),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) { trailing?.invoke() }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val gap = 8.dp.roundToPx()
+        val leadingPlaceable = measurables.first { it.layoutId == NavigationSlot.Leading }.measure(loose)
+        val trailingPlaceable = measurables.first { it.layoutId == NavigationSlot.Trailing }
+            .measure(loose.copy(maxWidth = (loose.maxWidth - leadingPlaceable.width).coerceAtLeast(0)))
+        val leadingEdge = if (leadingPlaceable.width > 0) leadingPlaceable.width + gap else 0
+        val trailingEdge = if (trailingPlaceable.width > 0) trailingPlaceable.width + gap else 0
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth
+        else leadingEdge + trailingEdge + 400.dp.roundToPx()
+        val room = (width - leadingEdge - trailingEdge).coerceAtLeast(0)
+        val titlePlaceable = measurables.first { it.layoutId == NavigationSlot.Title }
+            .measure(loose.copy(maxWidth = room))
+        val height = if (constraints.hasBoundedHeight) constraints.maxHeight
+        else maxOf(leadingPlaceable.height, titlePlaceable.height, trailingPlaceable.height)
+        layout(width, height) {
+            leadingPlaceable.placeRelative(0, (height - leadingPlaceable.height) / 2)
+            trailingPlaceable.placeRelative(width - trailingPlaceable.width, (height - trailingPlaceable.height) / 2)
+            val centered = (width - titlePlaceable.width) / 2
+            val titleX = if (centered >= leadingEdge && centered + titlePlaceable.width <= width - trailingEdge) centered
+            else leadingEdge + (room - titlePlaceable.width) / 2
+            titlePlaceable.placeRelative(titleX, (height - titlePlaceable.height) / 2)
+        }
+    }
+}
+
+private enum class NavigationSlot { Leading, Title, Trailing }
 
 /**
  * The large-title variant (`.navigationBarTitleDisplayMode(.large)`), as on
@@ -161,7 +230,16 @@ fun ToolbarTextButton(
         modifier
             .height(Chrome.toolbarButton)
             .widthIn(min = Chrome.toolbarButton)
-            .glass(CircleShape, fill = if (isProminent) colors.accent else colors.glass)
+            // iOS 26 draws a disabled prominent button as a plain gray
+            // capsule, not a faded accent one.
+            .glass(
+                CircleShape,
+                fill = when {
+                    isProminent && enabled -> colors.accent
+                    isProminent -> colors.secondaryFill.compositeOver(colors.glass)
+                    else -> colors.glass
+                },
+            )
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -176,6 +254,7 @@ fun ToolbarTextButton(
             title,
             style = if (isProminent) typography.headline else typography.body,
             color = when {
+                !enabled && isProminent -> colors.secondaryLabel.copy(alpha = colors.secondaryLabel.alpha * 0.75f)
                 !enabled -> colors.tertiaryLabel
                 isProminent -> Color.White
                 else -> colors.label

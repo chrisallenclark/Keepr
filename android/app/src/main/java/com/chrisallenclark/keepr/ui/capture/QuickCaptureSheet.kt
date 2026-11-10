@@ -129,7 +129,9 @@ fun QuickCaptureSheet(mode: ContextMode, onDismiss: () -> Unit) {
                     confirmEnabled = trimmedText.isNotEmpty() && !isExtracting,
                     onConfirm = ::runExtraction,
                 )
-                SheetBody {
+                // Scrolls, so long text (or a small phone with the keyboard up)
+                // never pushes the text or the footnote out of reach.
+                SheetBody(Modifier.verticalScroll(rememberScrollState())) {
                     WritingPad(
                         text,
                         { text = it },

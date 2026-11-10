@@ -190,4 +190,41 @@ class OrganizeTest {
         rule.waitForText("Linda Clark")
         rule.waitForText("Child")
     }
+
+    @Test
+    fun switchingBusinessPersonalInsideTheSheetsSwitchesTheApp() {
+        launch()
+        addPerson("Bea", "Business")
+        rule.onNodeWithContentDescription("Back").tap()
+        rule.waitForText("Bea Business")
+
+        // iOS binds Groups to the app's mode: Personal there is Personal everywhere.
+        openManageMenu("Manage Groups")
+        rule.waitForText("No groups yet")
+        // The sheet's window comes after the screen's, so its switch is last.
+        rule.onAllNodesWithText("Personal").onLast().tap()
+        rule.onNodeWithText("Done").tap()
+        rule.waitForGone("No groups yet")
+        rule.waitForText("No personal relationships")
+        rule.waitForGone("Bea Business")
+        val prefs = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+            .getSharedPreferences("keepr", android.content.Context.MODE_PRIVATE)
+        org.junit.Assert.assertEquals(
+            "personal",
+            prefs.getString(com.chrisallenclark.keepr.core.persistence.PreferenceKey.CONTEXT_MODE, null),
+        )
+
+        // Relationship Types opens on the app's mode and switches it back.
+        openManageMenu("Manage Types")
+        rule.waitForText("Personal Types")
+        rule.onAllNodesWithText("Business").onLast().tap()
+        rule.waitForText("Business Types")
+        rule.onNodeWithText("Done").tap()
+        rule.waitForGone("Business Types")
+        rule.waitForText("Bea Business")
+        org.junit.Assert.assertEquals(
+            "business",
+            prefs.getString(com.chrisallenclark.keepr.core.persistence.PreferenceKey.CONTEXT_MODE, null),
+        )
+    }
 }

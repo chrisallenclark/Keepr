@@ -281,7 +281,12 @@ fun CategorizeSheet(item: ReviewItem, mode: ContextMode, onDismiss: () -> Unit, 
     }
 
     if (isShowingTypeEditor) {
-        RelationshipTypesSheet(onDismiss = { isShowingTypeEditor = false })
+        RelationshipTypesSheet(
+            onDismiss = { isShowingTypeEditor = false },
+            startsCreating = true,
+            initialMode = mode,
+            setsAppMode = false,
+        )
     }
 }
 
