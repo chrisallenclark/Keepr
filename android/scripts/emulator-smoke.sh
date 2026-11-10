@@ -213,7 +213,7 @@ echo "Package stopped state before reboot: $(adb shell dumpsys package "$PACKAGE
 echo "Scheduled: $(reminder_cmd SCHEDULE "$ID_BOOT" 90)"
 sleep 2
 adb reboot
-adb wait-for-device
+timeout 300 adb wait-for-device || echo "Note: the emulator did not reconnect to adb within 300s of the reboot."
 BOOTED=0
 for _ in $(seq 1 150); do
   if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then BOOTED=1; break; fi
