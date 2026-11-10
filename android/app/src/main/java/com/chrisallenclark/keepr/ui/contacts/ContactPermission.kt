@@ -68,13 +68,11 @@ fun OnAppResume(action: () -> Unit) {
         val owner = context.findLifecycleOwner() ?: return@DisposableEffect onDispose { }
         var wasPaused = false
         val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_PAUSE -> wasPaused = true
-                Lifecycle.Event.ON_RESUME -> if (wasPaused) {
-                    wasPaused = false
-                    latest.value()
-                }
-                else -> Unit
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                wasPaused = true
+            } else if (event == Lifecycle.Event.ON_RESUME && wasPaused) {
+                wasPaused = false
+                latest.value()
             }
         }
         owner.lifecycle.addObserver(observer)
