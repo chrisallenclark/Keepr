@@ -118,9 +118,10 @@ and only after you approve each run.
 2. Under **Deployment protection rules**, tick **Required reviewers** and add yourself.
    If you are the only person with access, leave **Prevent self-review** off, or you
    could never approve a run. Click **Save protection rules**.
-3. Optional: under **Deployment branches and tags**, choose **Selected branches and
-   tags** and add `main`, so releases can only be built from `main`. (Skip this while
-   the Android work still lives on another branch.)
+3. Under **Deployment branches and tags**, choose **Selected branches and tags** and
+   add `main` and `claude/friendly-pasteur-nft1vl` (the Android branch). The workflow
+   also refuses any other branch on its own, and Google (step 5) only trusts runs from
+   these branches.
 4. Under **Environment secrets → Add environment secret**, add each of these. The name
    must match exactly:
 
@@ -131,8 +132,8 @@ and only after you approve each run.
    | `KEEPR_KEY_ALIAS` | `keepr` |
    | `KEEPR_KEY_PASSWORD` | The same password again |
 
-   The Firebase secrets (`FIREBASE_APP_ID`, `FIREBASE_TESTER_GROUP`,
-   `FIREBASE_SERVICE_ACCOUNT_JSON`) are added in step 5.
+   The Firebase settings are not secrets and are added as **environment variables** in
+   step 5. No Google key is stored anywhere (see step 5.5).
 5. Recommended: **Settings → Actions → General → Fork pull request workflows from
    outside collaborators** → "Require approval for all outside collaborators". (Fork pull
    requests never receive these secrets anyway; this just avoids surprises.)
@@ -180,38 +181,75 @@ the delivery van.
    (Keepr doesn't use them): click **Next** / **Continue to console**.
 3. **App ID:** ⚙ **Project settings → General → Your apps → Keepr Android → App ID**, a
    value like `1:123456789012:android:0a1b2c3d4e5f6a7b`. Add it as the environment
-   secret **`FIREBASE_APP_ID`** (step 3.4).
+   **variable** **`FIREBASE_APP_ID`**.
 4. **Testers:** left menu **Run → App Distribution** (or *Release & Monitor → App
    Distribution*) → **Get started**. Open **Testers & Groups → Add group**, name it e.g.
-   "Testers", and add each tester's email. Note the group's **alias** shown under its
-   name (e.g. `testers`) and add it as the environment secret **`FIREBASE_TESTER_GROUP`**.
-5. **A key for GitHub to upload with** (a *service account*):
-   1. Go to **https://console.cloud.google.com/iam-admin/serviceaccounts** and pick the
-      Firebase project at the top.
-   2. **Create service account**. Name: `keepr-app-distribution`. **Create and continue**.
-   3. Role: search for and pick **Firebase App Distribution Admin**. **Continue → Done**.
-   4. Click the new account → **Keys → Add key → Create new key → JSON → Create**. A
-      `.json` file downloads.
-   5. Open it in a text editor, copy **everything**, and add it as the environment
-      secret **`FIREBASE_SERVICE_ACCOUNT_JSON`**.
-   6. Delete the downloaded `.json` file (or store it in your password manager). If it
-      ever leaks, delete that key on the same **Keys** page and make a new one.
+   "Testers". Note the group's **alias** shown under its
+   name (e.g. `testers`) and add it as the environment **variable** **`FIREBASE_TESTER_GROUP`**.
+   Don't add anyone yet: testers are invited only when you decide to.
+5. **Let GitHub upload without a stored key** (*Workload Identity Federation*). Instead
+   of a permanent key file, Google is told to trust the short-lived identity token
+   GitHub gives this one workflow, in this repository, in the `android-release`
+   environment, on `main` or the Android branch, and nothing else. A leaked log or a
+   compromised fork has nothing to steal.
+   1. Open **https://shell.cloud.google.com** (signed in with the account that owns the
+      Firebase project).
+   2. Paste these lines, replacing `your-firebase-project-id` with the **Project ID**
+      from ⚙ Project settings → General (not the display name). Press Enter after each
+      block; each takes a few seconds.
 
-   If Google says key creation is disabled by an organization policy, your Google
-   account belongs to an organization that blocks it; use a personal Google account
-   for the Firebase project instead.
+      ```sh
+      PROJECT_ID=your-firebase-project-id
+      gcloud config set project "$PROJECT_ID"
+      PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+      SA="keepr-distribution@$PROJECT_ID.iam.gserviceaccount.com"
+      gcloud services enable iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com firebaseappdistribution.googleapis.com
+      ```
 
-All seven environment secrets, for reference:
+      ```sh
+      gcloud iam service-accounts create keepr-distribution \
+        --display-name="Keepr: GitHub uploads to App Distribution"
+      gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+        --member="serviceAccount:$SA" --role="roles/firebaseappdistro.admin"
+      ```
 
-| Secret | From |
-|---|---|
-| `KEEPR_KEYSTORE_BASE64` | Step 1.5 |
-| `KEEPR_KEYSTORE_PASSWORD` | Step 1.2 |
-| `KEEPR_KEY_ALIAS` | `keepr` |
-| `KEEPR_KEY_PASSWORD` | Step 1.2 (same password) |
-| `FIREBASE_APP_ID` | Step 5.3 |
-| `FIREBASE_TESTER_GROUP` | Step 5.4 |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Step 5.5 |
+      ```sh
+      gcloud iam workload-identity-pools create github \
+        --location=global --display-name="GitHub Actions"
+      gcloud iam workload-identity-pools providers create-oidc keepr-release \
+        --location=global --workload-identity-pool=github \
+        --display-name="Keepr release workflow" \
+        --issuer-uri="https://token.actions.githubusercontent.com" \
+        --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref,attribute.environment=assertion.environment,attribute.workflow_ref=assertion.workflow_ref" \
+        --attribute-condition="assertion.repository=='chrisallenclark/Keepr' && assertion.environment=='android-release' && assertion.workflow_ref.startsWith('chrisallenclark/Keepr/.github/workflows/android-release.yml@') && (assertion.ref=='refs/heads/main' || assertion.ref=='refs/heads/claude/friendly-pasteur-nft1vl')"
+      ```
+
+      ```sh
+      gcloud iam service-accounts add-iam-policy-binding "$SA" \
+        --role="roles/iam.workloadIdentityUser" \
+        --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/chrisallenclark/Keepr"
+      echo "GCP_WORKLOAD_IDENTITY_PROVIDER = projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/providers/keepr-release"
+      echo "GCP_SERVICE_ACCOUNT = $SA"
+      ```
+   3. The last two lines print two values. Add each as an **environment variable** (not
+      a secret; they aren't sensitive) in **Settings → Environments → android-release →
+      Environment variables → Add variable**, with exactly those names.
+   4. If you later rename the Android branch or release from another one, update the
+      `--attribute-condition` (run the `providers update-oidc` form of the same command)
+      and the branch list in `android-release.yml`.
+
+Everything in the `android-release` environment, for reference:
+
+| Name | Kind | From |
+|---|---|---|
+| `KEEPR_KEYSTORE_BASE64` | secret | Step 1.5 |
+| `KEEPR_KEYSTORE_PASSWORD` | secret | Step 1.2 |
+| `KEEPR_KEY_ALIAS` | secret | `keepr` |
+| `KEEPR_KEY_PASSWORD` | secret | Step 1.2 (same password) |
+| `FIREBASE_APP_ID` | variable | Step 5.3 |
+| `FIREBASE_TESTER_GROUP` | variable | Step 5.4 |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | variable | Step 5.5 |
+| `GCP_SERVICE_ACCOUNT` | variable | Step 5.5 |
 
 ## 6. Making a release
 
