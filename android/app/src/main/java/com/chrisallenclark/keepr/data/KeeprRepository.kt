@@ -4,6 +4,7 @@ import com.chrisallenclark.keepr.core.model.ModelContext
 import com.chrisallenclark.keepr.core.model.PersonFile
 import com.chrisallenclark.keepr.core.persistence.KeeprStore
 import com.chrisallenclark.keepr.core.persistence.Preferences
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -50,20 +51,81 @@ class KeeprRepository(
 
     /** Reads everything from disk into the graph, then seeds built-ins. Call once at launch. */
     suspend fun load() {
-        val rows = withContext(writer) {
-            val dao = database.dao()
-            Rows(
-                people = dao.people(), interactions = dao.interactions(), memories = dao.memories(),
-                followUps = dao.followUps(), notes = dao.notes(), files = dao.files(), tags = dao.tags(),
-                groups = dao.groups(), links = dao.links(), personTags = dao.personTags(), groupMembers = dao.groupMembers(),
-            )
-        }
+        install(readRows())
+    }
+
+    private suspend fun readRows(): Rows = withContext(writer) {
+        val dao = database.dao()
+        val rows = Rows(
+            people = dao.people(), interactions = dao.interactions(), memories = dao.memories(),
+            followUps = dao.followUps(), notes = dao.notes(), files = dao.files(), tags = dao.tags(),
+            groups = dao.groups(), links = dao.links(), personTags = dao.personTags(), groupMembers = dao.groupMembers(),
+        )
+        // A restore the process didn't survive may have left file contents
+        // set aside; put back any a record still needs (see FileBlobStore).
+        database.fileBlobs?.recoverInterruptedReplace(rows.files.filter { it.data == null }.mapTo(HashSet()) { it.id })
+        rows
+    }
+
+    private fun install(rows: Rows) {
         rows.buildGraph(context)
         snapshot = RowSnapshot.of(rows)
         attachFileBlobs()
         KeeprStore.seedIfNeeded(context, preferences) // saves if it inserted anything
         _isLoaded.value = true
         _version.value++
+    }
+
+    // MARK: - Backup and restore
+
+    /** While true, saves are not written (a restore is replacing the store underneath). */
+    private var savesSuspended = false
+
+    /**
+     * Runs [block] on the writer, after every save so far and before any
+     * that follows, with the database to itself — a consistent snapshot for a
+     * backup, or a restore with nothing interleaved. Call from the main thread.
+     */
+    suspend fun <T> exclusive(block: suspend (KeeprDatabase) -> T): T {
+        val result = CompletableDeferred<T>()
+        val previous = lastWrite
+        lastWrite = scope.launch(writer) {
+            previous?.join()
+            try {
+                result.complete(block(database))
+            } catch (error: Throwable) {
+                result.completeExceptionally(error)
+            }
+        }
+        return result.await()
+    }
+
+    /**
+     * Stops saves reaching disk (a restore is about to replace everything,
+     * so changes to the old graph must not be written over the new data).
+     * Changes made meanwhile aren't lost if the restore is abandoned: the
+     * next save after [resumeSaves] diffs against what's on disk and writes them.
+     */
+    fun suspendSaves() {
+        savesSuspended = true
+    }
+
+    fun resumeSaves() {
+        savesSuspended = false
+    }
+
+    /**
+     * After a restore has replaced the database: drops the old graph and
+     * builds the new one from disk. Saves are taken back up once the new
+     * graph and its snapshot are in place. Call from the main thread.
+     */
+    suspend fun reloadAfterRestore() {
+        val rows = readRows()
+        context.removeAll()
+        queuedBlobs.clear()
+        writtenBlobs.clear()
+        savesSuspended = false
+        install(rows)
     }
 
     /** Waits until every save so far is on disk (tests, and before the app is backgrounded). */
@@ -78,6 +140,7 @@ class KeeprRepository(
     }
 
     private fun persist() {
+        if (savesSuspended) return
         val blobs = database.fileBlobs
         val blobWrites = if (blobs != null) pendingFileBlobs(blobs) else emptyList()
         var current = context.toRows()

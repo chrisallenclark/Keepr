@@ -111,6 +111,11 @@ fun OnboardingScreen(mode: ModeBinding, onFinish: () -> Unit, modifier: Modifier
         onFinish()
     }
 
+    // A new phone: bring everything back from a backup file instead of starting over.
+    var restoringFrom by remember { mutableStateOf<android.net.Uri?>(null) }
+    var didRestore by remember { mutableStateOf(false) }
+    val pickBackup = com.chrisallenclark.keepr.ui.backup.rememberBackupFilePicker { restoringFrom = it }
+
     BackHandler(enabled = stepIndex > 0) { stepIndex -= 1 }
 
     Column(
@@ -201,7 +206,11 @@ fun OnboardingScreen(mode: ModeBinding, onFinish: () -> Unit, modifier: Modifier
             verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         ) {
             when (step) {
-                Step.WELCOME, Step.CONTEXT -> PrimaryButton("Continue") { stepIndex += 1 }
+                Step.WELCOME -> {
+                    PrimaryButton("Continue") { stepIndex += 1 }
+                    SecondaryButton("Restore from Backup…", pickBackup)
+                }
+                Step.CONTEXT -> PrimaryButton("Continue") { stepIndex += 1 }
                 Step.CONTACTS -> when (access) {
                     Access.AUTHORIZED -> {
                         PrimaryButton(if (importedCount > 0) "Done" else "Choose Contacts") {
@@ -221,6 +230,21 @@ fun OnboardingScreen(mode: ModeBinding, onFinish: () -> Unit, modifier: Modifier
             }
             PageIndicator(stepIndex, Step.entries.size)
         }
+    }
+
+    restoringFrom?.let { uri ->
+        com.chrisallenclark.keepr.ui.backup.RestoreSheet(
+            uri,
+            onDismiss = {
+                restoringFrom = null
+                // Restored: the phone is set up, so onboarding is done.
+                if (didRestore) onFinish()
+            },
+            onRestored = { result ->
+                didRestore = true
+                result.mode?.let(mode.set)
+            },
+        )
     }
 }
 

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -73,6 +74,8 @@ fun FormTextField(
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
     focusRequester: FocusRequester? = null,
     onSubmit: (() -> Unit)? = null,
+    /** `SecureField`: pass `PasswordVisualTransformation()` with `KeyboardType.Password`. */
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     val colors = KeeprTheme.colors
     Box(
@@ -91,6 +94,7 @@ fun FormTextField(
             minLines = minLines,
             maxLines = maxLines,
             singleLine = maxLines == 1,
+            visualTransformation = visualTransformation,
             keyboardOptions = KeyboardOptions(
                 capitalization = capitalization,
                 keyboardType = keyboardType,
