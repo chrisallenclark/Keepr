@@ -124,7 +124,7 @@ launch() { # label screenshot-name [am start extras...]
 tap_text() {
   local target="$1" xy
   for _ in 1 2 3 4; do
-    if adb shell uiautomator dump /sdcard/keepr-ui.xml >/dev/null 2>&1 \
+    if adb shell uiautomator dump /sdcard/keepr-ui.xml >"$WORK/dump.log" 2>&1 \
       && adb pull /sdcard/keepr-ui.xml "$WORK/ui.xml" >/dev/null 2>&1; then
       xy=$(python3 - "$WORK/ui.xml" "$target" <<'PY'
 import re, sys, xml.etree.ElementTree as ET
@@ -147,6 +147,16 @@ PY
     fi
     sleep 2
   done
+  # Say why, so a miss can be told apart from a screen that didn't draw.
+  echo "  (looking for \"$target\": uiautomator said: $(tr -d '\r' < "$WORK/dump.log" 2>/dev/null | tail -1))"
+  if [ -s "$WORK/ui.xml" ]; then
+    echo "  (on screen: $(python3 - "$WORK/ui.xml" <<'PY'
+import sys, xml.etree.ElementTree as ET
+seen = [n.get("text") or n.get("content-desc") for n in ET.parse(sys.argv[1]).iter("node")]
+print(" | ".join(t for t in seen if t)[:400])
+PY
+))"
+  fi
   return 1
 }
 
@@ -265,8 +275,13 @@ else
   fail "app-101: no MY_PACKAGE_REPLACED re-arm within 60s of the update"
   adb logcat -d | tr -d '\r' | grep -iE "keepr|PACKAGE_REPLACED" | tail -30 || true
 fi
-sleep 2
-if reminder_alarm_set; then
+# The receiver re-arms on a background thread; give it a moment to finish.
+ALARM_BACK=0
+for _ in $(seq 1 15); do
+  if reminder_alarm_set; then ALARM_BACK=1; break; fi
+  sleep 2
+done
+if [ "$ALARM_BACK" = 1 ]; then
   pass "app-101: the reminder's alarm is set again after the update, without opening the app"
 else
   fail "app-101: no reminder alarm after the update"
