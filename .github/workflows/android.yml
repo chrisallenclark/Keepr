@@ -151,6 +151,111 @@ jobs:
           path: android/app/build/reports/androidTests/
           if-no-files-found: ignore
 
+  # The release build testers install: minified by R8, not debuggable, signed.
+  # Signed here with a THROWAWAY key generated inside the job (never the real
+  # one, which only android-release.yml can use), so it also runs for pull
+  # requests. Nothing signed leaves the job: no APK is uploaded, only
+  # screenshots. See android/docs/RELEASE.md.
+  release-check:
+    name: Release build (API ${{ matrix.api-level }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: small
+            api-level: 26
+            target: default
+            profile: Nexus 5
+          - device: pixel6
+            api-level: 35
+            target: google_apis
+            profile: pixel_6
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Generate a throwaway signing key
+        run: |
+          set -euo pipefail
+          PASSWORD=$(openssl rand -hex 24)
+          echo "::add-mask::$PASSWORD"
+          KEYSTORE="$RUNNER_TEMP/keepr-throwaway.p12"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$KEYSTORE" \
+            -storepass "$PASSWORD" -keypass "$PASSWORD" -alias throwaway \
+            -keyalg RSA -keysize 2048 -validity 2 \
+            -dname "CN=Keepr CI throwaway key, O=Not for distribution" >/dev/null 2>&1
+          {
+            echo "KEEPR_KEYSTORE_PATH=$KEYSTORE"
+            echo "KEEPR_KEYSTORE_PASSWORD=$PASSWORD"
+            echo "KEEPR_KEY_ALIAS=throwaway"
+            echo "KEEPR_KEY_PASSWORD=$PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      # Four APKs from this one commit: the production configuration, and the
+      # instrumentable release build at version codes 100 and 101 with its
+      # test APK. -Pkeepr.testBuildType=release adds proguard-release-test.pro
+      # (see app/build.gradle.kts), which is why the production configuration
+      # is built and checked separately.
+      - name: Build release APKs
+        run: |
+          set -euo pipefail
+          OUT=build/release-check
+          mkdir -p "$OUT"
+          REL=app/build/outputs/apk/release/app-release.apk
+          KEEPR_VERSION_CODE=100 ./gradlew --no-daemon assembleRelease
+          cp "$REL" "$OUT/plain-100.apk"
+          KEEPR_VERSION_CODE=100 ./gradlew --no-daemon -Pkeepr.testBuildType=release assembleRelease assembleReleaseAndroidTest
+          cp "$REL" "$OUT/app-100.apk"
+          cp app/build/outputs/apk/androidTest/release/app-release-androidTest.apk "$OUT/test.apk"
+          KEEPR_VERSION_CODE=101 ./gradlew --no-daemon -Pkeepr.testBuildType=release assembleRelease
+          cp "$REL" "$OUT/app-101.apk"
+          ls -l "$OUT"
+
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install, update and launch the release build on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          target: ${{ matrix.target }}
+          profile: ${{ matrix.profile }}
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: android
+          script: ./scripts/release-upgrade-check.sh build/release-check build/release-check-screenshots ${{ matrix.device }}
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-check-screenshots-${{ matrix.device }}
+          path: android/build/release-check-screenshots/
+          if-no-files-found: warn
+
+      - name: Delete the throwaway key and the APKs signed with it
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/keepr-throwaway.p12"
+          rm -rf build/release-check app/build/outputs/apk/release app/build/outputs/apk/androidTest
+
   compare:
     name: Compare with iOS
     needs: emulator

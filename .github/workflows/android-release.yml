@@ -1,0 +1,231 @@
+name: Android release
+
+# Builds the APK testers install, signed with Keepr's permanent release key,
+# and (only when asked) sends it to testers through Firebase App Distribution.
+# Started by hand only: Actions -> Android release -> Run workflow.
+# Step-by-step setup: android/docs/RELEASE.md.
+#
+# This repository is PUBLIC, so this workflow's logs are public:
+# - it never prints a secret (GitHub masks secrets; nothing derived from one
+#   is printed either), only the signing certificate's SHA-256 fingerprint,
+#   which is public by design;
+# - the signed APK is never uploaded as a workflow artifact (anyone could
+#   download it); testers get it from Firebase only;
+# - the key and the Firebase credentials are written to the runner's temp
+#   folder and deleted at the end, whatever happened;
+# - it runs only on workflow_dispatch in this repository, never for pull
+#   requests or forks, and only after the "android-release" environment's
+#   required reviewer approves (the secrets live in that environment).
+
+on:
+  workflow_dispatch:
+    inputs:
+      distribute:
+        description: "Send this build to testers (Firebase App Distribution). Leave off for a trial build."
+        type: boolean
+        default: false
+      release_notes:
+        description: "What's new, shown to testers (used only when distributing)"
+        type: string
+        default: ""
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: android
+
+jobs:
+  release:
+    name: Signed release build
+    if: github.repository == 'chrisallenclark/Keepr'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: android-release
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # No Gradle caches in or out of this job: nothing built with the real
+      # key (or the configuration that names it) is saved anywhere.
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+
+      - name: Check the release secrets are set
+        env:
+          KEEPR_KEYSTORE_BASE64: ${{ secrets.KEEPR_KEYSTORE_BASE64 }}
+          KEEPR_KEYSTORE_PASSWORD: ${{ secrets.KEEPR_KEYSTORE_PASSWORD }}
+          KEEPR_KEY_ALIAS: ${{ secrets.KEEPR_KEY_ALIAS }}
+          KEEPR_KEY_PASSWORD: ${{ secrets.KEEPR_KEY_PASSWORD }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_TESTER_GROUP: ${{ secrets.FIREBASE_TESTER_GROUP }}
+          DISTRIBUTE: ${{ inputs.distribute }}
+        run: |
+          missing=0
+          required="KEEPR_KEYSTORE_BASE64 KEEPR_KEYSTORE_PASSWORD KEEPR_KEY_ALIAS KEEPR_KEY_PASSWORD"
+          if [ "$DISTRIBUTE" = "true" ]; then
+            required="$required FIREBASE_SERVICE_ACCOUNT_JSON FIREBASE_APP_ID FIREBASE_TESTER_GROUP"
+          fi
+          for name in $required; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The secret $name is not set in the android-release environment (see android/docs/RELEASE.md)"
+              missing=1
+            fi
+          done
+          if [ "$missing" = 1 ]; then exit 1; fi
+          echo "All required secrets are set."
+
+      - name: Work out the version
+        env:
+          OFFSET: ${{ vars.KEEPR_VERSION_CODE_OFFSET || '1000' }}
+        run: |
+          set -euo pipefail
+          case "$OFFSET" in
+            ''|*[!0-9]*) echo "::error::The KEEPR_VERSION_CODE_OFFSET variable must be a whole number"; exit 1 ;;
+          esac
+          CODE=$(( OFFSET + GITHUB_RUN_NUMBER ))
+          NAME=$(sed -n 's/^keepr\.versionName=//p' gradle.properties | tr -d '\r')
+          [ -n "$NAME" ] || { echo "::error::keepr.versionName is missing from android/gradle.properties"; exit 1; }
+          echo "KEEPR_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "KEEPR_VERSION_NAME=$NAME" >> "$GITHUB_ENV"
+          echo "Keepr $NAME, version code $CODE (offset $OFFSET + run $GITHUB_RUN_NUMBER), from ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}"
+
+      - name: Decode the signing key
+        env:
+          KEEPR_KEYSTORE_BASE64: ${{ secrets.KEEPR_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYSTORE="$RUNNER_TEMP/keepr-release.jks"
+          if ! printf '%s' "$KEEPR_KEYSTORE_BASE64" | tr -d ' \r\n' | base64 --decode > "$KEYSTORE" 2>/dev/null; then
+            echo "::error::KEEPR_KEYSTORE_BASE64 is not valid base64 (see android/docs/RELEASE.md)"
+            exit 1
+          fi
+          [ -s "$KEYSTORE" ] || { echo "::error::KEEPR_KEYSTORE_BASE64 decoded to nothing"; exit 1; }
+          echo "KEEPR_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+
+      # keepr.requireReleaseSigning makes Gradle fail instead of producing an
+      # unsigned APK if anything about the key is missing.
+      - name: Unit tests and signed release build
+        env:
+          KEEPR_KEYSTORE_PASSWORD: ${{ secrets.KEEPR_KEYSTORE_PASSWORD }}
+          KEEPR_KEY_ALIAS: ${{ secrets.KEEPR_KEY_ALIAS }}
+          KEEPR_KEY_PASSWORD: ${{ secrets.KEEPR_KEY_PASSWORD }}
+        run: >-
+          ./gradlew --no-daemon --no-configuration-cache --no-build-cache
+          -Pkeepr.requireReleaseSigning=true
+          :core:test testReleaseUnitTest assembleRelease
+
+      - name: Verify the APK and its signature
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          [ -f "$APK" ] || { echo "::error::No signed APK at $APK"; exit 1; }
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          TOOLS=$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          [ -x "$TOOLS/apksigner" ] || { echo "::error::apksigner not found in the Android SDK"; exit 1; }
+          VERIFY=$("$TOOLS/apksigner" verify --verbose --print-certs "$APK")
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" <<<"$VERIFY" \
+            || { echo "::error::The APK is not signed with APK Signature Scheme v2"; exit 1; }
+          if grep -q "CN=Android Debug" <<<"$VERIFY"; then
+            echo "::error::The APK is signed with a debug key, not the release key"
+            exit 1
+          fi
+          # Only the fingerprint is printed: it is public by design and lets
+          # you confirm the right key was used. Never the certificate's names.
+          DIGEST=$(grep -m1 "certificate SHA-256 digest" <<<"$VERIFY" | sed 's/.*digest: //')
+          [ -n "$DIGEST" ] || { echo "::error::apksigner printed no certificate fingerprint"; exit 1; }
+          BADGING=$("$TOOLS/aapt2" dump badging "$APK")
+          if grep -q "application-debuggable" <<<"$BADGING"; then
+            echo "::error::The release APK is debuggable"
+            exit 1
+          fi
+          grep -q "versionCode='$KEEPR_VERSION_CODE'" <<<"$BADGING" \
+            || { echo "::error::The APK's version code is not $KEEPR_VERSION_CODE"; exit 1; }
+          grep -q "versionName='$KEEPR_VERSION_NAME'" <<<"$BADGING" \
+            || { echo "::error::The APK's version name is not $KEEPR_VERSION_NAME"; exit 1; }
+          echo "Signing certificate SHA-256: $DIGEST"
+          {
+            echo "## Keepr $KEEPR_VERSION_NAME ($KEEPR_VERSION_CODE)"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | $KEEPR_VERSION_NAME, code $KEEPR_VERSION_CODE |"
+            echo "| Commit | \`${GITHUB_SHA::7}\` on \`$GITHUB_REF_NAME\` |"
+            echo "| Signing certificate SHA-256 | \`$DIGEST\` |"
+            echo "| Debuggable | no |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The R8 mapping turns a tester's crash report back into real names.
+      # It holds no secrets (the source is public) and it isn't the app.
+      - name: Upload the R8 mapping file
+        uses: actions/upload-artifact@v6
+        with:
+          name: keepr-release-mapping-${{ env.KEEPR_VERSION_CODE }}
+          path: android/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.distribute }}
+        with:
+          node-version: "22"
+
+      - name: Send to testers (Firebase App Distribution)
+        if: ${{ inputs.distribute }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_TESTER_GROUP: ${{ secrets.FIREBASE_TESTER_GROUP }}
+          # Passed through the environment, never pasted into the script, so
+          # the notes can't run as shell commands.
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          set -euo pipefail
+          umask 077
+          CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$CREDENTIALS"
+          if ! python3 -c 'import json, sys; assert json.load(open(sys.argv[1])).get("type") == "service_account"' "$CREDENTIALS" 2>/dev/null; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT_JSON is not a service-account JSON key (see android/docs/RELEASE.md)"
+            exit 1
+          fi
+          NOTES="$RUNNER_TEMP/release-notes.txt"
+          {
+            if [ -n "$RELEASE_NOTES" ]; then printf '%s\n\n' "$RELEASE_NOTES"; fi
+            printf 'Keepr %s (%s)\n' "$KEEPR_VERSION_NAME" "$KEEPR_VERSION_CODE"
+          } > "$NOTES"
+          export GOOGLE_APPLICATION_CREDENTIALS="$CREDENTIALS"
+          npx --yes firebase-tools@15.34.1 --non-interactive appdistribution:distribute \
+            app/build/outputs/apk/release/app-release.apk \
+            --app "$FIREBASE_APP_ID" \
+            --groups "$FIREBASE_TESTER_GROUP" \
+            --release-notes-file "$NOTES"
+          echo "| Sent to testers | yes |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Not sent to testers
+        if: ${{ !inputs.distribute }}
+        run: |
+          echo "Trial build only: run again with \"distribute\" ticked to send it to testers."
+          echo "| Sent to testers | no (trial build) |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete the key, credentials and signed APK from the runner
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/keepr-release.jks" "$RUNNER_TEMP/firebase-service-account.json" "$RUNNER_TEMP/release-notes.txt"
+          rm -f firebase-debug.log ../firebase-debug.log
+          rm -rf app/build/outputs/apk
+          ./gradlew --stop >/dev/null 2>&1 || true

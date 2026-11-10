@@ -63,7 +63,12 @@ Licenses for the bundled font and symbols are in `app/src/main/assets/licenses/`
 1. **Build, unit test and lint** — produces the installable APK.
 2. **Emulator** — boots a small 360dp phone on Android 8.0 and a 412dp Pixel 6 on Android 15,
    runs the on-device tests, and screenshots every screen and gallery page in light and dark.
-3. **Compare with iOS** — fetches the latest iOS screenshots and puts each Android screen
+3. **Release build** — builds the release APK testers get (R8-minified, not debuggable),
+   signed with a throwaway key made inside the job, on Android 8.0 and 15: checks it's not
+   debuggable and has nothing debug-only, installs version 100, writes data, updates to 101
+   with `adb install -r`, and checks every record, file and reminder survived. See
+   `docs/RELEASE.md`. No signed APK is ever uploaded.
+4. **Compare with iOS** — fetches the latest iOS screenshots and puts each Android screen
    beside its iOS counterpart.
 
 To get the results: **github.com/chrisallenclark/Keepr → Actions → Android → a run →
@@ -79,8 +84,8 @@ Artifacts**:
 A run can also be started by hand from the same page with **Run workflow**.
 
 Debug APKs are signed with a throwaway key generated on each run, so installing a newer one
-may require uninstalling the old one first. Proper signing arrives with the test
-distribution phase.
+may require uninstalling the old one first. Testers get release builds instead, signed with
+the permanent key and delivered by Firebase App Distribution: see **`docs/RELEASE.md`**.
 
 ## Signing and secrets
 
@@ -90,7 +95,22 @@ only from environment variables that CI fills from GitHub secrets:
 
 `KEEPR_KEYSTORE_PATH`, `KEEPR_KEYSTORE_PASSWORD`, `KEEPR_KEY_ALIAS`, `KEEPR_KEY_PASSWORD`
 
-Without them, release builds are produced unsigned.
+Without them, release builds are produced unsigned (the release workflow passes
+`-Pkeepr.requireReleaseSigning=true`, which makes that an error instead). The real key is
+used only by `.github/workflows/android-release.yml`, started by hand and approved through
+the `android-release` environment; it builds, verifies and (if asked) sends the APK to
+Firebase App Distribution, and never uploads it as an artifact. Setup for all of this,
+written for non-developers: `docs/RELEASE.md`.
+
+| Gradle input | Where | Default |
+|---|---|---|
+| `keepr.versionName` | `gradle.properties` (the only place the version name is set) | — |
+| `KEEPR_VERSION_CODE` | environment; the release workflow sets 1000 + run number | `1` |
+| `keepr.testBuildType` | `-P` property: `debug` or `release` (CI release check only) | `debug` |
+| `keepr.requireReleaseSigning` | `-P` property: fail if the signing variables are missing | `false` |
+
+Release builds hide Settings → Development (Sample data, Design Gallery), which iOS always
+shows.
 
 ## Building locally (optional)
 

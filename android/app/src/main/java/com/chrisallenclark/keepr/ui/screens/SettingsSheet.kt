@@ -254,22 +254,27 @@ private fun SettingsMain(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?, on
         }
         SectionSpacer()
 
-        GroupedSection(
-            header = "Development",
-            footer = "Loads a set of example relationships for evaluating the app. Turning it off removes only those, never anything you added.",
-        ) {
-            row {
-                FormToggle("Sample data", sampleLoaded, { on ->
-                    if (on) SampleData.load(state.context, state.repository.preferences, state.now(), state.calendar)
-                    else SampleData.remove(state.context)
-                    haptics.light()
-                })
+        // Debug builds only. iOS always shows this section; the Android
+        // release builds testers install leave it out, by request (see
+        // docs/RELEASE.md). The Design Gallery entry is debug-only as well.
+        if (BuildConfig.DEBUG) {
+            GroupedSection(
+                header = "Development",
+                footer = "Loads a set of example relationships for evaluating the app. Turning it off removes only those, never anything you added.",
+            ) {
+                row {
+                    FormToggle("Sample data", sampleLoaded, { on ->
+                        if (on) SampleData.load(state.context, state.repository.preferences, state.now(), state.calendar)
+                        else SampleData.remove(state.context)
+                        haptics.light()
+                    })
+                }
+                if (onOpenGallery != null) {
+                    row { ListRow(onClick = onOpenGallery) { KText("Design Gallery", color = colors.accent) } }
+                }
             }
-            if (onOpenGallery != null) {
-                row { ListRow(onClick = onOpenGallery) { KText("Design Gallery", color = colors.accent) } }
-            }
+            SectionSpacer()
         }
-        SectionSpacer()
 
         GroupedSection(footer = "Removes every relationship, memory, interaction and follow-up from this phone. Your contacts are not affected.") {
             row { ListRow(onClick = { confirmingDelete = true }) { KText("Delete All Data", color = colors.red) } }
