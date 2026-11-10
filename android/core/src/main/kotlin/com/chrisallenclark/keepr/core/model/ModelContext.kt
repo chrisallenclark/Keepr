@@ -40,6 +40,21 @@ class ModelContext {
         fetch<T>().forEach { delete(it) }
     }
 
+    /**
+     * Forgets every record at once, without applying delete rules — for
+     * replacing the whole graph, as restoring a backup does. Records a
+     * screen still holds read as deleted from then on. Nothing is saved.
+     */
+    fun removeAll() {
+        val removed = registry.toList()
+        registry.clear()
+        removed.forEach {
+            it.isDeleted = true
+            it.modelContext = null
+        }
+        changeCount++
+    }
+
     inline fun <reified T : Model> fetch(): List<T> = all().filterIsInstance<T>()
 
     fun all(): List<Model> = registry.toList()

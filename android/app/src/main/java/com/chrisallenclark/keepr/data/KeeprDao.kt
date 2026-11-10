@@ -54,6 +54,56 @@ interface KeeprDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertDeletions(rows: List<DeletionRow>)
 
+    // Restoring a backup replaces every table at once (see backup/BackupService.kt).
+    @Query("DELETE FROM person_group_members") suspend fun clearAllGroupMembers()
+    @Query("DELETE FROM person_tags") suspend fun clearAllPersonTags()
+    @Query("DELETE FROM person_links") suspend fun clearAllLinks()
+    @Query("DELETE FROM person_files") suspend fun clearAllFiles()
+    @Query("DELETE FROM memories") suspend fun clearAllMemories()
+    @Query("DELETE FROM follow_ups") suspend fun clearAllFollowUps()
+    @Query("DELETE FROM conversation_notes") suspend fun clearAllNotes()
+    @Query("DELETE FROM interactions") suspend fun clearAllInteractions()
+    @Query("DELETE FROM people") suspend fun clearAllPeople()
+    @Query("DELETE FROM relationship_tags") suspend fun clearAllTags()
+    @Query("DELETE FROM person_groups") suspend fun clearAllGroups()
+    @Query("DELETE FROM deletions") suspend fun clearAllDeletions()
+
+    /**
+     * Empties every table, then writes [rows] and [deletions] — parents
+     * before children, so every foreign key resolves. Its transaction joins
+     * the caller's when there is one: the restore runs it inside its own, so
+     * a check after it can still undo the whole replacement.
+     */
+    @Transaction
+    suspend fun replaceEverything(rows: Rows, deletions: List<DeletionRow>) {
+        clearAllGroupMembers()
+        clearAllPersonTags()
+        clearAllLinks()
+        clearAllFiles()
+        clearAllMemories()
+        clearAllFollowUps()
+        clearAllNotes()
+        clearAllInteractions()
+        clearAllPeople()
+        clearAllTags()
+        clearAllGroups()
+        clearAllDeletions()
+        with(rows) {
+            if (people.isNotEmpty()) upsertPeople(people)
+            if (tags.isNotEmpty()) upsertTags(tags)
+            if (groups.isNotEmpty()) upsertGroups(groups)
+            if (interactions.isNotEmpty()) upsertInteractions(interactions)
+            if (notes.isNotEmpty()) upsertNotes(notes)
+            if (memories.isNotEmpty()) upsertMemories(memories)
+            if (followUps.isNotEmpty()) upsertFollowUps(followUps)
+            if (files.isNotEmpty()) upsertFiles(files)
+            if (links.isNotEmpty()) upsertLinks(links)
+            if (personTags.isNotEmpty()) insertPersonTags(personTags)
+            if (groupMembers.isNotEmpty()) insertGroupMembers(groupMembers)
+        }
+        if (deletions.isNotEmpty()) insertDeletions(deletions)
+    }
+
     /** Applies one save: deletes children before parents, writes parents before children. */
     @Transaction
     suspend fun apply(changes: ChangeSet) {

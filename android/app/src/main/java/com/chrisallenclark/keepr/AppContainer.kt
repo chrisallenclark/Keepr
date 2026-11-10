@@ -43,6 +43,8 @@ class AppContainer private constructor(
             } else {
                 live ?: synchronized(this) {
                     val preferences = AndroidPreferences(app)
+                    // Backup: a restore a killed process left staged is removed (once per process).
+                    com.chrisallenclark.keepr.backup.BackupService.clearLeftoverStaging(app.cacheDir)
                     live ?: AppContainer(
                         KeeprRepository(KeeprDatabase.open(app), preferences),
                         // Real reminders over AlarmManager. Demo runs keep the

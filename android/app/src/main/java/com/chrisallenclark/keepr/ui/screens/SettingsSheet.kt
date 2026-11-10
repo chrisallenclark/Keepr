@@ -132,6 +132,11 @@ private fun SettingsMain(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?, on
     var groupLabel by remember { mutableStateOf(prefs.string(PreferenceKey.GROUP_LABEL) ?: GroupVocabulary.default.singular) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var organizing by remember { mutableStateOf<OrganizingEditor?>(null) }
+    var backingUp by remember { mutableStateOf(false) }
+    var restoringFrom by remember { mutableStateOf<Uri?>(null) }
+    var didRestore by remember { mutableStateOf(false) }
+    val navigator = com.chrisallenclark.keepr.ui.navigation.LocalNavigator.current
+    val pickBackup = com.chrisallenclark.keepr.ui.backup.rememberBackupFilePicker { restoringFrom = it }
 
     // iOS refreshes on appear; Android also catches the user coming back from
     // system Settings with a permission changed, so check while open.
@@ -247,10 +252,13 @@ private fun SettingsMain(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?, on
 
         GroupedSection(
             header = "Data",
-            footer = "Everything you record stays on this phone. There's no account, no server, and no analytics.",
+            footer = "Everything you record stays on this phone. There's no account, no server, and no analytics. " +
+                "A backup is one file, locked with a password you choose — keep it somewhere safe to move to a new phone.",
         ) {
             row { LabeledRow("People", "$people") }
             row { LabeledRow("Storage", "This phone") }
+            row { ListRow(onClick = { backingUp = true }) { KText("Back Up to File…", color = colors.accent) } }
+            row { ListRow(onClick = pickBackup) { KText("Restore from Backup…", color = colors.accent) } }
         }
         SectionSpacer()
 
@@ -309,6 +317,24 @@ private fun SettingsMain(onDismiss: () -> Unit, onOpenGallery: (() -> Unit)?, on
         )
     }
 
+    if (backingUp) {
+        com.chrisallenclark.keepr.ui.backup.BackupSheet(onDismiss = { backingUp = false })
+    }
+    restoringFrom?.let { uri ->
+        com.chrisallenclark.keepr.ui.backup.RestoreSheet(
+            uri,
+            onDismiss = {
+                restoringFrom = null
+                // Settings' own switches were read before the restore; reopen it fresh.
+                if (didRestore) onDismiss()
+            },
+            onRestored = { result ->
+                didRestore = true
+                result.mode?.let(navigator.setMode)
+            },
+        )
+    }
+
     when (organizing) {
         OrganizingEditor.RELATIONSHIP_TYPES -> RelationshipTypesSheet(onDismiss = { organizing = null })
         OrganizingEditor.GROUPS -> GroupsSheet(onDismiss = { organizing = null })
@@ -353,7 +379,7 @@ private val limitations = listOf(
     "What's in the timeline" to "Your interaction timeline is what you record — by hand or through Quick Capture. That's a feature: it's the interactions that mattered, not every notification you ever got.",
     "Suggestions" to "Quick Capture reads your note on this phone using plain text rules. Nothing is sent anywhere, and every suggestion it makes waits for you to approve it.",
     "Reminders" to "Android may hold a reminder back a few minutes to save battery, and some phones stop apps waking up at all unless Keepr is allowed to run in the background. If you force-stop Keepr, its reminders wait until you open it again.",
-    "Sync" to "Keepr doesn't sync between devices yet. Everything lives on this phone and is left out of Android backups, so it won't move to a new phone on its own.",
+    "Sync" to "Keepr doesn't sync between devices yet. Everything lives on this phone and is left out of Android backups, so it won't move to a new phone on its own — use Back Up to File in Settings, then Restore from Backup on the new phone.",
 )
 
 /** Where a row's text starts after a leading symbol, for its separator. */
