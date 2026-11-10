@@ -32,6 +32,7 @@ import com.chrisallenclark.keepr.core.model.FollowUp
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.ui.components.ContextSwitcher
 import com.chrisallenclark.keepr.ui.components.EmptyState
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.GroupedSection
 import com.chrisallenclark.keepr.ui.components.GroupedSectionScope
 import com.chrisallenclark.keepr.ui.components.KText
@@ -97,13 +98,12 @@ fun TodayScreen(
         )
 
         if (digest.isEmpty && waiting.isEmpty() && reviewSummary == null) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                 EmptyState(
                     title = "You're caught up.",
                     symbolName = "checkmark.circle",
                     description = if (mode.mode == ContextMode.BUSINESS) "Nothing needs your attention in Business right now."
                     else "Nothing needs your attention in Personal right now.",
-                    modifier = Modifier.padding(bottom = 60.dp),
                 ) {
                     KeeprButton("Quick Capture", onQuickCapture, style = KeeprButtonStyle.Bordered)
                 }

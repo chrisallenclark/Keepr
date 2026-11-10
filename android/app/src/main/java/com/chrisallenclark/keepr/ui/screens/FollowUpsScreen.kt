@@ -24,6 +24,7 @@ import com.chrisallenclark.keepr.core.model.FollowUp
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.ui.components.ContextSwitcher
 import com.chrisallenclark.keepr.ui.components.EmptyState
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.GroupedSection
 import com.chrisallenclark.keepr.ui.components.KeeprMenu
 import com.chrisallenclark.keepr.ui.components.KeeprTopBar
@@ -77,12 +78,11 @@ fun FollowUpsScreen(mode: ModeBinding, onOpenPerson: (Person) -> Unit) {
             pinned = { ContextSwitcher(mode.mode == ContextMode.PERSONAL, { mode.set(if (it) ContextMode.PERSONAL else ContextMode.BUSINESS) }) },
         )
         if (sections.isEmpty()) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                 EmptyState(
                     title = "Nothing to follow up on",
                     symbolName = "bell.slash",
                     description = "Add a follow-up from anyone's profile and it'll show up here.",
-                    modifier = Modifier.padding(bottom = 60.dp),
                 )
             }
             return@Column

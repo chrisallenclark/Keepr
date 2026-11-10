@@ -31,6 +31,7 @@ import com.chrisallenclark.keepr.core.model.MemoryCategory
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.core.model.Priority
 import com.chrisallenclark.keepr.ui.components.EmptyState
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.FormTextField
 import com.chrisallenclark.keepr.ui.components.GroupedSection
 import com.chrisallenclark.keepr.ui.components.GroupedSectionScope
@@ -220,13 +221,12 @@ fun MemoryLibraryScreen(person: Person, onBack: () -> Unit) {
         )
 
         if (groups.isEmpty() && archived.isEmpty()) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                 if (query.isBlank()) {
                     EmptyState(
                         "Nothing recorded yet",
                         "brain",
                         description = "Everything you learn about ${person.displayName} can live here.",
-                        modifier = Modifier.padding(bottom = 60.dp),
                     ) {
                         KeeprButton("Brain Dump", ::brainDump, style = KeeprButtonStyle.Prominent)
                     }
@@ -235,7 +235,6 @@ fun MemoryLibraryScreen(person: Person, onBack: () -> Unit) {
                         "No Results for “$query”",
                         "magnifyingglass",
                         description = "Check the spelling or try a new search.",
-                        modifier = Modifier.padding(bottom = 60.dp),
                     )
                 }
             }

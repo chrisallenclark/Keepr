@@ -29,6 +29,7 @@ import com.chrisallenclark.keepr.core.model.trimmedSpaces
 import com.chrisallenclark.keepr.ui.components.Avatar
 import com.chrisallenclark.keepr.ui.components.AvatarSize
 import com.chrisallenclark.keepr.ui.components.EmptyState
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.GroupedSection
 import com.chrisallenclark.keepr.ui.components.IconLabel
 import com.chrisallenclark.keepr.ui.components.KText
@@ -60,21 +61,19 @@ fun SearchScreen(onOpenPerson: (Person, ContextMode) -> Unit) {
             SearchField(query, { query = it }, "Names, companies, anything you noted")
         }
         when {
-            query.trimmedSpaces().isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            query.trimmedSpaces().isEmpty() -> EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                 EmptyState(
                     title = "Search everyone",
                     symbolName = "magnifyingglass",
                     description = "Business and personal together — try a company, a place you met, or something you noted.",
-                    modifier = Modifier.padding(bottom = 60.dp),
                 )
             }
-            sections.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            sections.isEmpty() -> EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                 // ContentUnavailableView.search(text:)
                 EmptyState(
                     title = "No Results for “$query”",
                     symbolName = "magnifyingglass",
                     description = "Check the spelling or try a new search.",
-                    modifier = Modifier.padding(bottom = 60.dp),
                 )
             }
             else -> Column(Modifier.verticalScroll(rememberScrollState())) {

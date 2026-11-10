@@ -37,6 +37,7 @@ import com.chrisallenclark.keepr.core.domain.PersonFilePayload
 import com.chrisallenclark.keepr.core.model.Person
 import com.chrisallenclark.keepr.core.model.PersonFile
 import com.chrisallenclark.keepr.ui.components.EmptyState
+import com.chrisallenclark.keepr.ui.components.EmptyStateArea
 import com.chrisallenclark.keepr.ui.components.FormDateRow
 import com.chrisallenclark.keepr.ui.components.FormTextField
 import com.chrisallenclark.keepr.ui.components.GroupedSection
@@ -237,12 +238,11 @@ fun PersonFilesScreen(person: Person, onBack: () -> Unit) {
             )
 
             if (files.isEmpty()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                EmptyStateArea(Modifier.weight(1f).fillMaxWidth()) {
                     EmptyState(
                         "No files yet",
                         "folder",
                         description = "Photograph a consultation sheet, keep a signed form, or save their plan. Stays on your device.",
-                        modifier = Modifier.padding(bottom = 60.dp),
                     )
                 }
             } else {
