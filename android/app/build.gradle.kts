@@ -152,6 +152,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     // GrantPermissionRule, for ContactsTest.
     androidTestImplementation(libs.androidx.test.rules)
+    // Stands in for the system file picker in the Settings backup test.
+    androidTestImplementation(libs.androidx.test.espresso.intents)
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
