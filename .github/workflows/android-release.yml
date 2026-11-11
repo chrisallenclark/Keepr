@@ -18,6 +18,18 @@ name: Android release
 #   required reviewer approves (the secrets live in that environment).
 
 on:
+  # GitHub only shows a "Run workflow" button for workflows on the default
+  # branch (main), and this one lives on the Android branch until you approve
+  # merging. It can still be started there through GitHub's API (see
+  # android/docs/RELEASE.md, "Making a release"), but GitHub has to know the
+  # workflow exists first. This push trigger does only that: when this file
+  # changes on the Android branch, the "check" job below runs, reads no
+  # secrets and builds nothing.
+  push:
+    branches:
+      - claude/friendly-pasteur-nft1vl
+    paths:
+      - .github/workflows/android-release.yml
   workflow_dispatch:
     inputs:
       distribute:
@@ -41,6 +53,18 @@ defaults:
     working-directory: android
 
 jobs:
+  check:
+    name: Release workflow is registered
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - run: echo "Nothing to build on push. Releases start only by hand (workflow_dispatch), with your approval."
+
   release:
     name: Signed release build
     # Only the owner, only in this repository, only by hand.

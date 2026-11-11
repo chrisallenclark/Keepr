@@ -116,8 +116,10 @@ and only after you approve each run.
 1. Go to **github.com/chrisallenclark/Keepr → Settings → Environments → New
    environment**. Name it exactly **`android-release`** → **Configure environment**.
 2. Under **Deployment protection rules**, tick **Required reviewers** and add yourself.
-   If you are the only person with access, leave **Prevent self-review** off, or you
-   could never approve a run. Click **Save protection rules**.
+   Leave **Prevent self-review** **unticked** (it is off by default). That option stops
+   the person who started a run from approving it, and you are both the person who
+   starts releases and the only reviewer, so with it on no release could ever be
+   approved. Click **Save protection rules**.
 3. Under **Deployment branches and tags**, choose **Selected branches and tags** and
    add `main` and `claude/friendly-pasteur-nft1vl` (the Android branch). The workflow
    also refuses any other branch on its own, and Google (step 5) only trusts runs from
@@ -220,23 +222,39 @@ the delivery van.
         --location=global --workload-identity-pool=github \
         --display-name="Keepr release workflow" \
         --issuer-uri="https://token.actions.githubusercontent.com" \
-        --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref,attribute.environment=assertion.environment,attribute.workflow_ref=assertion.workflow_ref" \
-        --attribute-condition="assertion.repository=='chrisallenclark/Keepr' && assertion.environment=='android-release' && assertion.workflow_ref.startsWith('chrisallenclark/Keepr/.github/workflows/android-release.yml@') && (assertion.ref=='refs/heads/main' || assertion.ref=='refs/heads/claude/friendly-pasteur-nft1vl')"
+        --attribute-mapping="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.event_name=assertion.event_name,attribute.environment=assertion.environment,attribute.ref=assertion.ref,attribute.workflow_ref=assertion.workflow_ref" \
+        --attribute-condition="assertion.repository_id=='1333641349' && assertion.repository_owner_id=='184265033' && assertion.event_name=='workflow_dispatch' && assertion.environment=='android-release' && assertion.workflow_ref in ['chrisallenclark/Keepr/.github/workflows/android-release.yml@refs/heads/main', 'chrisallenclark/Keepr/.github/workflows/android-release.yml@refs/heads/claude/friendly-pasteur-nft1vl']"
       ```
+
+      What that last line means: Google accepts a GitHub token only if it comes from
+      **this repository and this account** (checked by their permanent numeric IDs,
+      which unlike names can't be taken over if a repository is ever renamed or
+      deleted), from a run **started by hand**, in the **`android-release`**
+      environment (so after your approval), running **the release workflow file
+      itself** from **`main` or the Android branch**. A pull request, a fork, another
+      workflow, another branch or a tag all get "permission denied".
 
       ```sh
       gcloud iam service-accounts add-iam-policy-binding "$SA" \
         --role="roles/iam.workloadIdentityUser" \
-        --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/chrisallenclark/Keepr"
+        --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository_id/1333641349"
       echo "GCP_WORKLOAD_IDENTITY_PROVIDER = projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/providers/keepr-release"
       echo "GCP_SERVICE_ACCOUNT = $SA"
       ```
+
+      **Permissions.** The service account gets one role, **Firebase App Distribution
+      Admin**, on the Keepr Firebase project only. It's the narrowest role Google
+      offers that can upload a build and send it to a group: it covers App
+      Distribution and nothing else (not your Google account, billing, other Firebase
+      products or other projects). Use a Firebase project that holds only Keepr, so
+      even that reaches nothing else.
    3. The last two lines print two values. Add each as an **environment variable** (not
       a secret; they aren't sensitive) in **Settings → Environments → android-release →
       Environment variables → Add variable**, with exactly those names.
    4. If you later rename the Android branch or release from another one, update the
-      `--attribute-condition` (run the `providers update-oidc` form of the same command)
-      and the branch list in `android-release.yml`.
+      `--attribute-condition` (the same command with `update-oidc` instead of
+      `create-oidc`, and without `--issuer-uri`) and the branch list in
+      `android-release.yml`.
 
 Everything in the `android-release` environment, for reference:
 
@@ -253,20 +271,43 @@ Everything in the `android-release` environment, for reference:
 
 ## 6. Making a release
 
-1. **github.com/chrisallenclark/Keepr → Actions → Android release → Run workflow.**
-2. Pick the branch to build. The first time, **leave "distribute" unticked**: this is a
-   trial that builds, tests and checks the signed APK without sending it to anyone.
-   Click **Run workflow**.
-3. The run waits with **"Review deployments"**. Click it, tick `android-release`,
-   **Approve and deploy**. (This approval is what lets the run use the secrets.)
+**Why there's no "Run workflow" button yet.** GitHub only shows that button for
+workflows that are on the default branch (`main`). The release workflow stays on the
+Android branch until you approve merging the Android work, so it is started through
+GitHub's API instead, which works for any branch. The run then waits for your approval
+exactly as it would from the button, and it uses the workflow and app code from the
+Android branch.
+
+1. **Start the run**, either way:
+   * **Ask Claude** in your Keepr Android session: "start a trial release build"
+     (distribution off) or "start a release and send it to testers". It starts the
+     run through the API as you; nothing runs without your approval in step 2.
+   * **Or yourself**, in Google Cloud Shell (it has the GitHub CLI): run
+     `gh auth login` once, then
+
+     ```sh
+     gh workflow run android-release.yml --repo chrisallenclark/Keepr \
+       --ref claude/friendly-pasteur-nft1vl -f distribute=false
+     ```
+
+     (`-f distribute=true -f release_notes="What's new"` to send it to testers.)
+
+   Once the Android work is merged into `main`, you can use **Actions → Android
+   release → Run workflow** instead.
+2. Open **Actions → Android release** and the new run. It waits with **"Review
+   deployments"**. Click it, tick `android-release`, **Approve and deploy**. (This
+   approval is what lets the run use the secrets and sign in to Firebase.)
+3. The first time, use **distribute off**: a trial that builds, tests and checks the
+   signed APK without sending it to anyone.
 4. When it finishes, open the run's **Summary**. Check:
    * the version is what you expect, and
    * **Signing certificate SHA-256** matches the fingerprint you saved in step 1.4
      (same hex pairs; the summary prints them without colons, in lowercase).
 
-   If a secret is missing or wrong, the run fails with a red message naming it.
-5. When you're happy, run it again with **distribute ticked** and some **release
-   notes** ("What's new"). Approve it the same way. Testers get an email.
+   If a secret or variable is missing or wrong, the run fails with a red message
+   naming it.
+5. When you're happy, run it again with **distribute on** and some **release notes**.
+   Approve it the same way. Testers in the group get an email.
 
 Each run also saves a small `keepr-release-mapping-<code>` artifact. It isn't the app;
 it turns a tester's crash report back into readable names. It contains nothing secret.
