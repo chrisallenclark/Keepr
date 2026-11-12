@@ -48,7 +48,7 @@ Licenses for the bundled font and symbols are in `app/src/main/assets/licenses/`
 
 | | |
 |---|---|
-| Application ID | `com.chrisallenclark.keepr` |
+| Application ID | `com.aulorvy.keepr` |
 | Minimum Android | 8.0 (API 26) |
 | Target | API 36 |
 | Language / UI | Kotlin, Jetpack Compose |

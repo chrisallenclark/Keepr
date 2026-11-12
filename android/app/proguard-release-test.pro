@@ -11,7 +11,7 @@
 # the rest of AndroidX, resources) is still minified and shrunk as usual. The
 # production configuration, without this file, is installed, launched and
 # exercised separately by the same check.
--keep class com.chrisallenclark.keepr.** { *; }
+-keep class com.aulorvy.keepr.** { *; }
 -keep class kotlin.** { *; }
 -keep class kotlinx.coroutines.** { *; }
 # Used by the AndroidX test runner and test core libraries.

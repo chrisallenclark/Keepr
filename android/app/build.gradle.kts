@@ -51,11 +51,11 @@ if (keeprTestBuildType != "debug" && keeprTestBuildType != "release") {
 }
 
 android {
-    namespace = "com.chrisallenclark.keepr"
+    namespace = "com.aulorvy.keepr"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.chrisallenclark.keepr"
+        applicationId = "com.aulorvy.keepr"
         // Android 8.0. Every library in use supports it.
         minSdk = 26
         targetSdk = 36

@@ -6,7 +6,7 @@
 -dontshrink
 -dontoptimize
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
--keep class com.chrisallenclark.keepr.** { *; }
+-keep class com.aulorvy.keepr.** { *; }
 -keep class androidx.test.** { *; }
 -keep class org.junit.** { *; }
 -keep class junit.** { *; }

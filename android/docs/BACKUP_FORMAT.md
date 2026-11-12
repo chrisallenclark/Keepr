@@ -8,7 +8,7 @@ Android Storage Access Framework, so it can live anywhere the user picks
 (Google Drive, Downloads, a USB stick). Keepr has no network access; nothing is
 uploaded by the app itself.
 
-The code: `core/src/main/kotlin/com/chrisallenclark/keepr/core/backup/` (the
+The code: `core/src/main/kotlin/com/aulorvy/keepr/core/backup/` (the
 format, encryption and checks, unit-tested on the JVM in
 `core/src/test/.../BackupTests.kt`) and `app/.../backup/BackupService.kt` (the
 database snapshot, the all-or-nothing restore, reminders).

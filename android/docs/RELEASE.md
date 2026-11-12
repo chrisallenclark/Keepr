@@ -178,7 +178,7 @@ the delivery van.
 1. Go to **https://console.firebase.google.com** → **Create a project** (e.g. "Keepr").
    Google Analytics is not needed; turn it off.
 2. On the project overview, click **Add app → Android**. Package name:
-   **`com.chrisallenclark.keepr`** (exactly). Nickname: "Keepr Android". Leave the SHA-1
+   **`com.aulorvy.keepr`** (exactly). Nickname: "Keepr Android". Leave the SHA-1
    empty. **Register app**. Skip "Download google-services.json" and "Add Firebase SDK"
    (Keepr doesn't use them): click **Next** / **Continue to console**.
 3. **App ID:** ⚙ **Project settings → General → Your apps → Keepr Android → App ID**, a

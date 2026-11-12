@@ -9,7 +9,7 @@ set -euo pipefail
 
 OUT="${1:-build/emulator-screenshots}"
 DEVICE="${2:-emulator}"
-PACKAGE=com.chrisallenclark.keepr
+PACKAGE=com.aulorvy.keepr
 mkdir -p "$OUT"
 
 # A failing UI test shouldn't hide the screenshots; fail the job at the end.
@@ -21,12 +21,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 # Saved data must survive the process being killed, not only the activity
 # closing: write in one instrumentation run, force-stop, read in another.
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-RUNNER=com.chrisallenclark.keepr.test/androidx.test.runner.AndroidJUnitRunner
+RUNNER=com.aulorvy.keepr.test/androidx.test.runner.AndroidJUnitRunner
 phase() {
   local name="$1" method="$2"
   local output
   output=$(adb shell am instrument -w -e keeprPhase "$name" \
-    -e class "com.chrisallenclark.keepr.ProcessRestartTest#$method" "$RUNNER")
+    -e class "com.aulorvy.keepr.ProcessRestartTest#$method" "$RUNNER")
   echo "$output"
   echo "$output" | grep -q "OK (1 test)" || { echo "::error::Process-restart phase '$name' failed"; TESTS_FAILED=1; }
 }
@@ -120,7 +120,7 @@ pass() { echo "PASS: reminders: $*"; }
 fail() { echo "FAIL: reminders: $*"; echo "::error::Reminders: $*"; REMINDERS_FAILED=1; }
 
 reminder_cmd() { # action id [seconds]
-  adb shell am broadcast -n "$DEBUG_RECEIVER" -a "com.chrisallenclark.keepr.debug.$1" \
+  adb shell am broadcast -n "$DEBUG_RECEIVER" -a "com.aulorvy.keepr.debug.$1" \
     --es id "$2" --es title "Keepr-$2" --ei seconds "${3:-0}" | tr -d '\r' | grep -o 'data="[^"]*"' || true
 }
 

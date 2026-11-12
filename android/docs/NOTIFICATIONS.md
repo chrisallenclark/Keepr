@@ -141,9 +141,9 @@ to a new phone.
 Schedule one by hand on a debug build:
 
 ```sh
-adb shell am broadcast -n com.chrisallenclark.keepr/.notifications.DebugReminderReceiver \
-  -a com.chrisallenclark.keepr.debug.SCHEDULE --es id manual-1 --es title Hello --ei seconds 30
-adb shell am broadcast -n com.chrisallenclark.keepr/.notifications.DebugReminderReceiver \
-  -a com.chrisallenclark.keepr.debug.STATUS      # status=AUTHORIZED exact=false pending=manual-1
-adb shell appops set com.chrisallenclark.keepr SCHEDULE_EXACT_ALARM allow   # try the exact path (12+)
+adb shell am broadcast -n com.aulorvy.keepr/.notifications.DebugReminderReceiver \
+  -a com.aulorvy.keepr.debug.SCHEDULE --es id manual-1 --es title Hello --ei seconds 30
+adb shell am broadcast -n com.aulorvy.keepr/.notifications.DebugReminderReceiver \
+  -a com.aulorvy.keepr.debug.STATUS      # status=AUTHORIZED exact=false pending=manual-1
+adb shell appops set com.aulorvy.keepr SCHEDULE_EXACT_ALARM allow   # try the exact path (12+)
 ```

@@ -28,10 +28,10 @@ set -euo pipefail
 APKS="${1:?APK directory}"
 OUT="${2:-build/release-check-screenshots}"
 DEVICE="${3:-emulator}"
-PACKAGE=com.chrisallenclark.keepr
-TEST_PACKAGE=com.chrisallenclark.keepr.test
+PACKAGE=com.aulorvy.keepr
+TEST_PACKAGE=com.aulorvy.keepr.test
 RUNNER="$TEST_PACKAGE/androidx.test.runner.AndroidJUnitRunner"
-TEST_CLASS=com.chrisallenclark.keepr.ReleaseUpgradeTest
+TEST_CLASS=com.aulorvy.keepr.ReleaseUpgradeTest
 WORK=$(mktemp -d)
 mkdir -p "$OUT"
 
@@ -187,7 +187,7 @@ phase() { # name method [extra instrument args...]
 }
 
 reminder_alarm_set() {
-  adb shell dumpsys alarm | tr -d '\r' | grep -qF "com.chrisallenclark.keepr.action.REMINDER"
+  adb shell dumpsys alarm | tr -d '\r' | grep -qF "com.aulorvy.keepr.action.REMINDER"
 }
 
 # Re-arming happens off the main thread, so give it up to 30 seconds.
