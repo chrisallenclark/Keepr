@@ -1,5 +1,6 @@
 package com.aulorvy.keepr.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,12 +28,13 @@ import com.aulorvy.keepr.ui.theme.Chrome
 import com.aulorvy.keepr.ui.theme.KeeprTheme
 import com.aulorvy.keepr.ui.theme.Radius
 import com.aulorvy.keepr.ui.theme.Spacing
+import kotlinx.coroutines.launch
 
 /**
  * `.sheet`: a card that rises over the screen, dims what's behind it, and is
  * dismissed by dragging it down or with the system back gesture.
  *
- * Material's bottom sheet supplies the gesture handling and back behavior; its
+ * Material's bottom sheet supplies the drag gesture; back is handled here; its
  * look is replaced with iOS 26's — 38pt top corners, the grouped background,
  * a small grabber, and a navigation bar with text buttons.
  */
@@ -41,6 +45,8 @@ fun KeeprSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = KeeprTheme.colors
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         // A full-height sheet stops below the status bar with a sliver of the
@@ -49,15 +55,26 @@ fun KeeprSheet(
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(top = 10.dp),
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheetState,
+        // Back is handled below, not by the sheet itself. The sheet's own back
+        // callback could end up ahead of a page's (Settings' inner pages, Quick
+        // Capture's review step), so back sometimes closed the whole sheet.
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
         shape = RoundedCornerShape(topStart = Radius.sheet, topEnd = Radius.sheet),
         containerColor = colors.groupedBackground,
         contentColor = colors.label,
         scrimColor = Color.Black.copy(alpha = if (colors.isDark) 0.48f else 0.2f),
         dragHandle = { Grabber() },
         tonalElevation = 0.dp,
-        content = content,
-    )
+    ) {
+        // Back on the sheet itself slides it away, as the sheet would. A page
+        // inside composes its own BackHandler after this one, so while that
+        // one is active it wins and back steps within the sheet instead.
+        BackHandler {
+            scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        }
+        content()
+    }
 }
 
 @Composable
