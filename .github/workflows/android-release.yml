@@ -86,6 +86,8 @@ jobs:
       # Releases come only from the reviewed branches. A run started on any
       # other branch stops here, before any secret is read.
       - name: Check the branch
+        # Runs before checkout, so not in the android/ folder (it isn't there yet).
+        working-directory: .
         env:
           REF: ${{ github.ref }}
         run: |
@@ -276,10 +278,12 @@ jobs:
 
       - name: Delete the key, credentials and signed APK from the runner
         if: always()
+        # Also runs when an early step failed and nothing was checked out.
+        working-directory: .
         run: |
           rm -f "$RUNNER_TEMP/keepr-release.jks" "$RUNNER_TEMP/release-notes.txt"
           # The sign-in step's short-lived credential file (it also removes it itself).
           rm -f "$GITHUB_WORKSPACE"/gha-creds-*.json
-          rm -f firebase-debug.log ../firebase-debug.log
-          rm -rf app/build/outputs/apk
-          ./gradlew --stop >/dev/null 2>&1 || true
+          rm -f firebase-debug.log android/firebase-debug.log
+          rm -rf android/app/build/outputs/apk
+          if [ -x android/gradlew ]; then (cd android && ./gradlew --stop >/dev/null 2>&1) || true; fi
