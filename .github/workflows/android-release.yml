@@ -263,11 +263,15 @@ jobs:
             if [ -n "$RELEASE_NOTES" ]; then printf '%s\n\n' "$RELEASE_NOTES"; fi
             printf 'Keepr %s (%s)\n' "$KEEPR_VERSION_NAME" "$KEEPR_VERSION_CODE"
           } > "$NOTES"
+          # The CLI prints a signed link that lets anyone download the APK for an
+          # hour. This repository's logs are public, so drop any line with a
+          # link; the run's status still says whether Firebase took the build.
           npx --yes firebase-tools@15.34.1 --non-interactive appdistribution:distribute \
             app/build/outputs/apk/release/app-release.apk \
             --app "$FIREBASE_APP_ID" \
             --groups "$FIREBASE_TESTER_GROUP" \
-            --release-notes-file "$NOTES"
+            --release-notes-file "$NOTES" 2>&1 \
+            | sed -E '/https?:\/\//d'
           echo "| Sent to testers | yes |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Not sent to testers
