@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function owns(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function tokenData() {
+      return request.resource.data;
+    }
+
+    function tokenShape(data) {
+      return data.keys().hasOnly([
+          "schemaVersion", "hash", "prefix", "label", "createdAt", "revokedAt", "lastUsedAt"
+        ])
+        && data.hash is string
+        && data.hash.matches('^[a-f0-9]{64}$')
+        && data.prefix is string
+        && data.prefix.size() > 0
+        && data.prefix.size() <= 16
+        && data.label is string
+        && data.label.size() > 0
+        && data.label.size() <= 80
+        && data.createdAt is timestamp
+        && data.createdAt <= request.time + duration.value(10, 'm')
+        && (!("schemaVersion" in data) || data.schemaVersion == 1)
+        && (!("revokedAt" in data) || data.revokedAt == null || data.revokedAt is timestamp)
+        && (!("lastUsedAt" in data) || data.lastUsedAt == null || data.lastUsedAt is timestamp);
+    }
+
+    // The phone writes its own records. The read API uses the Admin SDK and
+    // does not go through these rules. Nobody else can see this tree.
+    match /users/{userId}/{collection}/{docId} {
+      allow read: if owns(userId) && collection != "rateLimits";
+      allow create, update, delete: if owns(userId)
+        && collection != "tokens"
+        && collection != "rateLimits";
+    }
+
+    match /users/{userId}/tokens/{tokenId} {
+      allow read: if owns(userId);
+      allow create: if owns(userId)
+        && tokenShape(tokenData())
+        && (!("revokedAt" in tokenData()) || tokenData().revokedAt == null)
+        && !("lastUsedAt" in tokenData());
+      allow update: if owns(userId)
+        && tokenShape(tokenData())
+        && tokenData().hash == resource.data.hash
+        && tokenData().prefix == resource.data.prefix
+        && tokenData().createdAt == resource.data.createdAt
+        && (
+          !("lastUsedAt" in resource.data) && !("lastUsedAt" in tokenData())
+          || tokenData().lastUsedAt == resource.data.lastUsedAt
+        )
+        && (
+          !("revokedAt" in resource.data)
+          || resource.data.revokedAt == null
+          || tokenData().revokedAt == resource.data.revokedAt
+        );
+      allow delete: if owns(userId);
+    }
+
+    match /users/{userId}/rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

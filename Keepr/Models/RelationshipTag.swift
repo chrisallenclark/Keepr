@@ -37,6 +37,8 @@ final class RelationshipTag {
     var symbolName: String = "tag"
 
     var createdAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
 
     var people: [Person]?
 
@@ -58,6 +60,7 @@ final class RelationshipTag {
         self.sortOrder = sortOrder
         self.symbolName = symbolName
         self.createdAt = Date()
+        self.modifiedAt = self.createdAt
         self.people = []
     }
 }

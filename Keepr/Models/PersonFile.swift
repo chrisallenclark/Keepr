@@ -40,6 +40,8 @@ final class PersonFile {
     /// the day it was imported. Editable, because photos get added later.
     var capturedAt: Date = Date()
     var createdAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
 
     /// One line of context. "Week 1 InBody — 24% body fat."
     var note: String?
@@ -76,6 +78,7 @@ final class PersonFile {
         self.byteCount = byteCount
         self.capturedAt = capturedAt
         self.createdAt = createdAt
+        self.modifiedAt = createdAt
         self.note = note
         self.person = person
         self.sourceInteraction = sourceInteraction

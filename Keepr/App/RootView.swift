@@ -33,6 +33,9 @@ struct RootView: View {
     @AppStorage(PreferenceKey.hasOnboarded) private var hasOnboarded = false
     @AppStorage(PreferenceKey.contextMode) private var contextModeRaw = ContextMode.business.rawValue
 
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
+
     @State private var selectedTab: AppTab = .today
     @State private var isShowingOnboarding = false
 
@@ -62,6 +65,14 @@ struct RootView: View {
                 .tag(AppTab.search)
         }
         .onAppear(perform: applyLaunchOptions)
+        .task {
+            guard !LaunchOptions.isDemoMode else { return }
+            await CloudAccount.shared.syncNow(in: modelContext)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active || phase == .background, !LaunchOptions.isDemoMode else { return }
+            Task { await CloudAccount.shared.syncNow(in: modelContext) }
+        }
         .fullScreenCover(isPresented: $isShowingOnboarding) {
             OnboardingView(mode: mode) {
                 hasOnboarded = true

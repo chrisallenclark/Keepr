@@ -37,6 +37,8 @@ final class ConversationNote {
     var occurredAt: Date = Date()
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
 
     /// Pinned notes lead on the profile — the consultation you keep going back
     /// to shouldn't sink as newer notes arrive.
@@ -69,6 +71,7 @@ final class ConversationNote {
         self.occurredAt = occurredAt
         self.createdAt = createdAt
         self.updatedAt = createdAt
+        self.modifiedAt = createdAt
         self.isPinned = isPinned
         self.person = person
         self.sourceInteraction = sourceInteraction
@@ -127,5 +130,6 @@ extension ConversationNote {
 
     func touch(_ date: Date = Date()) {
         updatedAt = date
+        modifiedAt = date
     }
 }

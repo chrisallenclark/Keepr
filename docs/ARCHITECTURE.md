@@ -199,6 +199,11 @@ confirms**; nothing is ever written to a person's record unreviewed.
 
 ## 8. CloudKit path (not V0.1)
 
+Opt-in Firebase sync and a read-only assistant API now live beside this local store.
+The phone is still where you edit; the account is a per-user copy plus a revocable
+read token. Inventory, rules, and the owner's setup steps are in
+[`CLOUD_SYNC.md`](CLOUD_SYNC.md). The V0.1 text below is the original local-only plan.
+
 Model rules above are already satisfied. Enabling sync is: add the iCloud capability +
 CloudKit container, switch `ModelConfiguration` to `.automatic`, verify schema in the
 CloudKit console, and gate it behind a Settings toggle. Nothing in the UI layer changes.

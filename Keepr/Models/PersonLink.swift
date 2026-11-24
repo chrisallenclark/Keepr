@@ -29,6 +29,8 @@ final class PersonLink {
     var note: String?
 
     var createdAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
 
     init(
         personA: Person? = nil,
@@ -45,6 +47,7 @@ final class PersonLink {
         self.labelBToA = labelBToA
         self.note = note
         self.createdAt = createdAt
+        self.modifiedAt = createdAt
     }
 }
 

@@ -29,6 +29,8 @@ struct TestStore {
             Interaction.self,
             Memory.self,
             FollowUp.self,
+            PersonFile.self,
+            ConversationNote.self,
             RelationshipTag.self,
             PersonGroup.self,
             PersonLink.self

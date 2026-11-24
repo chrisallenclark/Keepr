@@ -10,8 +10,9 @@ relationships that matter get buried. Keepr separates them with one idea:
 One switch changes what every screen is about. A person can belong to both — there's still
 only one record for them.
 
-Native SwiftUI + SwiftData. No accounts, no backend, no analytics, no third-party
-dependencies. Everything stays on the device.
+Native SwiftUI + SwiftData. No analytics and no third-party UI kits. Cloud sync is off
+until you sign in; until then everything stays on the device. See
+[`docs/CLOUD_SYNC.md`](docs/CLOUD_SYNC.md) and [`API.md`](API.md).
 
 ---
 
@@ -35,7 +36,11 @@ The loop that works today:
 | **Reminders** | One local notification per follow-up. Off until you turn reminders on. |
 | **Settings** | Permission status, sample data toggle, delete all data, and an honest "what Keepr can't do" page. |
 
-Deliberately **not** built yet: iCloud sync, model-backed extraction, voice capture, semantic
+Optional **cloud sync** (Settings → Cloud & Assistant) copies a signed-in person's data to
+their Firebase account and exposes a read-only token API. It is off until you add a
+`FirebaseOptions.plist` and sign in. See [`docs/CLOUD_SYNC.md`](docs/CLOUD_SYNC.md).
+
+Deliberately **not** built yet: model-backed extraction, voice capture, semantic
 search, widgets, App Intents, calendar/email integration, iPad/Mac. See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §9.
 
@@ -75,6 +80,7 @@ Keepr/
   Domain/        pure, tested logic — filtering, sorting, due dates, search
   Persistence/   container construction, seeding, delete-all
   Services/      Contacts, notifications, capture extraction, URL launching
+  Sync/          optional Firebase account sync and assistant tokens
   DesignSystem/  the few shared views and spacing constants
   Features/      one folder per screen
 KeeprTests/      Swift Testing suites over Domain, Models, persistence, extraction
@@ -83,6 +89,8 @@ docs/            ARCHITECTURE.md (frozen V0.1 decisions), APP_STORE_CHECKLIST.md
 
 ## Privacy
 
-No network calls. No analytics. No SDKs. Contacts are read only to link relationships and are
-never written to or uploaded. Relationship content is never written to the console or logs.
-Settings can erase everything the app owns in one action.
+No analytics and no third-party SDKs. Contacts are read only to link relationships and are
+never written back to the address book. Until you sign in, nothing is uploaded. After you
+sign in, the relationships, notes, files and follow-ups you saved sync to your account.
+Relationship content is never written to the console or logs. Settings can erase everything
+the app owns, including the account copy when you're signed in.
