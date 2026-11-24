@@ -9,14 +9,6 @@
       ]
     },
     {
-      "collectionGroup": "people",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "modifiedAt", "order": "DESCENDING" },
-        { "fieldPath": "__name__", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "memories",
       "queryScope": "COLLECTION",
       "fields": [

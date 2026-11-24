@@ -75,6 +75,51 @@ jobs:
       - name: Wire up the app icon
         run: ./scripts/prepare-app-icon.sh
 
+      # Cloud sync stays off in a build that has no Firebase options. The plist
+      # is gitignored, so TestFlight gets it from this secret. An empty secret
+      # is a normal state — the upload still happens.
+      - name: Install Firebase options
+        env:
+          FIREBASE_OPTIONS_PLIST_BASE64: ${{ secrets.FIREBASE_OPTIONS_PLIST_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FIREBASE_OPTIONS_PLIST_BASE64}" ]; then
+            echo "FIREBASE_OPTIONS_PLIST_BASE64 is not set. This build will ship without cloud sync."
+            exit 0
+          fi
+          python3 - <<'PY'
+          import base64
+          import os
+          import pathlib
+          import plistlib
+          import re
+          import sys
+
+          body = re.sub(r"\s+", "", os.environ["FIREBASE_OPTIONS_PLIST_BASE64"])
+          try:
+              data = base64.b64decode(body, validate=True)
+          except Exception:
+              sys.exit("::error::FIREBASE_OPTIONS_PLIST_BASE64 is not valid base64.")
+
+          path = pathlib.Path("Keepr/FirebaseOptions.plist")
+          path.write_bytes(data)
+          try:
+              parsed = plistlib.loads(data)
+          except Exception:
+              path.unlink(missing_ok=True)
+              sys.exit("::error::FIREBASE_OPTIONS_PLIST_BASE64 did not decode to a property list.")
+
+          missing = [
+              key for key in ("PROJECT_ID", "API_KEY", "STORAGE_BUCKET")
+              if not str(parsed.get(key, "")).strip() or str(parsed.get(key, "")).startswith("YOUR_")
+          ]
+          if missing:
+              path.unlink(missing_ok=True)
+              sys.exit("::error::Firebase options plist is missing " + ", ".join(missing) + ".")
+
+          print(f"Wrote {path} ({len(data)} bytes).")
+          PY
+
       # Rebuilds the PEM from whatever ended up in the secret. A .p8 copied on
       # Windows arrives with CRLF line endings, which CryptoKit rejects outright
       # ("invalidPEMDocument"), and it's easy to paste the base64 body without

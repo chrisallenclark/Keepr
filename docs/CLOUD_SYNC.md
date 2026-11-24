@@ -88,9 +88,25 @@ One phone is bound to the first account that signs in. A second account is refus
 
 Assistant tokens are created in Settings. The plaintext is shown once. Revoke sets `revokedAt`. The API then returns 401.
 
+## Live project
+
+The Firebase project is **keepr-contacts**. Rules, indexes, Storage, and the `api` function are already deployed. The read API is:
+
+https://us-central1-keepr-contacts.cloudfunctions.net/api
+
+TestFlight (`.github/workflows/testflight.yml`, every push to `main`) writes `Keepr/FirebaseOptions.plist` from the repository secret **`FIREBASE_OPTIONS_PLIST_BASE64`**. That value is the plist file encoded as base64, nothing else. If the secret is not set, the step does nothing and the build still uploads; that binary has no cloud sync until you add the secret and ship another build. Do not commit the plist.
+
+On Windows, from the folder that contains the filled-in plist:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("Keepr\FirebaseOptions.plist"))
+```
+
+GitHub → Settings → Secrets and variables → Actions → New repository secret. Name it exactly `FIREBASE_OPTIONS_PLIST_BASE64` and paste that one line.
+
 ## What you have to do
 
-Do this in a Firebase project that holds only Keepr. The Spark plan can run Auth, Firestore, and Storage. **Cloud Functions need the Blaze plan.** Blaze is pay-as-you-go. A single person's reads and a quiet function stay inside Google's free tier, but it is a billing account, and you should set a budget alert. This repository does not deploy anything.
+Do this in a Firebase project that holds only Keepr. The Spark plan can run Auth, Firestore, and Storage. **Cloud Functions need the Blaze plan.** Blaze is pay-as-you-go. A single person's reads and a quiet function stay inside Google's free tier, but it is a billing account, and you should set a budget alert. CI does not deploy Firebase.
 
 1. [Firebase console](https://console.firebase.google.com) → create a project. Turn Analytics off.
 2. **Authentication → Sign-in method → Email/Password → Enable.**
@@ -117,7 +133,7 @@ Do this in a Firebase project that holds only Keepr. The Spark plan can run Auth
 
     ```bash
     curl -sS -H "Authorization: Bearer kpr_..." \
-      "https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/api/v1/contacts?limit=1"
+      "https://us-central1-keepr-contacts.cloudfunctions.net/api/v1/contacts?limit=1"
     ```
 
 ### Tests, before you deploy
@@ -145,4 +161,4 @@ Use the same paths and the same field names. Convert Room's epoch milliseconds t
 * **Signed URLs** are bearer links for their lifetime (15 minutes unless you ask for longer). Anyone who sees one can download that file until it expires. `contentPath` needs the Keepr token instead.
 * **The API key in the app is not a secret.** Firebase expects it in the client. Restrict it by bundle id and API. The real secret is the user's password, the refresh token in the iPhone keychain, and the assistant token, which is shown once and stored only as a hash.
 * **App Store privacy.** Once someone can sign in, "Data Not Collected" is no longer true. See `docs/APP_STORE_CHECKLIST.md`.
-* **This was not deployed and not run on a device.** The API and the security rules have automated tests. The Swift sync tests compile only on the Mac CI runner.
+* **The backend for keepr-contacts is deployed.** A TestFlight build still needs `FIREBASE_OPTIONS_PLIST_BASE64` or it ships with cloud sync off. The Swift sync tests run on the Mac CI runner.
