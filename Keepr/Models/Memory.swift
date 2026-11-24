@@ -18,6 +18,8 @@ final class Memory {
 
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
 
     /// Archived memories stay searchable but drop off the profile.
     var isArchived: Bool = false
@@ -40,6 +42,7 @@ final class Memory {
         self.importanceRaw = importance.rawValue
         self.createdAt = createdAt
         self.updatedAt = createdAt
+        self.modifiedAt = createdAt
         self.isArchived = false
         self.person = person
         self.sourceInteraction = sourceInteraction

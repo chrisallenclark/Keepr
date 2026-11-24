@@ -31,6 +31,8 @@ final class PersonGroup {
     var contextRaw: String = RelationshipContext.both.rawValue
 
     var createdAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
     var sortOrder: Int = 0
 
     /// Matches `Person.isSampleData`, so removing the sample set doesn't strand
@@ -55,6 +57,7 @@ final class PersonGroup {
         self.aliases = aliases
         self.contextRaw = context.rawValue
         self.createdAt = Date()
+        self.modifiedAt = self.createdAt
         self.sortOrder = sortOrder
         self.isSampleData = isSampleData
         self.members = []

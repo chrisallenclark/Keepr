@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var isSampleDataLoaded = false
     @State private var isConfirmingDelete = false
+    @State private var account = CloudAccount.shared
 
     /// Everyone organizes people by *something* — which of my businesses, which
     /// gym, which dating app, which chapter of my life. The app can't pick the
@@ -98,12 +99,15 @@ struct SettingsView: View {
                 } header: {
                     Text("Permissions")
                 } footer: {
-                    Text("Keepr reads your contacts only to link them to relationships. Nothing is uploaded, and Keepr never writes to your contacts.")
+                    Text("Keepr reads your contacts only to link them to relationships, and it never writes to your contacts. Details you save stay on this iPhone, and in your account if you sign in.")
                 }
 
                 Section {
                     LabeledContent("People", value: "\(people.count)")
-                    LabeledContent("Storage", value: "This device")
+                    LabeledContent("Storage", value: account.isSignedIn ? "This iPhone and your account" : "This iPhone")
+                    NavigationLink("Cloud & Assistant") {
+                        CloudAccountView()
+                    }
                     if KeeprStore.isUsingFallbackStore {
                         Label(
                             "Your database couldn't be opened, so this session isn't being saved.",
@@ -115,7 +119,9 @@ struct SettingsView: View {
                 } header: {
                     Text("Data")
                 } footer: {
-                    Text("Everything you record stays on this device. There's no account, no server, and no analytics.")
+                    Text(account.isSignedIn
+                         ? "Signed in. Relationships, notes, files and follow-ups sync to your account. An assistant can read them only with a token you create here and can revoke."
+                         : "Everything you record stays on this iPhone until you sign in under Cloud & Assistant.")
                 }
 
                 Section {
@@ -131,7 +137,7 @@ struct SettingsView: View {
                         isConfirmingDelete = true
                     }
                 } footer: {
-                    Text("Removes every relationship, memory, interaction and follow-up from this device. Your contacts are not affected.")
+                    Text("Removes every relationship, memory, interaction, file and follow-up from this iPhone. If you're signed in, the copy in your account is removed too. Your Apple contacts are not affected.")
                 }
 
                 Section("About") {
@@ -228,12 +234,14 @@ struct SettingsView: View {
 
     private func deleteAll() {
         Task { await notificationService.cancelAll() }
+        account.prepareDeleteAll()
         KeeprStore.deleteAllData(in: context)
         // The seen-contacts list is app data too. Leaving it behind would mean a
         // wiped app quietly treats every existing contact as already handled.
         ContactChangeTracker.shared.reset()
         isSampleDataLoaded = false
         Haptics.success()
+        Task { await account.syncNow(in: context) }
     }
 }
 
@@ -260,7 +268,7 @@ struct LimitationsView: View {
             }
 
             Section {
-                Text("Keepr doesn't sync between devices yet. Everything lives on this iPhone, so keep an iCloud backup if it matters to you.")
+                Text("Cloud sync is off until you sign in under Settings → Cloud & Assistant. Until then everything stays on this iPhone. Signing in stores your relationships, notes, files and follow-ups in your account so another phone — and an assistant you give a token to — can read them. The token can't change anything, and you can revoke it. Keepr still can't read iMessage, Mail or call history.")
             } header: {
                 Text("Sync")
             }

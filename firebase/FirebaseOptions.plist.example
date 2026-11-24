@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PROJECT_ID</key>
+	<string>YOUR_FIREBASE_PROJECT_ID</string>
+	<key>API_KEY</key>
+	<string>YOUR_FIREBASE_WEB_API_KEY</string>
+	<key>STORAGE_BUCKET</key>
+	<string>YOUR_FIREBASE_PROJECT_ID.firebasestorage.app</string>
+</dict>
+</plist>

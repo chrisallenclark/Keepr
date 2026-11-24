@@ -14,6 +14,8 @@ final class Interaction {
     var occurredAt: Date = Date()
     /// When it was recorded.
     var createdAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
 
     var kindRaw: String = InteractionKind.other.rawValue
 
@@ -59,6 +61,7 @@ final class Interaction {
         self.kindRaw = kind.rawValue
         self.occurredAt = occurredAt
         self.createdAt = Date()
+        self.modifiedAt = self.createdAt
         self.title = title
         self.rawNote = rawNote
         self.summary = summary

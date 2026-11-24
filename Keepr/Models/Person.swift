@@ -55,6 +55,9 @@ final class Person {
 
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
+    /// When this record's stored content last changed. The cloud sync clock.
+    /// Distinct from `updatedAt`, which is the user-facing "last edited" time.
+    var modifiedAt: Date = Date()
     /// Mirrors the most recent logged interaction, so lists can sort without a join.
     var lastInteractionAt: Date?
     var howWeMet: String?
@@ -163,6 +166,7 @@ final class Person {
         self.notes = notes
         self.createdAt = createdAt
         self.updatedAt = createdAt
+        self.modifiedAt = createdAt
         self.isSampleData = isSampleData
         self.interactions = []
         self.memories = []
@@ -331,5 +335,6 @@ extension Person {
 
     func touch(_ date: Date = Date()) {
         updatedAt = date
+        modifiedAt = date
     }
 }

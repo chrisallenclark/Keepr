@@ -56,3 +56,11 @@ fastlane/test_output
 *.provisionprofile
 *.p12
 *.cer
+
+# Firebase project files the owner fills in locally. The example lives in firebase/.
+Keepr/FirebaseOptions.plist
+firebase/.firebaserc
+firebase/.firebase/
+firebase/*-debug.log
+firebase/functions/node_modules/
+firebase/functions/lib/

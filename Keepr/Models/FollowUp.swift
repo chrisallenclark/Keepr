@@ -22,6 +22,8 @@ final class FollowUp {
     var completedAt: Date?
 
     var createdAt: Date = Date()
+    /// Cloud sync clock. Bumped when the stored content changes.
+    var modifiedAt: Date = Date()
     /// Set when the user pushes a follow-up out; kept for history, not shown.
     var lastSnoozedAt: Date?
 
@@ -49,6 +51,7 @@ final class FollowUp {
         self.priorityRaw = priority.rawValue
         self.isCompleted = false
         self.createdAt = createdAt
+        self.modifiedAt = createdAt
         self.person = person
         self.sourceInteraction = sourceInteraction
     }

@@ -117,8 +117,13 @@ or current Apple documentation).
 
 ## 7. App Privacy answers (App Store Connect "nutrition label")
 
-- [ ] Answer the App Privacy questionnaire. **Based on the architecture as designed, the
-      correct answer is "Data Not Collected."**
+- [ ] Answer the App Privacy questionnaire. **A build where cloud sync cannot be turned on
+      (no `FirebaseOptions.plist`, which is how a binary ships until you add one) still
+      collects nothing.** Once a binary includes that file and a person can sign in,
+      "Data Not Collected" is false: contact details, notes, photos, and files they save
+      are stored in their Firebase account, and a token they create can read them. Update
+      the nutrition label and the privacy policy before shipping that binary. See
+      `docs/CLOUD_SYNC.md`.
 - [x] The design supports that answer: no network calls, no analytics SDK, no third-party
       dependencies, no backend, local-only SwiftData store, Contacts data cached on device
       only (`ARCHITECTURE.md` §1, §5, §7).

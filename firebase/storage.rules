@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function owns(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // File bytes and contact photos. The read API mints signed URLs with the
+    // Admin SDK; these rules are for the signed-in phone only.
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if owns(userId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
