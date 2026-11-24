@@ -257,13 +257,13 @@ final class FirebaseCloudTransport: CloudTransport, @unchecked Sendable {
         var request = authorized(.patch, url: target)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try FirestoreCodec.encodeFields(fields)
-        _ = try await data(for: request)
+        _ = try await perform(request)
     }
 
     func delete(collection: String, id: String) async throws {
         let request = authorized(.delete, url: try documentURL(collection: collection, id: id))
         do {
-            _ = try await data(for: request)
+            _ = try await perform(request)
         } catch CloudError.http(404) {
             return
         }
@@ -279,7 +279,7 @@ final class FirebaseCloudTransport: CloudTransport, @unchecked Sendable {
             components?.queryItems = items
             guard let url = components?.url else { throw CloudError.http(0) }
             let request = authorized(.get, url: url)
-            let payload = try await data(for: request)
+            let payload = try await perform(request)
             let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
             let documents = object?["documents"] as? [[String: Any]] ?? []
             for document in documents {
@@ -300,14 +300,14 @@ final class FirebaseCloudTransport: CloudTransport, @unchecked Sendable {
         var request = authorized(.post, url: url)
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         request.httpBody = data
-        _ = try await data(for: request)
+        _ = try await perform(request)
     }
 
     func getBlob(path: String) async throws -> Data? {
         let url = try endpoint("https://firebasestorage.googleapis.com/v0/b/\(config.storageBucket)/o/\(encodeObject(objectName(path)))?alt=media")
         let request = authorized(.get, url: url)
         do {
-            return try await data(for: request)
+            return try await perform(request)
         } catch CloudError.http(404) {
             return nil
         }
@@ -317,7 +317,7 @@ final class FirebaseCloudTransport: CloudTransport, @unchecked Sendable {
         let url = try endpoint("https://firebasestorage.googleapis.com/v0/b/\(config.storageBucket)/o/\(encodeObject(objectName(path)))")
         let request = authorized(.delete, url: url)
         do {
-            _ = try await data(for: request)
+            _ = try await perform(request)
         } catch CloudError.http(404) {
             return
         }
@@ -343,7 +343,7 @@ final class FirebaseCloudTransport: CloudTransport, @unchecked Sendable {
             let request = authorized(.get, url: url)
             let payload: Data
             do {
-                payload = try await data(for: request)
+                payload = try await perform(request)
             } catch CloudError.http(404) {
                 return
             }
@@ -403,7 +403,7 @@ final class FirebaseCloudTransport: CloudTransport, @unchecked Sendable {
         return request
     }
 
-    private func data(for request: URLRequest) async throws -> Data {
+    private func perform(_ request: URLRequest) async throws -> Data {
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
